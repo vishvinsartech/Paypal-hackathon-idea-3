@@ -109,15 +109,26 @@ def cycle_days(cycle: BillingCycleDef) -> int:
     return DAYS_PER_UNIT[cycle.interval_unit] * cycle.interval_count
 
 
+def _leading_free_days(cycles: Sequence[BillingCycleDef]) -> int:
+    days = 0
+    for c in cycles:
+        if c.price > 0:
+            break
+        days += cycle_days(c) * max(c.total_cycles, 1)
+    return days
+
+
 def first_charge_day(cycles: Sequence[BillingCycleDef], signup_day: int) -> int:
-    """Day of the first paid charge. A 14-day trial from Day 0 charges on Day 15 (spec section 2)."""
-    trial = sum(cycle_days(c) * max(c.total_cycles, 1) for c in cycles if c.tenure_type == "TRIAL")
-    if trial:
-        return signup_day + trial + 1
-    regular = next((c for c in cycles if c.tenure_type == "REGULAR"), None)
-    return signup_day + (cycle_days(regular) if regular else 30)
+    """Day of the first paid charge. A 14-day free trial from Day 0 charges on Day 15 (spec section 2).
+    Only the leading free cycles count: a paid TRIAL cycle (intro price, D-031) is already a charge."""
+    free = _leading_free_days(cycles)
+    if free:
+        return signup_day + free + 1
+    paid = next((c for c in cycles if c.price > 0), None)
+    return signup_day + (cycle_days(paid) if paid else 30)
 
 
-def first_regular_price(cycles: Sequence[BillingCycleDef]) -> Decimal:
-    regular = next((c for c in cycles if c.tenure_type == "REGULAR"), None)
-    return regular.price if regular else Decimal("0")
+def first_paid_price(cycles: Sequence[BillingCycleDef]) -> Decimal:
+    """Price of the first charge: the first cycle with a price, TRIAL (intro) or REGULAR."""
+    paid = next((c for c in cycles if c.price > 0), None)
+    return paid.price if paid else Decimal("0")

@@ -82,6 +82,27 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   assertions ($872.76, risk 87/15, deadline Day 7) stay valid; money maths in later milestones must
   read from `settings.pricing`, never literals.
 
+## Seeding (milestone 3)
+
+- **D-029 Seed idempotency.** `make seed` reuses a stored product if PayPal still has it, and a stored
+  plan only if PayPal's copy is ACTIVE and its billing cycles + currency match `settings.pricing`
+  exactly. Anything else gets a new plan and `sandbox_ids.json` is updated (PayPal can't change a
+  plan's cycle structure). Request ids are content-derived, so a lost `sandbox_ids.json` doesn't
+  duplicate what PayPal still remembers. Seed checks only the PayPal settings (no LLM key needed).
+- **D-030 Milestone 3 cancel check is a script.** `scripts/sandbox_cancel_check.py`
+  (`python scripts/tasks.py sandbox-check`) creates two subscriptions, approves them as the sandbox
+  buyer with Playwright, cancels one via the SDK transport and one via the MCP transport, and reads
+  both back over both transports. The pytest `sandbox` smoke test comes in milestone 7.
+- **D-031 Penwright intro price is a paid TRIAL cycle (deviates from spec 7.1).** PayPal rejects plans
+  with more than one REGULAR cycle (`MULTIPLE_REGULAR_BILLING_CYCLE_NOT_SUPPORTED`, verified live). So
+  `penwright-pro` is TRIAL 14 days $0 -> TRIAL 3 x 1 month $24.99 -> REGULAR unlimited $49.99, the
+  PayPal-native way to do intro pricing. `first_charge_day` counts only the leading *free* cycles
+  (still Day 15) and `first_paid_price` is the first priced cycle (still $24.99), so every key number
+  is unchanged.
+- **D-032 Sandbox buyer approval uses Playwright on PayPal's page** (`scripts/sandbox_buyer.py`),
+  with `return_url` on 127.0.0.1 intercepted by Playwright, so the app doesn't need to be running.
+  It needs a sandbox *personal* account; the business account that owns the REST app is refused.
+
 ## Not used in v1 (sponsor tools)
 
 - **Bryntum:** a CSS timeline is enough for a prototype.

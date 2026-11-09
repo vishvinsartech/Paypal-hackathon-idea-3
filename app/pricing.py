@@ -64,7 +64,8 @@ class Pricing(PricingFields):
                 self._plan("penwright-pro", "Penwright Pro", [
                     BillingCycleDef(tenure_type="TRIAL", price=Decimal("0.00"), interval_unit="DAY",
                                     interval_count=self.penwright_trial_days, total_cycles=1),
-                    BillingCycleDef(tenure_type="REGULAR", price=self.penwright_intro_price,
+                    # PayPal allows one REGULAR cycle per plan, so the intro price is a paid TRIAL (D-031)
+                    BillingCycleDef(tenure_type="TRIAL", price=self.penwright_intro_price,
                                     total_cycles=self.penwright_intro_months, **monthly),  # type: ignore[arg-type]
                     BillingCycleDef(tenure_type="REGULAR", price=self.penwright_step_up_price,
                                     total_cycles=0, **monthly),  # type: ignore[arg-type]

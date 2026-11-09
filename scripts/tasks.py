@@ -1,6 +1,8 @@
 """Cross-platform task runner mirroring the Makefile (works on Windows without `make`).
 
-Usage: python scripts/tasks.py <setup|dev|dev-sandbox|seed|reset|test|lint|demo-video-check|demo-video>
+Usage: python scripts/tasks.py <task> [args]
+Tasks: setup dev dev-sandbox seed sandbox-check reset test lint demo-video-check demo-video
+Extra args go to `seed` / `sandbox-check` (e.g. `seed --demo-subs`).
 """
 
 from __future__ import annotations
@@ -56,8 +58,8 @@ TASKS = {
     "setup": setup,
     "dev": lambda: dev("mock"),
     "dev-sandbox": lambda: dev("sandbox"),
-    "seed": lambda: run(py(), "scripts/seed_sandbox.py") if (ROOT / "scripts/seed_sandbox.py").exists()
-    else not_yet("seed", 3),
+    "seed": lambda: run(py(), "scripts/seed_sandbox.py", *sys.argv[2:]),
+    "sandbox-check": lambda: run(py(), "scripts/sandbox_cancel_check.py", *sys.argv[2:]),
     "reset": reset,
     "test": lambda: run(py(), "-m", "pytest", "-q"),
     "lint": lambda: run(py(), "-m", "ruff", "check", "."),
@@ -66,7 +68,7 @@ TASKS = {
 }
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2 or sys.argv[1] not in TASKS:
+    if len(sys.argv) < 2 or sys.argv[1] not in TASKS:
         print(__doc__)
         sys.exit(2)
     sys.exit(TASKS[sys.argv[1]]())

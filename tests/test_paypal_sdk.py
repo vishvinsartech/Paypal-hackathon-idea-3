@@ -27,7 +27,7 @@ SUB = {"id": "I-ABC123", "status": "ACTIVE", "plan_id": "P-123456789012",
        "billing_info": {"next_billing_time": "2026-11-25T10:00:00Z"},
        "links": [{"rel": "approve", "href": "https://www.sandbox.paypal.com/webapps/billing/subscriptions?ba_token=X"}]}
 PLAN = {"id": "P-123456789012", "name": "Penwright Pro", "status": "ACTIVE", "billing_cycles": [
-    {"frequency": {"interval_unit": "MONTH", "interval_count": 1}, "tenure_type": "REGULAR", "sequence": 2,
+    {"frequency": {"interval_unit": "MONTH", "interval_count": 1}, "tenure_type": "TRIAL", "sequence": 2,
      "total_cycles": 3, "pricing_scheme": {"fixed_price": {"currency_code": "USD", "value": "24.99"}}},
     {"frequency": {"interval_unit": "DAY", "interval_count": 14}, "tenure_type": "TRIAL", "sequence": 1,
      "total_cycles": 1},
@@ -92,9 +92,10 @@ async def test_get_subscription_runs_in_worker_thread() -> None:
 
 
 async def test_get_plan_maps_cycles_in_sequence_order() -> None:
-    sdk, _, _ = make_sdk(FakeHttpResponse(200, PLAN))
+    sdk, subs, _ = make_sdk(FakeHttpResponse(200, PLAN))
     plan = await sdk.get_plan("P-123456789012")
-    assert [c.tenure_type for c in plan.billing_cycles] == ["TRIAL", "REGULAR", "REGULAR"]
+    assert subs.calls[0][:2] == ("get_billing_plan", "P-123456789012")  # SDK 2.4.0: id is positional, not options
+    assert [c.tenure_type for c in plan.billing_cycles] == ["TRIAL", "TRIAL", "REGULAR"]
     assert [c.price for c in plan.billing_cycles] == [Decimal("0"), Decimal("24.99"), Decimal("49.99")]
     assert plan.billing_cycles[0].interval_count == 14 and plan.billing_cycles[2].total_cycles == 0
 

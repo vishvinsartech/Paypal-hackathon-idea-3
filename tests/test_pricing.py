@@ -24,7 +24,7 @@ def test_defaults_are_the_spec_numbers() -> None:
     pro = p.plans_for("penwright")[0]
     cycles = [(c.tenure_type, c.price, c.interval_unit, c.interval_count, c.total_cycles) for c in pro.billing_cycles]
     assert cycles == [
-        ("TRIAL", Decimal("0.00"), "DAY", 14, 1), ("REGULAR", Decimal("24.99"), "MONTH", 1, 3),
+        ("TRIAL", Decimal("0.00"), "DAY", 14, 1), ("TRIAL", Decimal("24.99"), "MONTH", 1, 3),
         ("REGULAR", Decimal("49.99"), "MONTH", 1, 0)]
     assert Settings(_env_file=None).pricing == p  # type: ignore[call-arg]
 

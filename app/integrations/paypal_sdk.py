@@ -112,7 +112,7 @@ class SdkPayPal:
     async def get_plan(self, plan_id: str, *, merchant: Merchant | None = None) -> PlanView:
         if self._partner(merchant):
             return plan_view(await self.rest.get_json(f"/v1/billing/plans/{plan_id}", merchant=merchant))
-        return plan_view(await self._sdk(lambda s: s.get_billing_plan({"id": plan_id})))
+        return plan_view(await self._sdk(lambda s: s.get_billing_plan(plan_id)))
 
     async def cancel_subscription(self, sub_id: str, reason: str, *, request_id: str,
                                   merchant: Merchant | None = None) -> None:

@@ -229,3 +229,4 @@ class MockPayPalState(BaseModel):
 class SandboxIds(BaseModel):
     products: dict[str, str] = Field(default_factory=dict)  # merchant_id -> product id
     plans: dict[str, str] = Field(default_factory=dict)  # plan key -> plan id
+    demo_subscriptions: dict[str, str] = Field(default_factory=dict)  # plan key -> subscription id (--demo-subs)

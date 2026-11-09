@@ -19,7 +19,7 @@ from app.integrations.paypal_types import (
     PayPalError,
     SubscriptionView,
     first_charge_day,
-    first_regular_price,
+    first_paid_price,
 )
 from app.models import ConsentSnapshot, Merchant, Subscription
 from app.routes.deps import get_store
@@ -124,7 +124,7 @@ async def register(body: RegisterIn, request: Request, store: JsonStore = Depend
             next_billing_day=first_charge_day(plan.billing_cycles, day), addon_of=body.addon_of,
             registered_at=utcnow(),
             consent_snapshot=ConsentSnapshot(taken_at=utcnow(), sim_day=day, currency=plan.currency,
-                                             price=first_regular_price(plan.billing_cycles),
+                                             price=first_paid_price(plan.billing_cycles),
                                              billing_cycles=plan.billing_cycles),
         )
         subs.items.append(sub)

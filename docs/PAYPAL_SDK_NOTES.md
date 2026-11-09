@@ -48,7 +48,7 @@ Every controller method takes **one `options: dict`** and returns an `ApiRespons
 |---|---|---|---|
 | `create_billing_plan` | POST `/v1/billing/plans` | `body: PlanRequest`, `prefer`, `paypal_request_id` | `BillingPlan` |
 | `list_billing_plans` | GET `/v1/billing/plans` | `product_id`, `page_size`, `page`, `total_required`, `prefer` | `PlanCollection` |
-| `get_billing_plan` | GET `/v1/billing/plans/{id}` | `id` | `BillingPlan` |
+| `get_billing_plan` | GET `/v1/billing/plans/{id}` | `id` (**positional string**, not an options dict; verified live 2026-11-10) | `BillingPlan` |
 | `patch_billing_plan` | PATCH `/v1/billing/plans/{id}` | `id`, `body` | 204 |
 | `activate_billing_plan` / `deactivate_billing_plan` | POST `.../activate`, `.../deactivate` | `id` | 204 |
 | `update_billing_plan_pricing_schemes` | POST `/v1/billing/plans/{id}/update-pricing-schemes` | `id`, `body: UpdatePricingSchemesRequest` | 204 |

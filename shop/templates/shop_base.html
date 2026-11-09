@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Demo shop{% endblock %}</title>
+  <link rel="stylesheet" href="/shop/static/shop.css">
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <div class="banner" role="note" data-testid="shop-banner">Fictional merchant for the SubGuard demo.</div>
+  <header class="shop-header">
+    <a href="/shop" class="shop-home">{% block brand %}Demo shop{% endblock %}</a>
+  </header>
+  <main class="shop-main">
+    {% block content %}{% endblock %}
+  </main>
+  {% block checkout_script %}{% endblock %}
+</body>
+</html>

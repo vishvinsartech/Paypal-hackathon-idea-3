@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}SubGuard: dashboard{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>Hi {{ current_user.name if current_user else "there" }}.</h1>
+  <p class="lead">AI reads the fine print. PayPal enforces the outcome.</p>
+  <p class="muted">Day <strong data-testid="sim-day">{{ sim_day }}</strong> of the demo ·
+    {{ "PayPal Sandbox" if settings.is_sandbox else "Mock mode (no keys needed)" }}</p>
+</section>
+
+<section class="kpis" aria-label="Key numbers">
+  <div class="card kpi" data-testid="kpi-protected"><span class="kpi-label">Money protected</span><span class="kpi-value">$0.00/yr</span></div>
+  <div class="card kpi"><span class="kpi-label">Dark patterns caught</span><span class="kpi-value">0</span></div>
+  <div class="card kpi"><span class="kpi-label">Subscriptions cancelled</span><span class="kpi-value">0</span></div>
+  <div class="card kpi"><span class="kpi-label">Active watches</span><span class="kpi-value">0</span></div>
+</section>
+
+<section class="card">
+  <h2>Getting started</h2>
+  <p>The full dashboard (timeline, subscription and audit-log grids, alerts, chat) is coming in a later milestone.
+     For now you can browse the fictional merchants on the
+     <a href="/shop" target="_blank" rel="noopener">dummy website</a>.</p>
+  <ul class="plain">
+    {% for mch in merchants %}
+    <li><strong>{{ mch.name }}</strong>: {{ mch.tagline }}
+      {% if mch.fair_trial_member %}<span class="pill pill-teal">Fair Trial</span>{% endif %}</li>
+    {% endfor %}
+  </ul>
+  <p class="muted">Audit log: <a href="/api/audit-log">JSON</a> · <a href="/api/audit-log.csv">CSV</a> ·
+    <a href="/api/audit-log/verify">verify chain</a> · <a href="/healthz">healthz</a></p>
+</section>
+{% endblock %}

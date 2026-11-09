@@ -1,0 +1,32 @@
+{% extends "shop_base.html" %}
+{% block title %}Penwright Studio: start your free trial{% endblock %}
+{% block body_class %}theme-penwright{% endblock %}
+{% block brand %}Penwright Studio{% endblock %}
+{% block content %}
+<section class="product">
+  <h1 class="headline" data-testid="shop-headline">Start your 14-day free trial — $0 today</h1>
+  <p class="desc">Penwright is an AI writing studio for drafts, outlines and rewrites.</p>
+
+  <div class="price-box" data-testid="shop-price-box">
+    <p class="price-big">$0 today</p>
+    <label class="addon">
+      <input type="checkbox" name="addon" value="penwright-ai-pack" checked data-testid="shop-addon">
+      AI Writing Pack
+    </label>
+    <p class="fineprint" data-testid="shop-fineprint">After your 14-day free trial, your subscription automatically converts to Penwright Pro at $24.99/month, with the first charge on day 15. After 3 paid months the price becomes $49.99/month. The AI Writing Pack add-on is billed at $9.99/month unless you untick it.</p>
+  </div>
+
+  <details class="terms-accordion" data-testid="shop-terms">
+    <summary data-testid="shop-terms-toggle">Terms</summary>
+    <div class="terms-body" data-testid="shop-terms-body">
+      <p>Cancellation requires written notice by email to cancel@penwright.example at least 7 days before the next billing date.</p>
+      <p>The trial ends immediately if you export more than 3 documents.</p>
+      <p>There is no online cancel button. You can cancel by email, or by phone on weekdays only.</p>
+    </div>
+  </details>
+  <p class="tos-link"><a href="/shop/penwright/terms" data-testid="shop-tos-link">Full Terms of Service</a></p>
+
+  {% set plan_key = "penwright-pro" %}
+  {% include "_checkout.html" %}
+</section>
+{% endblock %}

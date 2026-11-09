@@ -1,0 +1,20 @@
+{
+  "items": [
+    {
+      "id": "priya",
+      "name": "Priya",
+      "persona": "Freelance writer who pays for apps with PayPal",
+      "email": "priya@subguard-demo.example",
+      "phone": "+15550100001",
+      "settings": {"auto_cancel_price_rises": true, "channels": ["in_app", "email", "sms"]}
+    },
+    {
+      "id": "john",
+      "name": "John",
+      "persona": "Developer who subscribes to an honest notes app",
+      "email": "john@subguard-demo.example",
+      "phone": "+15550100002",
+      "settings": {"auto_cancel_price_rises": false, "channels": ["in_app", "email"]}
+    }
+  ]
+}

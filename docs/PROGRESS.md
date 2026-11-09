@@ -2,8 +2,9 @@
 
 Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its check passes and it is committed.
 
-- [ ] **1. Preflight.** Run `claude mcp list`; check Python >= 3.11, Node >= 18 and `npx`; install the APIMatic PayPal context plugin; write `docs/PAYPAL_TOOLS.md` and `docs/PAYPAL_SDK_NOTES.md`; create `docs/DECISIONS.md`.
+- [x] **1. Preflight.** Run `claude mcp list`; check Python >= 3.11, Node >= 18 and `npx`; install the APIMatic PayPal context plugin; write `docs/PAYPAL_TOOLS.md` and `docs/PAYPAL_SDK_NOTES.md`; create `docs/DECISIONS.md`.
   - *Check:* tool versions confirmed; the three docs exist.
+  - Done 2026-11-10 (commit `3a05a3e`). Python 3.14.4, Node 24.15, npx 11.14. **Open:** the APIMatic plugin isn't installed, and the PayPal MCP isn't started (DECISIONS D-003).
 - [ ] **2. Scaffold + JSON store + audit log + dummy shop.**
   - *Check:* `make setup && make dev` serves `/`, `/shop` and `/shop/penwright`; the store and audit log tests pass (atomic write, corrupt-file recovery, hash chain).
 - [ ] **3. PayPal layer (mock + SDK + MCP) + seed.**

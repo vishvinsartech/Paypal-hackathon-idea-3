@@ -1,0 +1,29 @@
+{% extends "shop_base.html" %}
+{% block title %}Demo shop: fictional merchants{% endblock %}
+{% block content %}
+<section data-testid="shop-index">
+  <h1>Demo shop</h1>
+  <p>Three fictional merchants used in the SubGuard demo. None of them are real companies.</p>
+  <ul class="merchant-list">
+    {% for mch in merchants %}
+    <li data-testid="shop-merchant-{{ mch.id }}">
+      <a href="/shop/{{ mch.id }}"><strong>{{ mch.name }}</strong></a>: {{ mch.tagline }}
+    </li>
+    {% endfor %}
+  </ul>
+
+  <h2>What's on this site</h2>
+  <ul>
+    <li><strong>Checkout pages:</strong> <a href="/shop/penwright">Penwright</a>,
+      <a href="/shop/framewise">Framewise</a> and <a href="/shop/lumen">Lumen Notes</a>.</li>
+    <li><strong>Terms page:</strong> <a href="/shop/penwright/terms">Penwright Terms of Service</a>.</li>
+    <li><strong>Fake app pages:</strong> <a href="/shop/penwright/app">Penwright</a>,
+      <a href="/shop/framewise/app">Framewise</a> and <a href="/shop/lumen/app">Lumen Notes</a>.
+      Opening one records a usage event for the current demo day.</li>
+    <li><strong>The tricks Penwright hides:</strong> auto-conversion to $24.99/month after the trial,
+      a later step-up to $49.99/month, a pre-ticked $9.99/month add-on, 7 days' written notice to cancel
+      (so the real deadline is Day 7), the trial ending early after 3 exports, no cancel button,
+      and a hidden instruction aimed at AI assistants.</li>
+  </ul>
+</section>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "shop_base.html" %}
+{% block title %}{{ merchant.name }}: app{% endblock %}
+{% block body_class %}theme-{{ merchant.id }}{% endblock %}
+{% block brand %}{{ merchant.name }}{% endblock %}
+{% block content %}
+<section class="product" data-testid="shop-app">
+  <h1 class="headline">Welcome back to {{ merchant.name }}</h1>
+  <p>This is a pretend app screen. Opening it recorded a usage event for <strong>{{ user }}</strong>
+     on demo day <strong data-testid="app-day">{{ day }}</strong>.</p>
+  <p class="muted">Times opened so far: <span data-testid="app-opens">{{ opens }}</span></p>
+  <p><a href="/shop/{{ merchant.id }}">Back to {{ merchant.name }}</a></p>
+</section>
+{% endblock %}

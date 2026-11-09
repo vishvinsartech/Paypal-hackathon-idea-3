@@ -26,6 +26,30 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   no `PayPal-Auth-Assertion`), and (d) no webhook signature verification. Those four calls use httpx
   with a token from the same OAuth credentials. Everything else uses the SDK.
 
+## Storage and app structure (milestone 2)
+
+- **D-020 One uvicorn worker.** JSON storage + one in-process lock only works in a single process,
+  so `dev` and Render run `--workers 1`.
+- **D-021 Lock design.** One `threading.RLock` (re-entrant, so the audit log can append inside an
+  edit) plus one `asyncio.Lock`. Async code uses `store.aedit()` / `store.alocked()`, which take the
+  asyncio lock first, because the RLock alone can't separate two coroutines on the same thread.
+  Plain reads don't lock: `os.replace` makes every read see a complete file.
+- **D-022 JSON file shape.** Every list file is `{"items": [...]}` so it validates as one Pydantic
+  model. All models live in `app/models.py` (not in the spec's layout; it keeps `store.py` small).
+- **D-023 Audit hash.** `hash = sha256(canonical JSON (sorted keys, no spaces) of the entry minus
+  "hash")`; genesis `prev_hash` is 64 zeros. Secrets and emails are masked before hashing, so
+  nothing sensitive ever reaches disk.
+- **D-024 Reset keeps archives.** Reset wipes `data/runtime/` except `sandbox_ids.json` and the
+  archived `audit_log.<ts>.jsonl` files (the spec says archives are never deleted).
+- **D-025 Fair Trial defaults.** All three seed merchants start as `fair_trial_member: true` (Layer 1
+  is the main demo path). The demo toggle switches any merchant to Layer 2.
+- **D-026 Merchant emails use `.example`.** For example `cancel@penwright.example`: a reserved
+  domain, so we use no real brand and no deliverable address.
+- **D-027 `/shop/<merchant>/app` records usage on GET.** It's a side effect on GET, but it is exactly
+  "opening it records a usage event", and it keeps the video recorder simple.
+- **D-028 Model defaults in `.env.example`.** `claude-opus-5-5` and `gpt-5` for now. Re-verify both
+  ids in milestone 4 before writing the providers.
+
 ## Not used in v1 (sponsor tools)
 
 - **Bryntum:** a CSS timeline is enough for a prototype.

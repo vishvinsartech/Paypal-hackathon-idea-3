@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}SubGuard{% endblock %}</title>
+  <link rel="icon" href="/static/shield.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar" role="banner">
+    <a class="brand" href="/?user={{ current_user.id if current_user else 'priya' }}" data-testid="brand">
+      <img src="/static/shield.svg" alt="" width="28" height="28">
+      <span>SubGuard</span>
+    </a>
+    <span class="badge badge-mode" data-testid="mode-badge">
+      {{ "PayPal Sandbox" if settings.is_sandbox else "Mock mode" }}
+    </span>
+    <span class="badge badge-llm" data-testid="llm-badge" title="LLM provider">
+      AI: {{ settings.active_llm_provider }}{% if settings.is_sandbox %} · {{ settings.llm_model }}{% endif %}
+    </span>
+    <nav class="topbar-right" aria-label="Account">
+      <label class="sr-only" for="user-switch">User</label>
+      <select id="user-switch" data-testid="user-switch">
+        {% for u in users %}
+        <option value="{{ u.id }}" {% if current_user and u.id == current_user.id %}selected{% endif %}>{{ u.name }}</option>
+        {% endfor %}
+      </select>
+      <a class="btn btn-ghost" href="/shop" target="_blank" rel="noopener" data-testid="view-shop">View dummy website</a>
+      <span class="health" id="health" aria-label="Integration health" data-testid="health-dots"></span>
+    </nav>
+  </header>
+  <main id="main">
+    {% block content %}{% endblock %}
+  </main>
+  <div class="toasts" aria-live="polite" id="toasts"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

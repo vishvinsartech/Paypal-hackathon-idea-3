@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import secrets
 from typing import Any
 from urllib.parse import urlparse
 
@@ -10,15 +9,14 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from app.core.auditor import Auditor
+from app.core.auditor import Auditor, save_review
 from app.integrations.capture import CaptureError, PageCapture
 from app.integrations.paypal_gateway import Ctx, PayPalGateway
 from app.integrations.paypal_types import PayPalError, PlanView
 from app.models import Merchant, Review
-from app.review_types import ReviewData
 from app.routes.deps import get_store
 from app.routes.subscriptions import get_gateway
-from app.store import JsonStore, utcnow
+from app.store import JsonStore
 
 router = APIRouter(prefix="/api")
 
@@ -57,14 +55,6 @@ async def _addon_plans(capture: PageCapture, merchant: Merchant, gw: PayPalGatew
         if box.checked and box.value in addon_keys:
             out.append(await gw.get_plan(gw.plan_id(box.value), ctx))
     return out
-
-
-def save_review(store: JsonStore, data: ReviewData, sim_day: int, subscription_id: str | None = None) -> Review:
-    review = Review(id=f"rev-{secrets.token_hex(5)}", merchant_id=data.merchant_id, subscription_id=subscription_id,
-                    created_at=utcnow(), sim_day=sim_day, risk_score=data.risk_score, data=data)
-    with store.edit("reviews") as reviews:
-        reviews.items.append(review)
-    return review
 
 
 @router.post("/review/preflight", response_model=None)

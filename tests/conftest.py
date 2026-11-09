@@ -36,10 +36,18 @@ def store(data_dir: Path) -> JsonStore:
 
 @pytest.fixture
 def settings(data_dir: Path) -> Settings:
-    return Settings(_env_file=None, app_mode="mock", data_dir=data_dir)  # type: ignore[call-arg]
+    return Settings(_env_file=None, app_mode="mock", data_dir=data_dir, demo_seed=False)  # type: ignore[call-arg]
 
 
 @pytest.fixture
 def client(settings: Settings) -> Iterator[TestClient]:
+    with TestClient(create_app(settings)) as c:
+        yield c
+
+
+@pytest.fixture
+def demo_client(data_dir: Path) -> Iterator[TestClient]:
+    """Mock mode with the demo seed: Priya's Framewise (signup Day -5) and John's Lumen (Day 0)."""
+    settings = Settings(_env_file=None, app_mode="mock", data_dir=data_dir, demo_seed=True)  # type: ignore[call-arg]
     with TestClient(create_app(settings)) as c:
         yield c

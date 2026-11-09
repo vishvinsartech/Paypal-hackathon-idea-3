@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+import secrets
 import time
 from pathlib import Path
 
@@ -27,9 +28,9 @@ from app.core.savings import year_one_cost
 from app.integrations.capture import PageCapture
 from app.integrations.paypal_types import PlanView, first_charge_day
 from app.llm.base import LLMError, LLMProvider
-from app.models import Merchant
+from app.models import Merchant, Review
 from app.review_types import Clause, ReviewData, ReviewResult
-from app.store import JsonStore
+from app.store import JsonStore, utcnow
 
 BASIC_LABEL = "basic check (AI unavailable)"
 NOTICE_DAYS_RE = re.compile(r"(\d+)\s+(?:calendar\s+|business\s+)?days?\b", re.I)
@@ -140,3 +141,11 @@ class Auditor:
             style_signals=signals, library_matches=[e.id for e in matches], dropped_quotes=dropped,
             injection_flagged=any(c.type == "PROMPT_INJECTION_ATTEMPT" for c in clauses),
         )
+
+
+def save_review(store: JsonStore, data: ReviewData, sim_day: int, subscription_id: str | None = None) -> Review:
+    review = Review(id=f"rev-{secrets.token_hex(5)}", merchant_id=data.merchant_id, subscription_id=subscription_id,
+                    created_at=utcnow(), sim_day=sim_day, risk_score=data.risk_score, data=data)
+    with store.edit("reviews") as reviews:
+        reviews.items.append(review)
+    return review

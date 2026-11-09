@@ -147,6 +147,44 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   quote ("at least 7 days") when present, else the model's value, else 0. First charge day always
   comes from the PayPal plan.
 
+## Policy, timers, escalation, clock (milestone 5)
+
+- **D-050 Where confirmation tokens come from.** Spec R3 says tokens are "issued by `/api/agent/confirm`", but
+  7.3 says `propose_cancel` returns the card + token and Confirm calls `/api/agent/confirm`. We follow 7.3:
+  `POST /api/agent/propose` (and alert buttons `cancel` / `remove_addon`, and the chat's `propose_cancel` in
+  milestone 6) issue the token with the card; `POST /api/agent/confirm` consumes it and runs policy -> gateway.
+  Tokens are masked in the audit log.
+- **D-051 R2 warning delivery.** "Delivered" = the in-app alert was stored (`in_app: shown`) AND (a Zapier
+  channel accepted, OR Zapier is mocked/unconfigured, OR Zapier failed after retries = "down"); the basis is
+  logged as `zapier_accepted | zapier_mocked | zapier_down_in_app_only`. So only an in-app failure blocks
+  (corner case 12, tested with `Notifier.fail_in_app`). "24 sim-hours" = warned on an earlier sim day.
+  Info alerts are in-app only; warning/urgent/action_needed alerts also go to the user's email/SMS channels.
+- **D-052 Blocked timers retry, then fail.** If R2 blocks a due timer only because the warning isn't
+  delivered yet, the timer stays PENDING: the warning is retried each day and the timer re-checked. On the
+  billing day it becomes FAILED with an urgent alert. R6 (essential) -> timer CANCELLED + urgent alert.
+  A failed PayPal cancel -> FAILED + Layer 2 handoff (notice + ACTION NEEDED link), never "Done".
+- **D-053 Scripted demo usage.** The demo seed writes usage events with `source: "seed"` (Priya: Framewise
+  Days -2, 3, 10 and Penwright Days 2, 4; John: Lumen Days 1-9 and 12). Only days <= today count, so the
+  story's numbers ("opened Penwright twice", "3 times this month", "9 of the last 10 days", "2 weeks")
+  are reproducible; opening `/shop/<merchant>/app` still adds live events on top.
+- **D-054 Demo seed subscriptions.** In mock mode with `DEMO_SEED=true` (default; tests turn it off),
+  first start and Reset create Priya's Framewise (signup Day -5, so it renews Day 25 and the Day 21 price
+  rise lands before it) and John's Lumen monthly (Day 0, reviewed by the real pipeline: risk 15). Penwright
+  is not seeded: Priya subscribes through the shop + companion in the demo. Sandbox mode seeds nothing.
+- **D-055 Which subscriptions get a safety timer.** A trial timer is created only for plans that start with a
+  free cycle (a trial before the first charge), using the linked review's notice days. Honest no-trial plans
+  (Lumen, Framewise) get no auto-cancel timer, only renewal reminders (3 days before, if unused 14+ days)
+  and price watching. A price-rise timer (fire = billing day - 1) is created only with
+  `auto_cancel_price_rises` on; the price-rise alert itself is its warning.
+- **D-056 Manual cancel for Layer 2 merchants** returns `action_needed` (written notice sent + one-tap
+  Automatic payments link) instead of calling PayPal, matching "everything except the final click".
+- **D-057 "Money protected"** = the sum of `protected_year_usd` over subscriptions SubGuard cancelled (by the
+  user's confirmation or a timer): the year-one cost of the PayPal plan *at cancel time* (Framewise after the
+  rise: 12 x $19 = $228). Story A gives 524.88 + 119.88 + 228.00 = **$872.76**.
+- **D-058 Billing days in the sim.** On a subscription's `next_billing_day`, an ACTIVE subscription logs a
+  simulated `charge_due` and moves to the next cycle; a CANCELLED one logs `charge_blocked` and gets the
+  "First charge due today: blocked" alert. The R4 rate limit is kept in process memory (1 worker, D-020).
+
 ## Not used in v1 (sponsor tools)
 
 - **Bryntum:** a CSS timeline is enough for a prototype.

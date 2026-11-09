@@ -21,6 +21,7 @@ class State(BaseModel):
     last_tick_day: int | None = None
     last_tick_at: datetime | None = None
     pricing_fingerprint: str | None = None  # which .env prices this runtime data was built with
+    demo_seeded: bool = False  # Priya's Framewise + John's Lumen created (mock mode, DEMO_SEED)
 
 
 # ---- users.json -------------------------------------------------------------
@@ -99,6 +100,9 @@ class Subscription(BaseModel):
     registered_at: datetime | None = None
     cancel_requested_at: datetime | None = None  # duplicate-cancel claim (released on failure)
     cancelled_at: datetime | None = None
+    cancelled_day: int | None = None
+    cancelled_by: Literal["user", "timer", "external"] | None = None
+    protected_year_usd: Decimal | None = None  # year-one cost avoided, from the PayPal plan at cancel time
     last_synced_at: datetime | None = None
 
 
@@ -132,6 +136,13 @@ class Timer(BaseModel):
     warned_at: datetime | None = None
     warned_day: int | None = None
     warning_delivered: bool = False
+    warning_basis: str | None = None  # zapier_accepted | zapier_mocked | zapier_down_in_app_only
+    created_day: int = 0
+    deadline_day: int | None = None
+    reminder_day: int | None = None
+    billing_day: int | None = None  # the charge this timer protects against
+    layer2: bool = False
+    note: str = ""
 
 
 class TimerList(BaseModel):
@@ -142,6 +153,7 @@ class TimerList(BaseModel):
 class Alert(BaseModel):
     id: str
     user_id: str
+    kind: str = ""  # addon_offer | timer_set | reminder | auto_cancelled | price_rise | blocked_charge | ...
     level: Literal["info", "warning", "urgent", "action_needed"] = "info"
     title: str
     body: str = ""
@@ -180,6 +192,7 @@ class UsageEvent(BaseModel):
     day: int
     kind: Literal["open", "export"] = "open"
     at: datetime
+    source: Literal["live", "seed"] = "live"  # seed = scripted demo usage (D-053)
 
 
 class UsageList(BaseModel):
@@ -190,6 +203,8 @@ class UsageList(BaseModel):
 class Notice(BaseModel):
     id: str
     subscription_id: str
+    merchant_id: str = ""
+    sim_day: int = 0
     to: str
     subject: str
     body: str

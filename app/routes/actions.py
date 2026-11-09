@@ -1,0 +1,188 @@
+"""User actions: confirmation cards + confirm (R1/R3), alert buttons, Keep, essential tag, timers, KPIs."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+
+from app.core import timers as tm
+from app.core.actions import cancel_confirmed, propose_cancel
+from app.core.policy import Decision
+from app.core.savings import money_protected
+from app.core.services import Services
+from app.integrations.paypal_gateway import Ctx
+from app.models import Alert, Notice, Timer
+from app.store import utcnow
+
+router = APIRouter(prefix="/api")
+DARK_TYPES_EXCLUDED = {"CLEAR_TERMS", "AUTO_RENEW"}
+
+
+def get_services(request: Request) -> Services:
+    return request.app.state.services
+
+
+def blocked(d: Decision) -> JSONResponse:
+    return JSONResponse({"blocked": True, "rule_id": d.rule_id, "reason": d.reason}, status_code=403)
+
+
+class ProposeIn(BaseModel):
+    user_id: str
+    subscription_ids: list[str]
+    reason: str = "Cancelled from SubGuard"
+
+
+class ConfirmIn(BaseModel):
+    user_id: str
+    token: str | None = None
+    subscription_ids: list[str]
+
+
+@router.post("/agent/propose", response_model=None)
+async def propose(body: ProposeIn, svc: Services = Depends(get_services)) -> dict[str, Any] | JSONResponse:
+    card = await propose_cancel(svc, body.user_id, body.subscription_ids, body.reason)
+    return blocked(card) if isinstance(card, Decision) else card.model_dump(mode="json")
+
+
+@router.post("/agent/confirm", response_model=None)
+async def confirm(body: ConfirmIn, svc: Services = Depends(get_services)) -> dict[str, Any] | JSONResponse:
+    results = await cancel_confirmed(svc, body.user_id, body.subscription_ids, body.token)
+    if isinstance(results, Decision):
+        return blocked(results)
+    return {"results": [r.model_dump(mode="json") for r in results], "all_ok": all(r.ok for r in results)}
+
+
+class ActIn(BaseModel):
+    user_id: str
+    action: str
+
+
+async def _ack(svc: Services, alert_id: str) -> None:
+    async with svc.store.aedit("alerts") as alerts:
+        a = next(x for x in alerts.items if x.id == alert_id)
+        a.acknowledged_at = a.acknowledged_at or utcnow()
+
+
+async def keep_new_price(svc: Services, user_id: str, sub_id: str) -> dict[str, Any]:
+    """Corner case 36: the user agrees to the new price -> consent snapshot updated, alerts stop."""
+    sub = svc.sub(sub_id)
+    assert sub is not None and sub.consent_snapshot is not None
+    plan = await svc.gw.get_plan(sub.plan_id, Ctx(actor="user", user_id=user_id, subscription_id=sub_id))
+    async with svc.store.aedit("subscriptions") as subs:
+        s = next(x for x in subs.items if x.id == sub_id)
+        snap = s.consent_snapshot
+        assert snap is not None
+        old = snap.price
+        snap.billing_cycles = plan.billing_cycles
+        snap.price = next((c.price for c in plan.billing_cycles if c.price > 0), snap.price)
+        snap.taken_at, snap.sim_day = utcnow(), svc.day
+        new = snap.price
+    async with svc.store.aedit("timers") as timers:
+        for t in timers.items:
+            if t.subscription_id == sub_id and t.kind == "price_rise" and t.status == "PENDING":
+                t.status, t.note = "KEPT", "user agreed to the new price"
+    svc.store.audit.append(actor="user", event="consent_snapshot", user_id=user_id, subscription_id=sub_id,
+                           reason="User agreed to the new price", details={"old": str(old), "new": str(new)})
+    return {"status": "kept", "message": f"Kept at {svc.money(new)}. I won't alert you about this price again."}
+
+
+@router.post("/alerts/{alert_id}/act", response_model=None)
+async def act(alert_id: str, body: ActIn, svc: Services = Depends(get_services)) -> dict[str, Any] | JSONResponse:
+    alert = next((a for a in svc.store.load("alerts").items if a.id == alert_id), None)
+    if alert is None:
+        raise HTTPException(404, "Unknown alert")
+    if alert.user_id != body.user_id:
+        return blocked(svc.policy.record(svc.store, Decision(allowed=False, rule_id="R5", reason="Not your alert",
+                                                             subscription_id=alert.subscription_id),
+                                         user_id=body.user_id, action=f"alert:{body.action}", requested_by="user"))
+    allowed = {a["action"] for a in alert.actions} | {"ack"}
+    if body.action not in allowed:
+        raise HTTPException(400, "That action isn't offered on this alert")
+    sid = alert.subscription_id or ""
+    svc.store.audit.append(actor="user", event="alert_action", user_id=body.user_id,
+                           subscription_id=alert.subscription_id,
+                           details={"alert_id": alert_id, "action": body.action, "kind": alert.kind})
+    out: dict[str, Any]
+    if body.action == "keep":
+        out = (await tm.keep(svc, body.user_id, sid)).model_dump()
+    elif body.action == "keep_new_price":
+        out = await keep_new_price(svc, body.user_id, sid)
+    elif body.action in ("cancel", "remove_addon"):
+        card = await propose_cancel(svc, body.user_id, [sid], "Removed add-on you didn't choose"
+                                    if body.action == "remove_addon" else "Cancelled from an alert")
+        if isinstance(card, Decision):
+            return blocked(card)
+        return {"confirm": card.model_dump(mode="json")}  # the UI's tap then calls /api/agent/confirm
+    elif body.action == "restart":
+        sub = svc.sub(sid)
+        out = {"url": f"/shop/{sub.merchant_id if sub else ''}",
+               "note": "The merchant may not offer a second free trial."}
+    elif body.action == "open_autopay":
+        out = {"url": svc.settings.paypal_autopay_url}
+    else:
+        out = {"status": "acknowledged"}
+    await _ack(svc, alert_id)
+    return out
+
+
+class KeepIn(BaseModel):
+    user_id: str
+
+
+class EssentialIn(BaseModel):
+    user_id: str
+    essential: bool
+
+
+@router.post("/subscriptions/{sub_id}/keep")
+async def keep_sub(sub_id: str, body: KeepIn, svc: Services = Depends(get_services)) -> dict[str, Any]:
+    return (await tm.keep(svc, body.user_id, sub_id)).model_dump()
+
+
+@router.post("/subscriptions/{sub_id}/essential", response_model=None)
+async def essential(sub_id: str, body: EssentialIn,
+                    svc: Services = Depends(get_services)) -> dict[str, Any] | JSONResponse:
+    sub = svc.sub(sub_id)
+    if sub is None or sub.owner_id != body.user_id:
+        return blocked(svc.policy.record(svc.store, Decision(allowed=False, rule_id="R5", subscription_id=sub_id,
+                                                             reason="You can only act on your own subscriptions"),
+                                         user_id=body.user_id, action="tag_essential", requested_by="user"))
+    async with svc.store.aedit("subscriptions") as subs:
+        next(s for s in subs.items if s.id == sub_id).essential = body.essential
+    svc.store.audit.append(actor="user", event="essential_tag", user_id=body.user_id, subscription_id=sub_id,
+                           rule_id="R6", details={"essential": body.essential})
+    return {"subscription_id": sub_id, "essential": body.essential}
+
+
+@router.get("/alerts")
+def list_alerts(user: str = "priya", svc: Services = Depends(get_services)) -> list[Alert]:
+    return sorted((a for a in svc.store.load("alerts").items if a.user_id == user), key=lambda a: a.created_at,
+                  reverse=True)
+
+
+@router.get("/timers")
+def list_timers(user: str = "priya", svc: Services = Depends(get_services)) -> list[Timer]:
+    mine = {s.id for s in svc.store.load("subscriptions").items if s.owner_id == user}
+    return [t for t in svc.store.load("timers").items if t.subscription_id in mine]
+
+
+@router.get("/notices")
+def list_notices(user: str = "priya", svc: Services = Depends(get_services)) -> list[Notice]:
+    mine = {s.id for s in svc.store.load("subscriptions").items if s.owner_id == user}
+    return [n for n in svc.store.load("notices").items if n.subscription_id in mine]
+
+
+@router.get("/kpis")
+def kpis(user: str = "priya", svc: Services = Depends(get_services)) -> dict[str, Any]:
+    subs = [s for s in svc.store.load("subscriptions").items if s.owner_id == user]
+    ids = {s.id for s in subs}
+    reviews = [r for r in svc.store.load("reviews").items if r.subscription_id in ids]
+    caught = sum(1 for r in reviews for c in r.data.clauses if c.type not in DARK_TYPES_EXCLUDED)
+    protected = money_protected(subs, user)
+    return {"money_protected": str(protected), "money_protected_text": svc.money(protected),
+            "dark_patterns_caught": caught,
+            "subscriptions_cancelled": sum(1 for s in subs if s.cancelled_by in ("user", "timer")),
+            "active_watches": sum(1 for s in subs if s.status == "ACTIVE")}

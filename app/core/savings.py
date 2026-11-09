@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from decimal import Decimal
 
-from app.models import BillingCycleDef
+from app.models import BillingCycleDef, Subscription
 
 CHARGES_PER_YEAR = {"DAY": 365, "WEEK": 52, "MONTH": 12, "YEAR": 1}
 
@@ -35,3 +35,15 @@ def paid_prices(cycles: Sequence[BillingCycleDef]) -> list[Decimal]:
         if c.price > 0 and c.price not in out:
             out.append(c.price)
     return out
+
+
+def money_protected(subs: Sequence[Subscription], user_id: str) -> Decimal:
+    """"Money protected" KPI: year-one cost avoided by cancels SubGuard made (user-confirmed or timer)."""
+    return sum((s.protected_year_usd for s in subs if s.owner_id == user_id and s.protected_year_usd is not None
+                and s.cancelled_by in ("user", "timer")), start=Decimal("0.00"))
+
+
+def compare_billing(monthly: Sequence[BillingCycleDef], yearly: Sequence[BillingCycleDef]) -> dict[str, Decimal]:
+    """Monthly vs yearly for one year (Lumen: $240 vs $200, saves $40). Code maths, never the LLM."""
+    m, y = year_one_cost(monthly), year_one_cost(yearly)
+    return {"monthly_per_year": m, "yearly_per_year": y, "yearly_saves": m - y}

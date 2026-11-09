@@ -14,16 +14,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from app.core.services import Services
+from app.core.signup import OwnershipError, register_active
 from app.integrations.paypal_gateway import Ctx, PayPalGateway
-from app.integrations.paypal_types import (
-    PayPalError,
-    SubscriptionView,
-    first_charge_day,
-    first_paid_price,
-)
-from app.models import ConsentSnapshot, Merchant, Subscription
+from app.integrations.paypal_types import PayPalError, SubscriptionView
+from app.models import Merchant, Subscription
 from app.routes.deps import get_store
-from app.store import JsonStore, utcnow
+from app.store import JsonStore
 
 router = APIRouter(prefix="/api")
 POLL_INTERVAL = 3.0
@@ -110,37 +107,12 @@ async def register(body: RegisterIn, request: Request, store: JsonStore = Depend
                            details={"paypal_id": body.paypal_id})
         return JSONResponse({"registered": False, "status": view.status}, status_code=202)
 
-    plan = await gw.get_plan(view.plan_id or gw.plan_id(body.plan_key), ctx)
-    day = store.load("state").sim_day
-    local_id = f"sub-{body.paypal_id}"
-    async with store.aedit("subscriptions") as subs:
-        existing = next((s for s in subs.items if s.id == local_id), None)
-        if existing and existing.owner_id != body.user_id:
-            raise HTTPException(409, "This subscription belongs to another user")
-        if existing:
-            return existing
-        sub = Subscription(
-            id=local_id, paypal_id=body.paypal_id, plan_key=body.plan_key, plan_id=plan.id,
-            merchant_id=merchant.id, owner_id=body.user_id, status="ACTIVE", signup_day=day,
-            next_billing_day=first_charge_day(plan.billing_cycles, day), addon_of=body.addon_of,
-            registered_at=utcnow(),
-            consent_snapshot=ConsentSnapshot(taken_at=utcnow(), sim_day=day, currency=plan.currency,
-                                             price=first_paid_price(plan.billing_cycles),
-                                             billing_cycles=plan.billing_cycles),
-        )
-        subs.items.append(sub)
-    if body.review_id and body.addon_of is None:
-        async with store.aedit("reviews") as reviews:
-            rev = next((r for r in reviews.items if r.id == body.review_id and r.merchant_id == merchant.id
-                        and r.subscription_id is None), None)
-            if rev is not None:
-                rev.subscription_id = sub.id
-    store.audit.append(actor="user", event="subscription_registered", user_id=body.user_id,
-                       subscription_id=sub.id, status_after="ACTIVE", transport=gw.full.transport,  # type: ignore[arg-type]
-                       details={"paypal_id": sub.paypal_id, "plan_key": sub.plan_key, "addon_of": sub.addon_of})
-    store.audit.append(actor="system", event="consent_snapshot", user_id=body.user_id, subscription_id=sub.id,
-                       details={"price": str(sub.consent_snapshot.price), "currency": plan.currency,  # type: ignore[union-attr]
-                                "cycles": len(plan.billing_cycles), "source": "paypal_plan"})
+    svc: Services = request.app.state.services
+    try:
+        sub, _ = await register_active(svc, view, merchant_id=merchant.id, plan_key=body.plan_key,
+                                       user_id=body.user_id, addon_of=body.addon_of, review_id=body.review_id)
+    except OwnershipError as exc:
+        raise HTTPException(409, str(exc)) from None
     return sub
 
 

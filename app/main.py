@@ -16,14 +16,18 @@ from fastapi.staticfiles import StaticFiles
 from app.config import ROOT_DIR, ConfigError, Settings, load_settings
 from app.core.audit_log import mask_secrets
 from app.core.auditor import Auditor
-from app.integrations.capture import Capturer, PlaywrightCapture, StaticCapture
+from app.core.demo_seed import seed_demo
+from app.core.services import Services
+from app.integrations.capture import Capturer, StaticCapture
+from app.integrations.capture_live import PlaywrightCapture
+from app.integrations.notify import Notifier
 from app.integrations.paypal_gateway import PayPalGateway
 from app.integrations.paypal_mcp import McpPayPal
 from app.integrations.paypal_rest import PayPalRest
 from app.integrations.paypal_sdk import SdkPayPal
 from app.integrations.paypal_types import PayPalError
 from app.llm import build_llm
-from app.routes import api, demo, pages, review, subscriptions
+from app.routes import actions, api, demo, pages, review, subscriptions
 from app.routes.subscriptions import paypal_error_response
 from app.store import JsonStore
 from shop import routes as shop_routes
@@ -71,6 +75,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             details={"mode": settings.app_mode, "llm_provider": settings.active_llm_provider,
                      "llm_model": settings.llm_model},
         )
+        await seed_demo(app.state.services, demo.review_fn(app))
         log.info(f"SubGuard running in {settings.app_mode} mode at http://{settings.app_host}:{settings.app_port}/")
         yield
         if mcp_task is not None:
@@ -86,6 +91,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.gateway = gateway
     app.state.llm = build_llm(settings)
     app.state.capture = build_capture(settings, app)
+    app.state.services = Services(settings, store, gateway, Notifier(settings, settings.runtime_dir / "outbox"))
     app.state.auditor = Auditor(app.state.llm, store, settings.seed_dir / "dark_patterns.json",
                                 settings.llm_timeout_seconds)
 
@@ -100,6 +106,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(demo.router)
     app.include_router(subscriptions.router)
     app.include_router(review.router)
+    app.include_router(actions.router)
     app.include_router(shop_routes.router)
     return app
 

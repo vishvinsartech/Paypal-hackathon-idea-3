@@ -3,13 +3,12 @@
 Two implementations behind one interface (D-040):
 - `StaticCapture` (mock mode, and the fallback): fetches our own shop pages through the ASGI app and parses the
   HTML + shop.css. Deterministic, no browser, works on hosted Render.
-- `PlaywrightCapture` (sandbox mode): live Chromium; adds a full-page screenshot and bounding boxes.
+- `PlaywrightCapture` (sandbox mode, capture_live.py): live Chromium; adds a screenshot and bounding boxes.
 Only same-site `/shop/...` pages are captured (never arbitrary URLs).
 """
 
 from __future__ import annotations
 
-import base64
 import logging
 import re
 from html.parser import HTMLParser
@@ -18,8 +17,6 @@ from typing import Any, Protocol
 
 import httpx
 from pydantic import BaseModel, Field
-
-from app.integrations.capture_js import CAPTURE_JS
 
 log = logging.getLogger("subguard.capture")
 SHOP_PATH_RE = re.compile(r"^/shop/[a-z0-9-]+(/terms)?$")
@@ -287,57 +284,3 @@ class StaticCapture:
                 cap.checkboxes += sub.checkboxes
                 cap.linked_pages.append(link)
         return cap
-
-
-class PlaywrightCapture:
-    """Live Chromium capture (sandbox mode). Falls back to the static capture if the browser can't run."""
-
-    method = "playwright"
-
-    def __init__(self, fallback: StaticCapture, timeout_ms: int = 15000) -> None:
-        self.fallback = fallback
-        self.timeout_ms = timeout_ms
-
-    async def _page(self, browser: Any, url: str, page_path: str, shot: bool) -> tuple[dict[str, Any], str | None]:
-        page = await browser.new_page(viewport={"width": 1280, "height": 900})
-        try:
-            await page.goto(url, wait_until="load", timeout=self.timeout_ms)
-            png = await page.screenshot(full_page=True) if shot else None
-            data = await page.evaluate(CAPTURE_JS)
-        finally:
-            await page.close()
-        return data, base64.b64encode(png).decode() if png else None
-
-    def _to_capture(self, data: dict[str, Any], page: str, cap: PageCapture) -> list[tuple[str, str]]:
-        for b in data.get("blocks", []):
-            cap.blocks.append(TextBlock(page=page, text=normalize_ws(b["text"]), testid=b.get("testid"),
-                                        hidden=bool(b.get("hidden_reason")), hidden_reason=b.get("hidden_reason"),
-                                        font_px=float(b.get("font_px", 16)), color=b.get("color", "#222"),
-                                        contrast=contrast_ratio(b.get("color", "#222")), bbox=b.get("bbox")))
-        for c in data.get("checkboxes", []):
-            cap.checkboxes.append(Checkbox(page=page, **c))
-        return [(lk["href"], lk["text"]) for lk in data.get("links", [])]
-
-    async def capture(self, path: str, base_url: str) -> PageCapture:
-        merchant = _merchant_from_path(path)
-        try:
-            from playwright.async_api import async_playwright
-
-            async with async_playwright() as pw:
-                browser = await pw.chromium.launch()
-                try:
-                    data, png = await self._page(browser, base_url.rstrip("/") + path, path, shot=True)
-                    cap = PageCapture(url=path, merchant_id=merchant, screenshot_png_b64=png, method=self.method)
-                    links = self._to_capture(data, path, cap)
-                    for link in _terms_links(links, path):
-                        sub, _ = await self._page(browser, base_url.rstrip("/") + link, link, shot=False)
-                        self._to_capture(sub, link, cap)
-                        cap.linked_pages.append(link)
-                finally:
-                    await browser.close()
-            return cap
-        except CaptureError:
-            raise
-        except Exception as exc:  # browser missing / crashed -> static capture, logged
-            log.warning(f"live capture failed, using static capture: {type(exc).__name__}: {str(exc)[:160]}")
-            return await self.fallback.capture(path, base_url)

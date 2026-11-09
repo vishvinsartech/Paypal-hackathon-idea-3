@@ -5,8 +5,9 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
 - [x] **1. Preflight.** Run `claude mcp list`; check Python >= 3.11, Node >= 18 and `npx`; install the APIMatic PayPal context plugin; write `docs/PAYPAL_TOOLS.md` and `docs/PAYPAL_SDK_NOTES.md`; create `docs/DECISIONS.md`.
   - *Check:* tool versions confirmed; the three docs exist.
   - Done 2026-11-10 (commit `3a05a3e`). Python 3.14.4, Node 24.15, npx 11.14. **Open:** the APIMatic plugin isn't installed, and the PayPal MCP isn't started (DECISIONS D-003).
-- [ ] **2. Scaffold + JSON store + audit log + dummy shop.**
+- [x] **2. Scaffold + JSON store + audit log + dummy shop.**
   - *Check:* `make setup && make dev` serves `/`, `/shop` and `/shop/penwright`; the store and audit log tests pass (atomic write, corrupt-file recovery, hash chain).
+  - Done 2026-11-10 (commit `a1843af`). Ran via `python scripts/tasks.py setup` / `dev` (no `make` on this machine). Every page returned 200, with no console errors in headless Chromium. 47 tests passing; ruff clean.
 - [ ] **3. PayPal layer (mock + SDK + MCP) + seed.**
   - *Check:* gateway tests pass in mock mode; in sandbox mode `make seed` creates the plans, and a cancel shows `CANCELLED` both via the SDK and via the PayPal MCP server.
 - [ ] **4. LLM providers + fine-print review + companion overlay.**
@@ -26,4 +27,28 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
 
 ## Notes for next session
 
-(none yet)
+### State after milestone 2 (2026-11-10)
+- Venv at `.venv` (Python 3.14.4); deps from `requirements.txt` and Playwright Chromium are installed.
+- Run: `python scripts/tasks.py dev` (or `make dev`). Tests: `python scripts/tasks.py test`. Lint: `... lint`.
+- Code map: `app/config.py` (Settings + `validate_settings`), `app/models.py` (all JSON file models),
+  `app/store.py` (`JsonStore`: `load`, `edit`, `aedit`, `alocked`, `reset`), `app/core/audit_log.py`
+  (`store.audit.append(actor=..., event=..., ...)`, `verify`, `query`, `to_csv`), `app/routes/{pages,api,demo,deps}.py`,
+  `shop/routes.py` + templates. Merchant plans and billing cycles live in `data/seed/merchants.json`.
+- Shop checkout: `_checkout.html` renders a mock "Approve with PayPal (sandbox mock)" button
+  (`data-testid=shop-paypal-btn`) that **does nothing yet**. Milestone 3 wires it to the mock gateway; milestone 4 adds companion.js.
+- `/api/demo/reset` exists; `advance`, `price-rise` and `toggle-fair-trial` come in milestone 5.
+
+### Before / during milestone 3
+1. **Blocked on the user:** install the APIMatic PayPal context plugin (`npx context-plugins install paypal`,
+   or `claude plugin marketplace add context-plugins/plugin-marketplace` then
+   `claude plugin install paypal@context-plugins --scope user`). The session permission policy blocked
+   running external npx code. After installing, query it and reconcile `docs/PAYPAL_SDK_NOTES.md`.
+2. **Needs credentials:** PayPal sandbox REST app (`PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`), a sandbox
+   personal buyer account, then `export PAYPAL_ACCESS_TOKEN=$(scripts/paypal_token.sh)` and start the
+   PayPal MCP server. Run `list_tools()` and rewrite `docs/PAYPAL_TOOLS.md` with the exact names and schemas.
+3. The SDK has no products controller and no `PayPal-Request-Id` on cancel / update-pricing (DECISIONS D-010):
+   use httpx for those.
+4. Mock gateway: persist to `subscriptions.json` through `store.aedit`, audit every call with `transport="mock"`,
+   and support `?fail=cancel`.
+5. Check that `PAYPAL_AUTOPAY_URL` (the sandbox autopay page) still exists.
+6. Milestone 4: re-verify the LLM model ids in `.env.example` (DECISIONS D-028), using the claude-api skill for Anthropic.

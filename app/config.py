@@ -5,8 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
-from pydantic import field_validator
+from pydantic import ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from app.pricing import Pricing, PricingFields
 
 SANDBOX_API_BASE = "https://api-m.sandbox.paypal.com"
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -17,7 +19,9 @@ class ConfigError(RuntimeError):
     """Raised at startup when the configuration can't be used. The message is user-facing."""
 
 
-class Settings(BaseSettings):
+class Settings(BaseSettings, PricingFields):
+    """Env / .env configuration. Demo prices and terms come from PricingFields (app/pricing.py)."""
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     app_mode: Literal["mock", "sandbox"] = "mock"
@@ -51,6 +55,10 @@ class Settings(BaseSettings):
     @classmethod
     def _provider_lower(cls, v: str) -> str:
         return v.strip().lower()
+
+    @property
+    def pricing(self) -> Pricing:
+        return Pricing(**{name: getattr(self, name) for name in PricingFields.model_fields})
 
     @property
     def runtime_dir(self) -> Path:
@@ -102,6 +110,12 @@ def validate_settings(s: Settings) -> None:
 
 
 def load_settings(**overrides: object) -> Settings:
-    settings = Settings(**overrides)  # type: ignore[arg-type]
+    try:
+        settings = Settings(**overrides)  # type: ignore[arg-type]
+    except ValidationError as exc:
+        problems = "; ".join(
+            f"{'.'.join(str(p) for p in err['loc']).upper()}: {err['msg']}" for err in exc.errors()
+        )
+        raise ConfigError(f"SubGuard can't start: invalid setting(s) in .env: {problems}") from None
     validate_settings(settings)
     return settings

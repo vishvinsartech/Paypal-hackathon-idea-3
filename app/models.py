@@ -18,6 +18,7 @@ class State(BaseModel):
     app_mode: str = "mock"
     last_tick_day: int | None = None
     last_tick_at: datetime | None = None
+    pricing_fingerprint: str | None = None  # which .env prices this runtime data was built with
 
 
 # ---- users.json -------------------------------------------------------------

@@ -24,6 +24,7 @@ from pydantic import BaseModel, ValidationError
 
 from app import models as m
 from app.core.audit_log import AuditLog
+from app.pricing import Pricing
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -54,17 +55,20 @@ def atomic_write_text(path: Path, text: str) -> None:
 class JsonStore:
     KEEP_ON_RESET = ("sandbox_ids.json",)
 
-    def __init__(self, runtime_dir: Path, seed_dir: Path, app_mode: str = "mock") -> None:
+    def __init__(self, runtime_dir: Path, seed_dir: Path, app_mode: str = "mock",
+                 pricing: Pricing | None = None) -> None:
         self.dir = runtime_dir
         self.seed_dir = seed_dir
         self.app_mode = app_mode
+        self.pricing = pricing or Pricing()
         self.lock = threading.RLock()
         self._alock = asyncio.Lock()
         self.warnings: list[str] = []
         self.files: dict[str, tuple[type[BaseModel], Callable[[], BaseModel]]] = {
-            "state": (m.State, lambda: m.State(app_mode=self.app_mode)),
+            "state": (m.State, lambda: m.State(app_mode=self.app_mode,
+                                               pricing_fingerprint=self.pricing.fingerprint())),
             "users": (m.UserList, lambda: self._seed(m.UserList, "users.json")),
-            "merchants": (m.MerchantList, lambda: self._seed(m.MerchantList, "merchants.json")),
+            "merchants": (m.MerchantList, self._seed_merchants),
             "subscriptions": (m.SubscriptionList, m.SubscriptionList),
             "reviews": (m.ReviewList, m.ReviewList),
             "timers": (m.TimerList, m.TimerList),
@@ -89,6 +93,26 @@ class JsonStore:
         if seed.exists():
             return model.model_validate_json(seed.read_text(encoding="utf-8"))
         return model()
+
+    def _seed_merchants(self) -> m.MerchantList:
+        """Names/emails from data/seed/merchants.json; plans (prices, cycles) from .env pricing."""
+        merchants = self._seed(m.MerchantList, "merchants.json")
+        for merchant in merchants.items:
+            merchant.plans = self.pricing.plans_for(merchant.id)
+        return merchants
+
+    def check_pricing(self) -> None:
+        """Warn (healthz) when .env prices changed since this runtime data was created."""
+        state = cast(m.State, self.load("state"))
+        current = self.pricing.fingerprint()
+        if state.pricing_fingerprint is None:
+            with self.edit("state") as st:
+                st.pricing_fingerprint = current
+        elif state.pricing_fingerprint != current:
+            msg = ("Prices in .env changed since the demo data was created. Run `make reset` to apply them "
+                   "(and `make seed` in sandbox mode).")
+            if msg not in self.warnings:
+                self.warnings.append(msg)
 
     def _sim_day(self) -> int:
         return cast(m.State, self.load("state")).sim_day

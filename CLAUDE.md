@@ -74,7 +74,9 @@ Never use real brands, logos or company names in the app, dummy shop or video. E
 shows the banner "Fictional merchant for the SubGuard demo." Merchants: Penwright Studio (trap),
 Framewise ($12/mo, honest), Lumen Notes ($20/mo or $200/yr, honest). Users: Priya, John.
 
-## Key numbers (assert in tests)
+## Key numbers (assert in tests, with the DEFAULT prices)
+Prices and terms are `.env` variables (`app/pricing.py`, DECISIONS D-015). Code reads them via
+`settings.pricing` / `store.pricing`; never hardcode a price, trial length or notice period.
 - Money protected KPI: **$872.76** (Penwright 524.88 + add-on 119.88 + Framewise 228.00).
 - Risk: Penwright **87 +/- 5**, Lumen **15 +/- 5**.
 - Penwright: first charge Day 15, notice 7 days -> real deadline **Day 7** (15-7-1), timer Day 6,

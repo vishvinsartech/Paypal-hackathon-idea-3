@@ -8,11 +8,11 @@
   <p class="desc">An AI notes app that summarises and links your notes.</p>
   <div class="plans">
     <div class="price-box" data-testid="shop-plan-monthly">
-      <p class="price-big">$20/month</p>
+      <p class="price-big">{{ p.money(p.lumen_monthly_price) }}/month</p>
       <p>Billed every month.</p>
     </div>
     <div class="price-box" data-testid="shop-plan-yearly">
-      <p class="price-big">$200/year</p>
+      <p class="price-big">{{ p.money(p.lumen_yearly_price) }}/year</p>
       <p>Billed once a year, paid up front.</p>
     </div>
   </div>

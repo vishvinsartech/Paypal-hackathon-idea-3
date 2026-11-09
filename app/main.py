@@ -51,7 +51,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             log.error(str(exc))
             raise SystemExit(str(exc)) from None
 
-    store = JsonStore(settings.runtime_dir, settings.seed_dir, app_mode=settings.app_mode)
+    store = JsonStore(settings.runtime_dir, settings.seed_dir, app_mode=settings.app_mode, pricing=settings.pricing)
     gateway = build_gateway(settings, store)
 
     @asynccontextmanager
@@ -60,6 +60,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if isinstance(gateway.mcp, McpPayPal):  # connect in the background so startup isn't blocked by npx
             mcp_task = asyncio.create_task(gateway.mcp.connect(), name="paypal-mcp-connect")
         store.ensure_all()
+        store.check_pricing()
         async with store.aedit("state") as state:
             state.app_mode = settings.app_mode
         store.audit.append(

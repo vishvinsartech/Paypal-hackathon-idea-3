@@ -24,7 +24,7 @@ def _merchant(store: JsonStore, merchant_id: str) -> Merchant:
 
 
 def _render(request: Request, name: str, settings: Settings, **ctx: object) -> HTMLResponse:
-    return templates.TemplateResponse(request, name, {"settings": settings, **ctx})
+    return templates.TemplateResponse(request, name, {"settings": settings, "p": settings.pricing, **ctx})
 
 
 @router.get("", response_class=HTMLResponse)

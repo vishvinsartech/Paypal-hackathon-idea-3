@@ -20,9 +20,9 @@
     <li><strong>Fake app pages:</strong> <a href="/shop/penwright/app">Penwright</a>,
       <a href="/shop/framewise/app">Framewise</a> and <a href="/shop/lumen/app">Lumen Notes</a>.
       Opening one records a usage event for the current demo day.</li>
-    <li><strong>The tricks Penwright hides:</strong> auto-conversion to $24.99/month after the trial,
-      a later step-up to $49.99/month, a pre-ticked $9.99/month add-on, 7 days' written notice to cancel
-      (so the real deadline is Day 7), the trial ending early after 3 exports, no cancel button,
+    <li><strong>The tricks Penwright hides:</strong> auto-conversion to {{ p.money(p.penwright_intro_price) }}/month after the trial,
+      a later step-up to {{ p.money(p.penwright_step_up_price) }}/month, a pre-ticked {{ p.money(p.penwright_addon_price) }}/month add-on, {{ p.penwright_notice_days }} days' written notice to cancel
+      (so the real deadline is Day {{ p.penwright_first_charge_day - p.penwright_notice_days - 1 }}), the trial ending early after {{ p.penwright_export_limit }} exports, no cancel button,
       and a hidden instruction aimed at AI assistants.</li>
   </ul>
 </section>

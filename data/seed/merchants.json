@@ -3,31 +3,10 @@
     {
       "id": "penwright",
       "name": "Penwright Studio",
-      "tagline": "An AI writing app with a 14-day \"free trial\".",
+      "tagline": "An AI writing app with a \"free trial\".",
       "fair_trial_member": true,
       "support_email": "cancel@penwright.example",
-      "paypal_payer_id": "",
-      "plans": [
-        {
-          "key": "penwright-pro",
-          "name": "Penwright Pro",
-          "currency": "USD",
-          "billing_cycles": [
-            {"tenure_type": "TRIAL", "price": "0.00", "interval_unit": "DAY", "interval_count": 14, "total_cycles": 1},
-            {"tenure_type": "REGULAR", "price": "24.99", "interval_unit": "MONTH", "interval_count": 1, "total_cycles": 3},
-            {"tenure_type": "REGULAR", "price": "49.99", "interval_unit": "MONTH", "interval_count": 1, "total_cycles": 0}
-          ]
-        },
-        {
-          "key": "penwright-ai-pack",
-          "name": "AI Writing Pack add-on",
-          "currency": "USD",
-          "addon": true,
-          "billing_cycles": [
-            {"tenure_type": "REGULAR", "price": "9.99", "interval_unit": "MONTH", "interval_count": 1, "total_cycles": 0}
-          ]
-        }
-      ]
+      "paypal_payer_id": ""
     },
     {
       "id": "framewise",
@@ -35,17 +14,7 @@
       "tagline": "A simple design app.",
       "fair_trial_member": true,
       "support_email": "support@framewise.example",
-      "paypal_payer_id": "",
-      "plans": [
-        {
-          "key": "framewise-basic",
-          "name": "Framewise Basic",
-          "currency": "USD",
-          "billing_cycles": [
-            {"tenure_type": "REGULAR", "price": "12.00", "interval_unit": "MONTH", "interval_count": 1, "total_cycles": 0}
-          ]
-        }
-      ]
+      "paypal_payer_id": ""
     },
     {
       "id": "lumen",
@@ -53,25 +22,7 @@
       "tagline": "An AI notes app with honest, clear terms.",
       "fair_trial_member": true,
       "support_email": "help@lumen-notes.example",
-      "paypal_payer_id": "",
-      "plans": [
-        {
-          "key": "lumen-monthly",
-          "name": "Lumen Notes Monthly",
-          "currency": "USD",
-          "billing_cycles": [
-            {"tenure_type": "REGULAR", "price": "20.00", "interval_unit": "MONTH", "interval_count": 1, "total_cycles": 0}
-          ]
-        },
-        {
-          "key": "lumen-yearly",
-          "name": "Lumen Notes Yearly",
-          "currency": "USD",
-          "billing_cycles": [
-            {"tenure_type": "REGULAR", "price": "200.00", "interval_unit": "YEAR", "interval_count": 1, "total_cycles": 0}
-          ]
-        }
-      ]
+      "paypal_payer_id": ""
     }
   ]
 }

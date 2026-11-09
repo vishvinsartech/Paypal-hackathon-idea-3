@@ -70,6 +70,18 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
 - **D-028 Model defaults in `.env.example`.** `claude-opus-5-5` and `gpt-5` for now. Re-verify both
   ids in milestone 4 before writing the providers.
 
+- **D-015 Demo prices and terms are configurable in `.env`** (user request). `app/pricing.py`
+  defines every rate and term number (Penwright trial days, intro price and months, step-up price,
+  add-on price, notice days, export limit; Framewise price and rise price; Lumen monthly and yearly;
+  the currency), with the spec's values as defaults and validation (positive, at most 2 decimals).
+  A bad value stops startup with a message naming the variable. `data/seed/merchants.json` keeps
+  only names and emails; plans are built from pricing. The shop pages render the same values, so
+  the page text and the PayPal plan can't drift apart (otherwise the reviewer would rightly flag
+  TERMS_MISMATCH). Changing prices applies after `make reset` (`/healthz` warns until then);
+  existing subscriptions keep their consent snapshot. **Tests use the defaults**, so the spec's
+  assertions ($872.76, risk 87/15, deadline Day 7) stay valid; money maths in later milestones must
+  read from `settings.pricing`, never literals.
+
 ## Not used in v1 (sponsor tools)
 
 - **Bryntum:** a CSS timeline is enough for a prototype.

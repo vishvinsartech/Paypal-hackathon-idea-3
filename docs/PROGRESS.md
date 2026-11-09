@@ -38,6 +38,14 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
   (`data-testid=shop-paypal-btn`) that **does nothing yet**. Milestone 3 wires it to the mock gateway; milestone 4 adds companion.js.
 - `/api/demo/reset` exists; `advance`, `price-rise` and `toggle-fair-trial` come in milestone 5.
 
+### Since milestone 2 (2026-11-10)
+- PayPal layer uses `paypal-server-sdk` 2.4.0 + httpx helpers (`paypal_rest.py`), commit `301e4c6`.
+  Gateway, mock PayPal, MCP backend and checkout/register API exist and are tested; milestone 3 is
+  NOT done yet (seed script + sandbox cancel check remain).
+- Prices and terms are `.env` variables (`app/pricing.py`, D-015). **`seed_sandbox.py` must build
+  plans from `settings.pricing`**, and when the prices differ from an already-seeded plan it must
+  create a new plan (PayPal plans can't change billing-cycle structure) and update `sandbox_ids.json`.
+
 ### Before / during milestone 3
 1. **Blocked on the user:** install the APIMatic PayPal context plugin (`npx context-plugins install paypal`,
    or `claude plugin marketplace add context-plugins/plugin-marketplace` then

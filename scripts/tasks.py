@@ -42,8 +42,8 @@ def dev(mode: str = "mock") -> int:
 
 
 def reset() -> int:
-    code = "from app.config import load_settings; from app.store import JsonStore; " \
-           "s=load_settings(); st=JsonStore(s.runtime_dir, s.seed_dir, s.app_mode); st.reset(); print('reset ok')"
+    code = ("from app.config import load_settings; from app.store import JsonStore; s=load_settings(); "
+            "st=JsonStore(s.runtime_dir, s.seed_dir, s.app_mode, pricing=s.pricing); st.reset(); print('reset ok')")
     return run(py(), "-c", code)
 
 

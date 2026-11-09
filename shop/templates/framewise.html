@@ -7,12 +7,12 @@
   <h1 class="headline">Framewise Basic</h1>
   <p class="desc">A simple design app for layouts, mockups and social images.</p>
   <div class="price-box" data-testid="shop-price-box">
-    <p class="price-big">$12/month</p>
+    <p class="price-big">{{ p.money(p.framewise_price) }}/month</p>
   </div>
   <div class="terms-clear" data-testid="shop-terms-clear">
     <h2>Terms in plain words</h2>
     <ul>
-      <li>Billed monthly at $12.00 through PayPal.</li>
+      <li>Billed monthly at {{ p.money(p.framewise_price) }} through PayPal.</li>
       <li>Cancel anytime from your account settings or from PayPal. Cancelling takes effect at the end of the current billing period.</li>
       <li>Prices may change. We will let you know by email.</li>
     </ul>

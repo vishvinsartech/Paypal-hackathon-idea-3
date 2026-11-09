@@ -15,12 +15,15 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import ROOT_DIR, ConfigError, Settings, load_settings
 from app.core.audit_log import mask_secrets
+from app.core.auditor import Auditor
+from app.integrations.capture import Capturer, PlaywrightCapture, StaticCapture
 from app.integrations.paypal_gateway import PayPalGateway
 from app.integrations.paypal_mcp import McpPayPal
 from app.integrations.paypal_rest import PayPalRest
 from app.integrations.paypal_sdk import SdkPayPal
 from app.integrations.paypal_types import PayPalError
-from app.routes import api, demo, pages, subscriptions
+from app.llm import build_llm
+from app.routes import api, demo, pages, review, subscriptions
 from app.routes.subscriptions import paypal_error_response
 from app.store import JsonStore
 from shop import routes as shop_routes
@@ -81,6 +84,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.store = store
     app.state.gateway = gateway
+    app.state.llm = build_llm(settings)
+    app.state.capture = build_capture(settings, app)
+    app.state.auditor = Auditor(app.state.llm, store, settings.seed_dir / "dark_patterns.json",
+                                settings.llm_timeout_seconds)
 
     @app.exception_handler(PayPalError)
     async def _paypal_error(_request: Request, exc: PayPalError) -> JSONResponse:
@@ -92,8 +99,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(api.router)
     app.include_router(demo.router)
     app.include_router(subscriptions.router)
+    app.include_router(review.router)
     app.include_router(shop_routes.router)
     return app
+
+
+def build_capture(settings: Settings, app: FastAPI) -> Capturer:
+    """Mock: static HTML capture (deterministic, no browser). Sandbox: live Playwright, static fallback (D-040)."""
+    static = StaticCapture(app, ROOT_DIR / "shop" / "static" / "shop.css")
+    return PlaywrightCapture(static) if settings.is_sandbox else static
 
 
 def build_gateway(settings: Settings, store: JsonStore) -> PayPalGateway:

@@ -67,8 +67,9 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   domain, so we use no real brand and no deliverable address.
 - **D-027 `/shop/<merchant>/app` records usage on GET.** It's a side effect on GET, but it is exactly
   "opening it records a usage event", and it keeps the video recorder simple.
-- **D-028 Model defaults in `.env.example`.** `claude-opus-5-5` and `gpt-5` for now. Re-verify both
-  ids in milestone 4 before writing the providers.
+- **D-028 Model defaults in `.env.example`.** `claude-opus-5-5` and `gpt-5`. Milestone 4: `claude-opus-5-5`
+  re-verified as the current default Claude model (Anthropic API reference, cached 2026-10-06). `gpt-5`
+  was not re-verified (no OpenAI docs access in this session); it's only a default, set `OPENAI_MODEL`.
 
 - **D-015 Demo prices and terms are configurable in `.env`** (user request). `app/pricing.py`
   defines every rate and term number (Penwright trial days, intro price and months, step-up price,
@@ -102,6 +103,49 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
 - **D-032 Sandbox buyer approval uses Playwright on PayPal's page** (`scripts/sandbox_buyer.py`),
   with `return_url` on 127.0.0.1 intercepted by Playwright, so the app doesn't need to be running.
   It needs a sandbox *personal* account; the business account that owns the REST app is refused.
+
+## Fine-print review (milestone 4)
+
+- **D-034 Add-on checkout in sandbox is a second PayPal button.** If the add-on box is ticked, the
+  sandbox shop shows a second Subscribe button for the add-on after the main approval
+  (`shop/static/checkout_sandbox.js`); the spec allows this simplification. The PayPal button only
+  renders after the companion's "Continue to PayPal" (`subguard:continue` event).
+- **D-040 Two capture implementations.** Mock mode uses `StaticCapture`: it fetches our own `/shop`
+  pages through the ASGI app and parses the HTML + `shop.css` (font size, colour -> WCAG contrast,
+  `display:none`, collapsed `<details>`, default-checked boxes, one level of same-site "terms" links).
+  Deterministic, no browser, works on Render. This replaces the spec's stored `captures/*.json`
+  fixtures, because prices come from `.env` (D-015) and a stored capture would drift. Sandbox mode uses
+  `PlaywrightCapture` (live Chromium: screenshot + bounding boxes), falling back to the static capture
+  with a logged warning. Only `/shop/<merchant>[/terms]` paths can be captured (no arbitrary URLs).
+  Elements marked `data-subguard-ignore` (the companion's own note) are skipped.
+- **D-041 Structured output, not forced tool calls.** Current Claude models reject forced `tool_choice`,
+  so the Anthropic reviewer uses `output_config.format` (json_schema); OpenAI uses `response_format`
+  json_schema with `strict: true`. One hand-written schema (`REVIEW_JSON_SCHEMA`) serves both. Money
+  hints from the model are parsed leniently and then discarded: code recomputes all money from PayPal.
+  Effort `low` for both review and chat, so the review fits the companion's 20-second timeout. Opus 5.5 /
+  Sonnet 5.5 / Fable 5.1 calls opt into the server-side refusal fallback (`fallbacks: "default"`).
+- **D-042 Provider contract tests use SDK fakes, not respx.** The installed `anthropic` 2.x and `openai`
+  3.x SDKs run on `httpx2`, which respx can't intercept. The tests inject fake clients that return real
+  SDK response types (`BetaMessage`, `ChatCompletion`), which still exercises request building and
+  response parsing in each adapter. No network.
+- **D-043 Risk weights.** Each clause type counts once: AUTO_RENEW 10, NOTICE_PERIOD 5, INTRO_PRICE_STEP_UP 4,
+  HARD_CANCEL 4, TERMS_MISMATCH 4, PRECHECKED_ADDON 3, EARLY_TRIAL_TERMINATION 3, HIDDEN_TEXT_STYLE 1,
+  PROMPT_INJECTION_ATTEMPT 0, CLEAR_TERMS 0. Plus the spec's style penalties (+8/+8/+10/+6), money factor
+  `min(15, year-one cost / 50)` from the PayPal plan (Penwright 524.88 -> 10.50), and a library bonus of
+  2 points per distinct dark-pattern type the page matches by regex (cap 10). Severity is shown, not
+  scored, so the score doesn't depend on how a model rates severity. Penwright = 34 + 32 + 10.50 + 10 =
+  86.5 -> **87** (half-up); Lumen = 10 + 4.80 = **15**. Injection weighs 0, so a page can't buy a lower or
+  higher score with hidden instructions. TF-IDF (scikit-learn) only labels each clause with its nearest
+  same-type library example.
+- **D-044 Code-added findings.** Besides verifying every quote (whitespace-normalised substring; drop +
+  one retry), code adds PROMPT_INJECTION_ATTEMPT (regex over all captured text, hidden included),
+  HIDDEN_TEXT_STYLE (from style signals) and TERMS_MISMATCH (PayPal cross-check) when the model missed
+  them. The cross-check flags: a reviewer-read first charge day/amount that differs from the plan, a
+  PayPal price the page never states, and prominent checkout text (>= 18px, readable) that shows no price
+  PayPal will charge (Penwright's "$0 today" headline). A no-trial plan is charged at signup (day 0).
+- **D-045 Notice days come from the verified quote.** `notice_days` is parsed from the NOTICE_PERIOD
+  quote ("at least 7 days") when present, else the model's value, else 0. First charge day always
+  comes from the PayPal plan.
 
 ## Not used in v1 (sponsor tools)
 

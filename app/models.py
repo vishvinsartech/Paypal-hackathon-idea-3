@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Literal
+from typing import Literal
 
 from pydantic import BaseModel, Field
+
+from app.review_types import ReviewData
 
 SubStatus = Literal["APPROVAL_PENDING", "APPROVED", "ACTIVE", "SUSPENDED", "CANCELLED", "EXPIRED"]
 TimerStatus = Literal["PENDING", "KEPT", "FIRED", "FAILED", "CANCELLED"]
@@ -110,8 +112,9 @@ class Review(BaseModel):
     merchant_id: str
     subscription_id: str | None = None
     created_at: datetime
+    sim_day: int = 0
     risk_score: int = 0
-    data: dict[str, Any] = Field(default_factory=dict)  # full ReviewResult, typed in milestone 4
+    data: ReviewData
 
 
 class ReviewList(BaseModel):

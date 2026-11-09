@@ -61,6 +61,7 @@ class RegisterIn(BaseModel):
     plan_key: str
     user_id: str = "priya"
     addon_of: str | None = None  # local id of the main subscription
+    review_id: str | None = None  # the companion's preflight review, linked to the new subscription
 
 
 @router.post("/checkout/create")
@@ -128,6 +129,12 @@ async def register(body: RegisterIn, request: Request, store: JsonStore = Depend
                                              billing_cycles=plan.billing_cycles),
         )
         subs.items.append(sub)
+    if body.review_id and body.addon_of is None:
+        async with store.aedit("reviews") as reviews:
+            rev = next((r for r in reviews.items if r.id == body.review_id and r.merchant_id == merchant.id
+                        and r.subscription_id is None), None)
+            if rev is not None:
+                rev.subscription_id = sub.id
     store.audit.append(actor="user", event="subscription_registered", user_id=body.user_id,
                        subscription_id=sub.id, status_after="ACTIVE", transport=gw.full.transport,  # type: ignore[arg-type]
                        details={"paypal_id": sub.paypal_id, "plan_key": sub.plan_key, "addon_of": sub.addon_of})

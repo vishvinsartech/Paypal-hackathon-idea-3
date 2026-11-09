@@ -61,4 +61,5 @@ def merchant_page(request: Request, merchant_id: str, settings: Settings = Depen
                   store: JsonStore = Depends(get_store)) -> HTMLResponse:
     if merchant_id not in PAGES:
         raise HTTPException(status_code=404, detail="Unknown merchant")
-    return _render(request, PAGES[merchant_id], settings, merchant=_merchant(store, merchant_id))
+    plan_ids = store.load("sandbox_ids").plans if settings.is_sandbox else {}
+    return _render(request, PAGES[merchant_id], settings, merchant=_merchant(store, merchant_id), plan_ids=plan_ids)

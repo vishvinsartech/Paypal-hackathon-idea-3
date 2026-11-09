@@ -1,13 +1,19 @@
-{# Checkout area shared by merchant pages. Expects `merchant`, `plan_key`, `settings`. #}
-<div class="checkout" data-testid="shop-checkout" data-merchant="{{ merchant.id }}" data-plan-key="{{ plan_key }}">
+{# Checkout area shared by merchant pages. Expects `merchant`, `plan_key`, `settings`, `plan_ids`. #}
+{% set addon = merchant.plans | selectattr("addon") | first %}
+<div class="checkout" data-testid="shop-checkout" data-merchant="{{ merchant.id }}" data-plan-key="{{ plan_key }}"
+     {% if settings.is_sandbox %}data-client-id="{{ settings.paypal_client_id }}" data-plan-id="{{ plan_ids.get(plan_key, '') }}"
+     {% if addon %}data-addon-key="{{ addon.key }}" data-addon-plan-id="{{ plan_ids.get(addon.key, '') }}"{% endif %}{% endif %}>
   <div id="paypal-area" class="paypal-area" data-testid="shop-paypal-btn">
     {% if settings.is_sandbox %}
-    <button type="button" class="paypal-btn" disabled>PayPal checkout loads here (sandbox)</button>
+    <button type="button" class="paypal-btn" data-sandbox-start>Pay with PayPal (sandbox)</button>
     {% else %}
     <button type="button" class="paypal-btn" data-mock-approve>Approve with PayPal (sandbox mock)</button>
     {% endif %}
   </div>
-  {% if not settings.is_sandbox %}<script src="/shop/static/checkout.js" defer></script>{% endif %}
+  <p class="companion-note" data-subguard-ignore data-testid="companion-note">&#128737; SubGuard companion active. Simulates the SubGuard browser extension.</p>
+  <script src="/static/companion.js" defer></script>
+  {% if settings.is_sandbox %}<script src="/shop/static/checkout_sandbox.js" defer></script>
+  {% else %}<script src="/shop/static/checkout.js" defer></script>{% endif %}
   {% if merchant.fair_trial_member %}
   <p class="fair-trial" data-testid="fair-trial-badge">&#10003; Protected by SubGuard: cancel anytime</p>
   {% endif %}

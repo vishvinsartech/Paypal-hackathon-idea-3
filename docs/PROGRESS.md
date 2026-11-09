@@ -8,14 +8,12 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
 - [x] **2. Scaffold + JSON store + audit log + dummy shop.**
   - *Check:* `make setup && make dev` serves `/`, `/shop` and `/shop/penwright`; the store and audit log tests pass (atomic write, corrupt-file recovery, hash chain).
   - Done 2026-11-10 (commit `a1843af`). Ran via `python scripts/tasks.py setup` / `dev` (no `make` on this machine). Every page returned 200, with no console errors in headless Chromium. 47 tests passing; ruff clean.
-- [ ] **3. PayPal layer (mock + SDK + MCP) + seed.**
+- [x] **3. PayPal layer (mock + SDK + MCP) + seed.**
   - *Check:* gateway tests pass in mock mode; in sandbox mode `make seed` creates the plans, and a cancel shows `CANCELLED` both via the SDK and via the PayPal MCP server.
-  - **Partly done 2026-11-10 (blocked on a credential).** Gateway tests pass (99 total, ruff clean).
-    `make seed` created all 3 products + 5 plans in the sandbox, and a re-run reuses all of them.
-    MCP server connects live (PayPal 1.11.0, 28 tools). **Not yet passed:** the live cancel via SDK + MCP.
-    `PAYPAL_SANDBOX_BUYER_EMAIL` is the sandbox *business* account, and PayPal refuses it as the buyer
-    ("account of the seller"), so the test subscriptions stay `APPROVAL_PENDING`, and PayPal only cancels
-    ACTIVE/SUSPENDED ones.
+  - Done 2026-11-10. 99 tests pass; ruff is clean. `make seed` created 3 products and 5 plans, and a re-run
+    reuses them all. `sandbox-check` approved 2 Framewise subscriptions as the personal sandbox buyer,
+    then cancelled one via the SDK (I-X11PUMFB87VA) and one via the PayPal MCP server (I-5NYJ1XJ1WECL).
+    Both read back `CANCELLED` over both transports, and the audit chain verifies (16 entries).
 - [ ] **4. LLM providers + fine-print review + companion overlay.**
   - *Check:* the Penwright preflight returns >= 7 findings including `NOTICE_PERIOD`, `TERMS_MISMATCH` and `PROMPT_INJECTION_ATTEMPT`; risk 87 +/- 5; deadline day 7; every quote is verbatim. Lumen scores 15 +/- 5. The provider contract tests pass for Anthropic, OpenAI and mock.
 - [ ] **5. Policy, timers, escalation, clock.**
@@ -52,20 +50,12 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
   plans from `settings.pricing`**, and when the prices differ from an already-seeded plan it must
   create a new plan (PayPal plans can't change billing-cycle structure) and update `sandbox_ids.json`.
 
-### Milestone 3 status (2026-11-10, end of session)
-- New: `app/integrations/paypal_seed.py` (Seeder), `scripts/seed_sandbox.py` (`seed [--demo-subs]
-  [--no-auto-approve] [--headless]`), `scripts/sandbox_buyer.py` (Playwright buyer approval),
-  `scripts/sandbox_cancel_check.py` (`python scripts/tasks.py sandbox-check`), `tests/test_paypal_seed.py`.
-- Fixed: SDK `get_billing_plan` takes a positional id (it was getting a dict, so it returned 400).
-- Changed: Penwright intro price is now a paid TRIAL cycle; PayPal allows only one REGULAR cycle (D-031).
-  Key numbers are unchanged.
-- **To finish milestone 3:** create a sandbox **Personal** account (developer.paypal.com > Testing Tools >
-  Sandbox Accounts > Create account > Personal), put its email/password in `PAYPAL_SANDBOX_BUYER_EMAIL` /
-  `PAYPAL_SANDBOX_BUYER_PASSWORD`, then run `python scripts/tasks.py sandbox-check`. It should print
-  PASS for both SDK and MCP. If PayPal's checkout selectors changed, see `data/runtime/approve-shots/`.
-  Then tick milestone 3.
-- Two leftover `APPROVAL_PENDING` sandbox subscriptions (I-99HBVAB6EBUS, I-M6UTRTXENECU) are harmless.
-  PayPal expires unapproved subscriptions on its own.
+### Milestone 3 notes (2026-11-10)
+- Seed: `python scripts/tasks.py seed [--demo-subs] [--no-auto-approve] [--headless]`. Live check:
+  `python scripts/tasks.py sandbox-check` (opens a headed browser and logs in as the personal sandbox buyer).
+- Penwright intro price is a paid TRIAL cycle (D-031). SDK `get_billing_plan` takes a positional id.
+- Buyer approval: the first consent click right after login can land early, so it retries up to 3 times.
+- Leftover `APPROVAL_PENDING` sandbox subscriptions from failed runs are harmless; PayPal expires them.
 
 ### Before / during milestone 3
 1. **Blocked on the user:** install the APIMatic PayPal context plugin (`npx context-plugins install paypal`,

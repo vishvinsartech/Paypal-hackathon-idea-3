@@ -15,6 +15,7 @@ from playwright.async_api import TimeoutError as PwTimeout
 
 RETURN_URL = "http://127.0.0.1:8000/shop/sandbox-return"
 CANCEL_URL = "http://127.0.0.1:8000/shop/sandbox-cancel"
+RETURN_RE = re.compile(r"^http://127\.0\.0\.1:8000/shop/sandbox-return")
 CONSENT = re.compile(r"agree|subscribe|continue", re.I)
 
 
@@ -66,9 +67,18 @@ async def approve_all(urls: list[str], email: str, password: str, *, headed: boo
                 if not page.url.startswith(RETURN_URL):
                     if await _visible(page, "#email, #password", 8000):
                         await _login(page, email, password)
-                    await _consent(page)
-                    await page.wait_for_url(re.compile(r"^http://127\.0\.0\.1:8000/shop/sandbox-return"),
-                                            timeout=90000)
+                    try:
+                        await page.wait_for_load_state("networkidle", timeout=15000)
+                    except PwTimeout:
+                        pass  # PayPal pages may keep polling; the consent retry below covers it
+                    for attempt in (1, 2, 3):  # right after login the first click can land before the page is live
+                        await _consent(page)
+                        try:
+                            await page.wait_for_url(RETURN_RE, timeout=30000)
+                            break
+                        except PwTimeout:
+                            if attempt == 3:
+                                raise
                 results.append(True)
             except Exception as exc:  # noqa: BLE001 - report and keep going
                 print(f"  approve #{i + 1} failed: {type(exc).__name__}: {str(exc)[:160]}")

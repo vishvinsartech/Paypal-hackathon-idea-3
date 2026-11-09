@@ -93,6 +93,10 @@ class Subscription(BaseModel):
     next_billing_day: int | None = None
     addon_of: str | None = None
     consent_snapshot: ConsentSnapshot | None = None
+    registered_at: datetime | None = None
+    cancel_requested_at: datetime | None = None  # duplicate-cancel claim (released on failure)
+    cancelled_at: datetime | None = None
+    last_synced_at: datetime | None = None
 
 
 class SubscriptionList(BaseModel):
@@ -192,6 +196,32 @@ class Notice(BaseModel):
 
 class NoticeList(BaseModel):
     items: list[Notice] = Field(default_factory=list)
+
+
+# ---- mock_paypal.json (PayPal's side of the world, mock mode only) -----------
+class MockPlan(BaseModel):
+    id: str
+    key: str
+    name: str
+    currency: str = "USD"
+    status: str = "ACTIVE"
+    billing_cycles: list[BillingCycleDef]
+
+
+class MockSub(BaseModel):
+    id: str
+    plan_id: str
+    status: SubStatus = "APPROVAL_PENDING"
+    status_change_note: str | None = None
+    create_time: datetime
+    start_time: datetime | None = None
+    update_time: datetime | None = None
+
+
+class MockPayPalState(BaseModel):
+    plans: dict[str, MockPlan] = Field(default_factory=dict)
+    subscriptions: dict[str, MockSub] = Field(default_factory=dict)
+    seen_request_ids: dict[str, str] = Field(default_factory=dict)  # PayPal-Request-Id -> result id
 
 
 # ---- sandbox_ids.json -------------------------------------------------------

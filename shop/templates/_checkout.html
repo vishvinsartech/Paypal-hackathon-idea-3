@@ -7,6 +7,7 @@
     <button type="button" class="paypal-btn" data-mock-approve>Approve with PayPal (sandbox mock)</button>
     {% endif %}
   </div>
+  {% if not settings.is_sandbox %}<script src="/shop/static/checkout.js" defer></script>{% endif %}
   {% if merchant.fair_trial_member %}
   <p class="fair-trial" data-testid="fair-trial-badge">&#10003; Protected by SubGuard: cancel anytime</p>
   {% endif %}

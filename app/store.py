@@ -73,6 +73,7 @@ class JsonStore:
             "usage": (m.UsageList, m.UsageList),
             "notices": (m.NoticeList, m.NoticeList),
             "sandbox_ids": (m.SandboxIds, m.SandboxIds),
+            "mock_paypal": (m.MockPayPalState, m.MockPayPalState),
         }
         self.dir.mkdir(parents=True, exist_ok=True)
         self.audit = AuditLog(self.dir / "audit_log.jsonl", self.lock, self._sim_day)

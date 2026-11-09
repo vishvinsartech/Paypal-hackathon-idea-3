@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import Response
 
 from app.config import Settings
@@ -16,17 +16,23 @@ router = APIRouter()
 
 
 @router.get("/healthz")
-def healthz(settings: Settings = Depends(get_settings), store: JsonStore = Depends(get_store)) -> dict[str, Any]:
+def healthz(request: Request, settings: Settings = Depends(get_settings),
+            store: JsonStore = Depends(get_store)) -> dict[str, Any]:
     state = store.load("state")
     chain = store.audit.verify()
     warnings = list(store.warnings)
     if not chain.ok:
         warnings.append(f"audit log chain broken: {chain.reason}")
+    integrations = integration_states(settings)
+    integrations["paypal"] = request.app.state.gateway.health()
+    mcp = integrations["paypal"].get("mcp")
+    if mcp and mcp.get("state") != "connected":
+        warnings.append(f"PayPal MCP unavailable, using SDK: {mcp.get('reason')}")
     return {
         "status": "ok" if not warnings else "degraded",
         "mode": settings.app_mode,
         "sim_day": state.sim_day,
-        "integrations": integration_states(settings),
+        "integrations": integrations,
         "audit_chain_ok": chain.ok,
         "warnings": warnings,
     }

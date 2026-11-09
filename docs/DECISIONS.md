@@ -9,12 +9,13 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
 - **D-002 No `make` on Windows.** This machine has no `make`. The `Makefile` is the canonical
   interface (judges on macOS/Linux). `scripts/tasks.py` mirrors every target
   (`python scripts/tasks.py setup|dev|test|...`) so Windows works without installing anything.
-- **D-003 External npx tools not run yet.** The APIMatic Context Plugin installer
-  (`npx context-plugins install paypal`) and the PayPal MCP server (`npx @paypal/mcp`) weren't
-  executed in milestone 1 because the session's permission policy blocked running external npx code,
-  and there are no sandbox credentials yet. Workarounds: `PAYPAL_SDK_NOTES.md` was written from the
-  installed `paypal-server-sdk` 2.4.0 source (authoritative for that version), and `PAYPAL_TOOLS.md`
-  from the official agent-toolkit README. Both must be re-verified at milestone 3.
+- **D-003 APIMatic plugin and PayPal MCP.** In milestone 1 the session's permission policy blocked running
+  external npx code, so `PAYPAL_SDK_NOTES.md` was written from the installed `paypal-server-sdk`
+  2.4.0 source. The user then installed the APIMatic Context Plugin for PayPal (v0.4.1). The
+  installer put it under `~/.context-plugins/vscode/paypal` (VS Code Copilot), not in Claude Code.
+  It documents a different SDK (see D-011), so it's used **for reference only**: the general
+  guidance (OAuth caching, error boundaries, idempotency, testing with a stubbed transport).
+  `PAYPAL_TOOLS.md` was later re-verified against the live PayPal MCP server (1.11.0, 28 tools).
 - **D-004 `claude` CLI.** It isn't on PATH. The binary bundled with the VS Code extension
   (Claude Code 2.1.319) was used for `claude mcp list`. `scripts/mcp_setup.sh` assumes `claude` is on PATH.
 
@@ -23,8 +24,27 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
 - **D-010 httpx for SDK gaps** (spec 5 requires each case to be recorded). `paypal-server-sdk`
   2.4.0 has (a) no Catalog Products controller, (b) no `PayPal-Request-Id` parameter on
   `cancel_subscription` / `update_billing_plan_pricing_schemes`, (c) no per-call custom headers (so
-  no `PayPal-Auth-Assertion`), and (d) no webhook signature verification. Those four calls use httpx
-  with a token from the same OAuth credentials. Everything else uses the SDK.
+  no `PayPal-Auth-Assertion`), and (d) no webhook signature verification. Those calls go through
+  `app/integrations/paypal_rest.py` (httpx), with its own cached client-credentials token (refreshed
+  and resent once on a 401, with the same `PayPal-Request-Id`). In partner mode every merchant-side
+  call goes through it, since only REST can carry the assertion header. The same cached token feeds
+  the PayPal MCP server. Everything else uses the SDK.
+- **D-011 PayPal SDK: `paypal-server-sdk` (PyPI), pinned to 2.4.0.** Reason: it's the official PayPal
+  package, judges get a plain PyPI install, and it's still APIMatic-generated. The plugin's git SDK
+  (`paypal` 2.29 from github.com/context-plugins/paypal-python-sdk) was considered and rejected.
+- **D-012 Sync SDK in an async app.** `paypal-server-sdk` is synchronous (`requests`), so every SDK
+  call runs in a worker thread via `asyncio.to_thread`. The event loop never blocks on PayPal.
+  On a 401 the SDK client is rebuilt (fresh token) and the call retried once. The SDK's own retries
+  (`max_retries=2`) apply only to GET/PUT. Cancel retries live in the gateway and reuse the same
+  `PayPal-Request-Id`.
+- **D-013 Mock PayPal state in `mock_paypal.json`.** PayPal's side of the world (plans with current
+  prices, subscription statuses) lives in its own file. `subscriptions.json` stays SubGuard's view
+  (owner, consent snapshot, timers). That keeps "what PayPal says" and "what we recorded" separate,
+  as the spec's "PayPal is the source of truth" needs.
+- **D-014 Extra modules.** `app/integrations/paypal_types.py` (shared error and view types, so the
+  backends don't import each other), `app/integrations/paypal_rest.py` (D-010) and
+  `app/routes/subscriptions.py` (checkout + register endpoints). They keep the spec's files under
+  about 300 lines.
 
 ## Storage and app structure (milestone 2)
 

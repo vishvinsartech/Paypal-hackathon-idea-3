@@ -14,8 +14,13 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
     reuses them all. `sandbox-check` approved 2 Framewise subscriptions as the personal sandbox buyer,
     then cancelled one via the SDK (I-X11PUMFB87VA) and one via the PayPal MCP server (I-5NYJ1XJ1WECL).
     Both read back `CANCELLED` over both transports, and the audit chain verifies (16 entries).
-- [ ] **4. LLM providers + fine-print review + companion overlay.**
+- [x] **4. LLM providers + fine-print review + companion overlay.**
   - *Check:* the Penwright preflight returns >= 7 findings including `NOTICE_PERIOD`, `TERMS_MISMATCH` and `PROMPT_INJECTION_ATTEMPT`; risk 87 +/- 5; deadline day 7; every quote is verbatim. Lumen scores 15 +/- 5. The provider contract tests pass for Anthropic, OpenAI and mock.
+  - Done 2026-11-10 (commit `1c207e2`). Penwright preflight: 9 findings, risk **87**, deadline Day 7 (timer 6,
+    reminder 5), all quotes verbatim; Lumen **15**. Contract tests pass for all three providers (SDK fakes, D-042).
+    129 tests pass; ruff clean. Companion checked in headless Chromium: overlay -> Continue -> subscribed
+    (+ add-on), Escape backs out, no console errors. Live Playwright capture verified against a local server.
+    **Not verified live:** real Anthropic/OpenAI calls and the sandbox JS SDK button (no browser login here).
 - [ ] **5. Policy, timers, escalation, clock.**
   - *Check:* Story A days 0 -> 5 -> 6 -> 15 -> 21 and Story B days 0 -> 10 -> 27 produce the right alerts, actions and audit log entries (correct actors and rule ids); `test_policy.py` covers R1-R7.
 - [ ] **6. UI (AG Grid) + chat agent.**
@@ -30,6 +35,14 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
   - *Check:* every item in section 15 "Definition of done" is satisfied.
 
 ## Notes for next session
+
+### Milestone 4 notes (2026-11-10)
+- Review pipeline: `app/core/auditor.py` (orchestration), `crosscheck.py`, `risk.py` (weights, deadlines),
+  `patterns.py` (library, injection regex, fallback), `savings.py` (`year_one_cost`). Types in `app/review_types.py`.
+- `app.state.llm` / `app.state.capture` / `app.state.auditor` are built in `create_app`. Reviews are stored with
+  typed `ReviewData`; register links the companion's `review_id` to the new subscription (milestone 5 uses
+  `deadlines` from that review to create timers).
+- Mock chat fixtures live in `data/fixtures/llm/chat.json` (empty until milestone 6).
 
 ### State after milestone 2 (2026-11-10)
 - Venv at `.venv` (Python 3.14.4); deps from `requirements.txt` and Playwright Chromium are installed.

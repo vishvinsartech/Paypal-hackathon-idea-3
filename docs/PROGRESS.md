@@ -21,8 +21,15 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
     129 tests pass; ruff clean. Companion checked in headless Chromium: overlay -> Continue -> subscribed
     (+ add-on), Escape backs out, no console errors. Live Playwright capture verified against a local server.
     **Not verified live:** real Anthropic/OpenAI calls and the sandbox JS SDK button (no browser login here).
-- [ ] **5. Policy, timers, escalation, clock.**
+- [x] **5. Policy, timers, escalation, clock.**
   - *Check:* Story A days 0 -> 5 -> 6 -> 15 -> 21 and Story B days 0 -> 10 -> 27 produce the right alerts, actions and audit log entries (correct actors and rule ids); `test_policy.py` covers R1-R7.
+  - Done 2026-11-10 (commit `90e615e`). `tests/test_story.py` runs Story A (add-on removed on tap, timer Day 6
+    shown, Day 5 reminder on in-app + email + SMS, Day 6 auto-cancel with R2 + written notice with SHA-256,
+    Day 15 blocked charge, Day 21 price rise -> confirm card $228/yr -> cancelled; **$872.76** protected) and
+    Story B (Lumen risk 15, no timer, 240 vs 200 yearly, 9 of 10 days used, Day 27 renewal nudge -> Keep, no
+    PayPal write), checking actors and rule ids in the audit log. `tests/test_policy.py` covers R1-R7 plus
+    corner cases 4, 5, 10, 11, 12, 13, 14, 29-32, 34, 36. 157 tests pass; ruff clean. Also ran Story A against
+    a live mock server over HTTP (startup demo seed, outbox files, audit chain verified, no log errors).
 - [ ] **6. UI (AG Grid) + chat agent.**
   - *Check:* the full Story A works in mock mode in the browser with no console errors; the chat produces a confirmation card for Framewise with **$228/yr**; the audit log grid exports CSV.
 - [ ] **7. Tests and hardening.**
@@ -35,6 +42,20 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
   - *Check:* every item in section 15 "Definition of done" is satisfied.
 
 ## Notes for next session
+
+### Milestone 5 notes (2026-11-10)
+- Core: `app/core/services.py` (`Services` = settings, store, gateway, notifier, policy; on `app.state.services`),
+  `policy.py`, `actions.py` (propose card / confirm / cancel_one / Layer 2 handoff), `timers.py`, `escalation.py`
+  (`tick`), `alerts.py` (idempotent `send_alert`, notices), `signup.py` (`register_active` + Day-0 protection),
+  `demo_seed.py`, `usage.py`; `app/clock.py` (`advance`). Notifier: `app/integrations/notify.py`.
+- APIs for milestone 6's UI: `/api/alerts?user=` + `POST /api/alerts/{id}/act {user_id, action}` (cancel-type
+  actions return `{"confirm": card}`; the UI's tap then calls `/api/agent/confirm`), `/api/agent/propose`,
+  `/api/agent/confirm`, `/api/timers`, `/api/notices`, `/api/kpis`, `/api/subscriptions/{id}/keep|essential`,
+  `/api/demo/advance?days=N|to_day=N`, `/api/demo/price-rise`, `/api/demo/toggle-fair-trial/{merchant}`.
+- The chat tools in milestone 6 should call `propose_cancel` / `compare_billing` / `usage` helpers, never do maths.
+- Not done yet (milestone 7 list): corner case 27 (exports > limit end the trial early) has no code yet; corner
+  cases 1 (expire APPROVAL_PENDING after 3h), 6 (webhook dedupe), 8 (non-USD guard) still need tests/notes.
+- `make reset` (tasks.py) wipes runtime only; the demo seed happens on the next app start (or `/api/demo/reset`).
 
 ### Milestone 4 notes (2026-11-10)
 - Review pipeline: `app/core/auditor.py` (orchestration), `crosscheck.py`, `risk.py` (weights, deadlines),

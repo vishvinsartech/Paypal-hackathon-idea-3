@@ -8,11 +8,12 @@ from decimal import Decimal
 
 from app.config import Settings
 from app.core.patterns import quote_ok
-from app.core.risk import compute_deadlines
+from app.core.risk import compute_deadlines, score
 from app.core.savings import year_one_cost
 from app.llm.base import LLMError
 from app.llm.mock_provider import MockProvider
 from app.pricing import Pricing
+from app.review_types import Clause
 from app.store import JsonStore
 from tests.review_helpers import FIXTURES, ScriptedProvider, capture_page, mock_text, plan_for, run_review
 
@@ -22,8 +23,8 @@ def test_penwright_review_matches_spec(settings: Settings, store: JsonStore) -> 
     data = run_review(store, MockProvider(FIXTURES, Pricing()), cap, "penwright-pro")
     types = data.types()
     assert len(data.clauses) >= 7
-    for t in ("NOTICE_PERIOD", "TERMS_MISMATCH", "PROMPT_INJECTION_ATTEMPT", "PRECHECKED_ADDON",
-              "INTRO_PRICE_STEP_UP", "HARD_CANCEL", "EARLY_TRIAL_TERMINATION", "HIDDEN_TEXT_STYLE"):
+    for t in ("NOTICE_PERIOD", "TERMS_MISMATCH", "PROMPT_INJECTION_ATTEMPT", "INTRO_PRICE_STEP_UP",
+              "HARD_CANCEL", "EARLY_TRIAL_TERMINATION", "HIDDEN_TEXT_STYLE"):
         assert t in types
     assert abs(data.risk_score - 87) <= 5
     d = data.deadlines
@@ -32,18 +33,16 @@ def test_penwright_review_matches_spec(settings: Settings, store: JsonStore) -> 
     assert d.auto_timer_allowed and data.mode == "ai" and data.injection_flagged
     assert all(quote_ok(c.quote, cap) for c in data.clauses), "every quote must be verbatim"
     money = {c.type: c.money_impact_usd_year for c in data.clauses}
-    assert money["INTRO_PRICE_STEP_UP"] == Decimal("524.88") and money["PRECHECKED_ADDON"] == Decimal("119.88")
-    assert set(data.style_signals) == {"small_font", "low_contrast", "prechecked_box", "hidden_text"}
+    assert money["INTRO_PRICE_STEP_UP"] == Decimal("524.88") and "PRECHECKED_ADDON" not in money
+    assert set(data.style_signals) == {"small_font", "low_contrast", "hidden_text"}
     assert any(not r.match for r in data.paypal_check)  # the headline hides PayPal's prices
 
 
-def test_lumen_is_low_risk_and_clear(settings: Settings, store: JsonStore) -> None:
-    cap = capture_page(settings, "/shop/lumen")
-    data = run_review(store, MockProvider(FIXTURES, Pricing()), cap, "lumen-monthly")
-    assert abs(data.risk_score - 15) <= 5
-    assert "CLEAR_TERMS" in data.types() and "TERMS_MISMATCH" not in data.types()
-    assert not data.style_signals and not data.injection_flagged
-    assert all(r.match for r in data.paypal_check)
+def test_honest_terms_score_low() -> None:
+    """Corner case 28 (formula level): clear terms, plain styling, a modest price -> a low score."""
+    clauses = [Clause(type="CLEAR_TERMS", quote="Cancel anytime in settings.", plain_english="Clear terms."),
+               Clause(type="AUTO_RENEW", quote="Renews monthly.", plain_english="It renews monthly.")]
+    assert score(clauses, [], Decimal("240.00"), 0).total == 15
 
 
 def test_injection_never_changes_the_score(settings: Settings, store: JsonStore) -> None:
@@ -93,14 +92,14 @@ def test_llm_down_uses_labelled_rule_fallback(settings: Settings, store: JsonSto
 
 
 def test_invalid_json_then_valid_is_retried(settings: Settings, store: JsonStore) -> None:
-    cap = capture_page(settings, "/shop/lumen")
-    data = run_review(store, ScriptedProvider("{not json", mock_text("lumen")), cap, "lumen-monthly")
+    cap = capture_page(settings, "/shop/penwright")
+    data = run_review(store, ScriptedProvider("{not json", mock_text("penwright")), cap, "penwright-pro")
     assert data.mode == "ai"
 
 
 def test_slow_llm_times_out_to_fallback(settings: Settings, store: JsonStore) -> None:
-    cap = capture_page(settings, "/shop/lumen")
-    data = run_review(store, ScriptedProvider(lambda: asyncio.sleep(1)), cap, "lumen-monthly", timeout=0.05)
+    cap = capture_page(settings, "/shop/penwright")
+    data = run_review(store, ScriptedProvider(lambda: asyncio.sleep(1)), cap, "penwright-pro", timeout=0.05)
     assert data.mode == "basic"
 
 
@@ -117,15 +116,12 @@ def test_short_trial_gets_no_auto_timer() -> None:
 
 
 def test_price_on_paypal_differs_from_page_is_mismatch(settings: Settings, store: JsonStore) -> None:
-    cap = capture_page(settings, "/shop/framewise")
-    plan = plan_for("framewise-basic", price_override=Decimal("19.00"))
-    data = run_review(store, MockProvider(FIXTURES, Pricing()), cap, "framewise-basic", plan=plan)
+    cap = capture_page(settings, "/shop/penwright")
+    plan = plan_for("penwright-pro", price_override=Decimal("59.99"))  # PayPal's step-up is higher than the page's
+    data = run_review(store, MockProvider(FIXTURES, Pricing()), cap, "penwright-pro", plan=plan)
     mismatch = next(c for c in data.clauses if c.type == "TERMS_MISMATCH")
-    assert "$19" in mismatch.plain_english and data.year_one_cost == Decimal("228.00")
+    assert "$59.99" in mismatch.plain_english and data.year_one_cost == Decimal("614.88")  # PayPal wins
 
 
 def test_year_one_costs_from_paypal_cycles() -> None:
-    assert year_one_cost(plan_for("penwright-pro").billing_cycles) == Decimal("524.88")
-    assert year_one_cost(plan_for("penwright-ai-pack").billing_cycles) == Decimal("119.88")
-    assert year_one_cost(plan_for("lumen-yearly").billing_cycles) == Decimal("200.00")
-    assert year_one_cost(plan_for("lumen-monthly").billing_cycles) == Decimal("240.00")
+    assert year_one_cost(plan_for("penwright-pro").billing_cycles) == Decimal("524.88")  # 3 x 24.99 + 9 x 49.99

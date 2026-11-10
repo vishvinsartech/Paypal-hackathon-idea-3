@@ -14,7 +14,7 @@ from app.core.policy import MAX_WRITES_PER_MINUTE, Decision, Policy
 from app.core.services import Services
 from app.models import Subscription, Timer, User
 from app.store import JsonStore
-from tests.story_helpers import advance_to, alerts, audit, sub, subscribe
+from tests.story_helpers import add_user, advance_to, alerts, audit, sub, subscribe
 
 
 def svc_of(c: TestClient) -> Services:
@@ -33,7 +33,7 @@ def confirm(c: TestClient, ids: list[str], token: str | None, user: str = "priya
 # ---- R1 consent ------------------------------------------------------------------------------
 def test_r1_cancel_needs_a_confirmation_tap(demo_client: TestClient) -> None:
     c = demo_client
-    fw = c.get("/api/subscriptions?user=priya").json()[0]
+    fw = subscribe(c)
     status, body = confirm(c, [fw["id"]], None)
     assert status == 403 and body["rule_id"] == "R1"
     # corner case 29: the agent tries to cancel directly -> blocked, explained, audited
@@ -72,7 +72,7 @@ PRIYA = User(id="priya", name="Priya")
     (_timer(), {}, 15, "R2", False),  # billing date reached
     (_timer(kind="price_rise"), {}, 6, "R2", False),  # auto_cancel_price_rises off
     (_timer(), {"essential": True}, 6, "R6", False),
-    (_timer(), {"owner_id": "john"}, 6, "R5", False),
+    (_timer(), {"owner_id": "intruder"}, 6, "R5", False),
 ])
 def test_r2_timer_conditions(timer: Timer, sub_kw: dict, day: int, rule: str, ok: bool, store: JsonStore) -> None:
     d = Policy().check_timer_fire(store, timer, _sub(**sub_kw), PRIYA, day)
@@ -88,8 +88,9 @@ def test_r2_price_rise_allowed_with_setting(store: JsonStore) -> None:
 # ---- R3 tokens ---------------------------------------------------------------------------------
 def test_r3_expired_reused_mismatched_and_foreign_tokens(demo_client: TestClient) -> None:
     c = demo_client
-    main, _ = subscribe(c, "penwright", "penwright-pro")
-    fw = next(s for s in c.get("/api/subscriptions?user=priya").json() if s["merchant_id"] == "framewise")
+    main = subscribe(c)
+    fw = subscribe(c, review=False)  # a second Penwright subscription
+    intruder = add_user(c)
     store = svc_of(c).store
     # mismatched list
     tok = propose(c, [fw["id"]])["token"]
@@ -103,7 +104,7 @@ def test_r3_expired_reused_mismatched_and_foreign_tokens(demo_client: TestClient
     assert status == 403 and "expired" in body["reason"]
     # another user's token
     tok = propose(c, [fw["id"]])["token"]
-    assert confirm(c, [fw["id"]], tok, user="john")[1]["rule_id"] == "R5"  # ownership checked first
+    assert confirm(c, [fw["id"]], tok, user=intruder)[1]["rule_id"] == "R5"  # ownership checked first
     # reused
     assert confirm(c, [fw["id"]], tok)[0] == 200
     status, body = confirm(c, [fw["id"]], tok)
@@ -126,31 +127,31 @@ def test_r4_rate_limit_per_user(store: JsonStore) -> None:
         assert policy.take_write(store, "priya", "s", "user") is None
     blocked = policy.take_write(store, "priya", "s", "user")
     assert blocked is not None and blocked.rule_id == "R4"
-    assert policy.take_write(store, "john", "s", "user") is None  # per user
+    assert policy.take_write(store, "intruder", "s", "user") is None  # per user
     now[0] += 60
     assert policy.take_write(store, "priya", "s", "user") is None
 
 
 # ---- R5 ownership ------------------------------------------------------------------------------
-def test_r5_john_cannot_touch_priyas_subscriptions(demo_client: TestClient) -> None:
+def test_r5_another_user_cannot_touch_priyas_subscriptions(demo_client: TestClient) -> None:
     c = demo_client
-    fw = c.get("/api/subscriptions?user=priya").json()[0]
-    res = c.post("/api/agent/propose", json={"user_id": "john", "subscription_ids": [fw["id"]]})
+    pw = subscribe(c)
+    intruder = add_user(c)
+    res = c.post("/api/agent/propose", json={"user_id": intruder, "subscription_ids": [pw["id"]]})
     assert res.status_code == 403 and res.json()["rule_id"] == "R5"
-    assert c.post(f"/api/subscriptions/{fw['id']}/keep", json={"user_id": "john"}).json()["status"] == "blocked"
-    res = c.post(f"/api/subscriptions/{fw['id']}/essential", json={"user_id": "john", "essential": True})
+    assert c.post(f"/api/subscriptions/{pw['id']}/keep", json={"user_id": intruder}).json()["status"] == "blocked"
+    res = c.post(f"/api/subscriptions/{pw['id']}/essential", json={"user_id": intruder, "essential": True})
     assert res.status_code == 403
-    advance_to(c, 21)
-    c.post("/api/demo/price-rise")
-    alert = alerts(c, kind="price_rise")[0]
-    assert c.post(f"/api/alerts/{alert['id']}/act", json={"user_id": "john", "action": "cancel"}).status_code == 403
-    assert sub(c, fw["id"])["status"] == "ACTIVE"
+    advance_to(c, 5)
+    alert = alerts(c, kind="reminder")[0]
+    assert c.post(f"/api/alerts/{alert['id']}/act", json={"user_id": intruder, "action": "cancel"}).status_code == 403
+    assert sub(c, pw["id"])["status"] == "ACTIVE" and sub(c, pw["id"])["kept_day"] is None
 
 
 # ---- R6 essential ------------------------------------------------------------------------------
 def test_r6_essential_never_auto_cancelled_but_manual_ok(demo_client: TestClient) -> None:
     c = demo_client
-    main, _ = subscribe(c, "penwright", "penwright-pro")
+    main = subscribe(c)
     c.post(f"/api/subscriptions/{main['id']}/essential", json={"user_id": "priya", "essential": True})
     advance_to(c, 6)
     assert sub(c, main["id"])["status"] == "ACTIVE"
@@ -162,10 +163,9 @@ def test_r6_essential_never_auto_cancelled_but_manual_ok(demo_client: TestClient
 # ---- R7 / corner case 34: per-item results, nothing claimed that PayPal didn't confirm ---------------
 def test_r7_partial_failure_reports_per_item(demo_client: TestClient) -> None:
     c = demo_client
-    main, addon = subscribe(c, "penwright", "penwright-pro", addon_key="penwright-ai-pack")
-    assert addon is not None
+    main, second = subscribe(c), subscribe(c, review=False)
     svc_of(c).gw.mock.inject_failure("cancel", status=500, times=4)  # type: ignore[union-attr]
-    ids = sorted([main["id"], addon["id"]])
+    ids = sorted([main["id"], second["id"]])
     status, body = confirm(c, ids, propose(c, ids)["token"])
     assert status == 200 and not body["all_ok"]
     outcomes = {r["subscription_id"]: r["outcome"] for r in body["results"]}
@@ -178,7 +178,7 @@ def test_r7_partial_failure_reports_per_item(demo_client: TestClient) -> None:
 def test_keep_vs_timer_race_is_consistent(demo_client: TestClient) -> None:
     """Corner case 10: Keep and the Day 6 timer at the same time; whoever writes first wins."""
     c = demo_client
-    main, _ = subscribe(c, "penwright", "penwright-pro")
+    main = subscribe(c)
     advance_to(c, 5)
     svc = svc_of(c)
     from app.clock import advance
@@ -196,7 +196,7 @@ def test_keep_vs_timer_race_is_consistent(demo_client: TestClient) -> None:
 def test_failed_warnings_block_auto_cancel(demo_client: TestClient) -> None:
     """Corner case 12: warning delivery failed -> no auto-cancel; at the billing date an urgent alert only."""
     c = demo_client
-    main, _ = subscribe(c, "penwright", "penwright-pro")
+    main = subscribe(c)
     svc_of(c).notifier.fail_in_app = True
     advance_to(c, 15)
     assert sub(c, main["id"])["status"] == "ACTIVE"
@@ -209,11 +209,11 @@ def test_failed_warnings_block_auto_cancel(demo_client: TestClient) -> None:
 def test_cancel_failure_switches_to_layer2(demo_client: TestClient) -> None:
     """Corner case 4: PayPal cancel fails -> timer FAILED, written notice + ACTION NEEDED link, no "Done"."""
     c = demo_client
-    main, _ = subscribe(c, "penwright", "penwright-pro")
+    main = subscribe(c)
     advance_to(c, 5)
     svc_of(c).gw.mock.inject_failure("cancel", status=503, times=4)  # type: ignore[union-attr]
     advance_to(c, 6)
-    assert sub(c, main["id"])["status"] == "ACTIVE" and not alerts(c, kind="auto_cancelled")
+    assert sub(c, main["id"])["status"] == "ACTIVE" and not alerts(c, kind="cancelled")
     action_needed = alerts(c, kind="action_needed")
     assert action_needed and action_needed[0]["actions"][0]["action"] == "open_autopay"
     assert c.get("/api/notices?user=priya").json()
@@ -222,7 +222,7 @@ def test_cancel_failure_switches_to_layer2(demo_client: TestClient) -> None:
 def test_layer2_merchant_flow(demo_client: TestClient) -> None:
     c = demo_client
     c.post("/api/demo/toggle-fair-trial/penwright")
-    main, _ = subscribe(c, "penwright", "penwright-pro")
+    main = subscribe(c)
     timer = next(t for t in c.get("/api/timers?user=priya").json() if t["subscription_id"] == main["id"])
     assert timer["layer2"] and timer["fire_day"] == 5 and timer["reminder_day"] == 4
     advance_to(c, 5)
@@ -237,7 +237,7 @@ def test_layer2_merchant_flow(demo_client: TestClient) -> None:
 def test_paypal_side_suspend_cancels_timer(demo_client: TestClient) -> None:
     """Corner case 5: the merchant suspends on PayPal's side -> show it, no action, pending timer cancelled."""
     c = demo_client
-    main, _ = subscribe(c, "penwright", "penwright-pro")
+    main = subscribe(c)
     c.portal.call(svc_of(c).gw.mock.set_status, main["paypal_id"], "SUSPENDED")  # type: ignore[attr-defined,union-attr]
     advance_to(c, 1)
     assert sub(c, main["id"])["status"] == "SUSPENDED"

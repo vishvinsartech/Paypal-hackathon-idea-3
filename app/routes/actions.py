@@ -13,7 +13,6 @@ from app.core.actions import cancel_confirmed, propose_cancel
 from app.core.policy import Decision
 from app.core.savings import money_protected, protected_by_currency
 from app.core.services import Services
-from app.integrations.paypal_gateway import Ctx
 from app.models import Alert, Notice, Timer
 from app.store import utcnow
 
@@ -66,29 +65,6 @@ async def _ack(svc: Services, alert_id: str) -> None:
         a.acknowledged_at = a.acknowledged_at or utcnow()
 
 
-async def keep_new_price(svc: Services, user_id: str, sub_id: str) -> dict[str, Any]:
-    """Corner case 36: the user agrees to the new price -> consent snapshot updated, alerts stop."""
-    sub = svc.sub(sub_id)
-    assert sub is not None and sub.consent_snapshot is not None
-    plan = await svc.gw.get_plan(sub.plan_id, Ctx(actor="user", user_id=user_id, subscription_id=sub_id))
-    async with svc.store.aedit("subscriptions") as subs:
-        s = next(x for x in subs.items if x.id == sub_id)
-        snap = s.consent_snapshot
-        assert snap is not None
-        old = snap.price
-        snap.billing_cycles = plan.billing_cycles
-        snap.price = next((c.price for c in plan.billing_cycles if c.price > 0), snap.price)
-        snap.taken_at, snap.sim_day = utcnow(), svc.day
-        new = snap.price
-    async with svc.store.aedit("timers") as timers:
-        for t in timers.items:
-            if t.subscription_id == sub_id and t.kind == "price_rise" and t.status == "PENDING":
-                t.status, t.note = "KEPT", "user agreed to the new price"
-    svc.store.audit.append(actor="user", event="consent_snapshot", user_id=user_id, subscription_id=sub_id,
-                           reason="User agreed to the new price", details={"old": str(old), "new": str(new)})
-    return {"status": "kept", "message": f"Kept at {svc.money(new)}. I won't alert you about this price again."}
-
-
 @router.post("/alerts/{alert_id}/act", response_model=None)
 async def act(alert_id: str, body: ActIn, svc: Services = Depends(get_services)) -> dict[str, Any] | JSONResponse:
     alert = next((a for a in svc.store.load("alerts").items if a.id == alert_id), None)
@@ -108,11 +84,8 @@ async def act(alert_id: str, body: ActIn, svc: Services = Depends(get_services))
     out: dict[str, Any]
     if body.action == "keep":
         out = (await tm.keep(svc, body.user_id, sid)).model_dump()
-    elif body.action == "keep_new_price":
-        out = await keep_new_price(svc, body.user_id, sid)
-    elif body.action in ("cancel", "remove_addon"):
-        card = await propose_cancel(svc, body.user_id, [sid], "Removed add-on you didn't choose"
-                                    if body.action == "remove_addon" else "Cancelled from an alert")
+    elif body.action == "cancel":
+        card = await propose_cancel(svc, body.user_id, [sid], "Cancelled from an alert")
         if isinstance(card, Decision):
             return blocked(card)
         return {"confirm": card.model_dump(mode="json")}  # the UI's tap then calls /api/agent/confirm

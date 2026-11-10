@@ -1,4 +1,4 @@
-// SubGuard shared UI helpers (window.SG): API calls, toasts, the confirmation card, health dots, user switch.
+// SubGuard shared UI helpers (window.SG): API calls, toasts, the confirmation card, health dots.
 (function () {
   "use strict";
   const user = document.body.dataset.user || "priya";
@@ -125,16 +125,6 @@
     } catch (err) {
       el.textContent = "health unavailable";
     }
-  }
-
-  const switcher = document.getElementById("user-switch");
-  if (switcher) {
-    switcher.addEventListener("change", () => {
-      const url = new URL(window.location.href);
-      url.searchParams.set("user", switcher.value);
-      url.pathname = "/";
-      window.location.href = url.toString();
-    });
   }
 
   window.SG = {user, esc, api, toast, onRefresh, refresh, showCard, resultLines, confirmInDialog, proposeCancel};

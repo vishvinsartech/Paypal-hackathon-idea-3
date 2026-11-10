@@ -57,7 +57,6 @@ class RegisterIn(BaseModel):
     merchant_id: str
     plan_key: str
     user_id: str = "priya"
-    addon_of: str | None = None  # local id of the main subscription
     review_id: str | None = None  # the companion's preflight review, linked to the new subscription
 
 
@@ -110,7 +109,7 @@ async def register(body: RegisterIn, request: Request, store: JsonStore = Depend
     svc: Services = request.app.state.services
     try:
         sub, _ = await register_active(svc, view, merchant_id=merchant.id, plan_key=body.plan_key,
-                                       user_id=body.user_id, addon_of=body.addon_of, review_id=body.review_id)
+                                       user_id=body.user_id, review_id=body.review_id)
     except OwnershipError as exc:
         raise HTTPException(409, str(exc)) from None
     return sub

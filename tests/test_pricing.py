@@ -17,10 +17,9 @@ from app.store import JsonStore
 def test_defaults_are_the_spec_numbers() -> None:
     p = Pricing()
     assert (p.penwright_trial_days, p.penwright_intro_price, p.penwright_intro_months) == (14, Decimal("24.99"), 3)
-    assert (p.penwright_step_up_price, p.penwright_addon_price) == (Decimal("49.99"), Decimal("9.99"))
+    assert p.penwright_step_up_price == Decimal("49.99")
     assert (p.penwright_notice_days, p.penwright_export_limit, p.penwright_first_charge_day) == (7, 3, 15)
-    assert (p.framewise_price, p.framewise_rise_price) == (Decimal("12.00"), Decimal("19.00"))
-    assert (p.lumen_monthly_price, p.lumen_yearly_price) == (Decimal("20.00"), Decimal("200.00"))
+    assert not {"penwright_addon_price", "framewise_price", "lumen_monthly_price"} & set(Pricing.model_fields)
     pro = p.plans_for("penwright")[0]
     cycles = [(c.tenure_type, c.price, c.interval_unit, c.interval_count, c.total_cycles) for c in pro.billing_cycles]
     assert cycles == [
@@ -45,7 +44,7 @@ def test_env_vars_override_pricing(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
 
 
 @pytest.mark.parametrize(("var", "value"), [
-    ("PENWRIGHT_INTRO_PRICE", "-5"), ("PENWRIGHT_INTRO_PRICE", "24.999"), ("FRAMEWISE_PRICE", "abc"),
+    ("PENWRIGHT_INTRO_PRICE", "-5"), ("PENWRIGHT_INTRO_PRICE", "24.999"), ("PENWRIGHT_STEP_UP_PRICE", "abc"),
     ("PENWRIGHT_TRIAL_DAYS", "0"), ("DEMO_CURRENCY", "usd"),
 ])
 def test_invalid_values_fail_with_clear_message(monkeypatch: pytest.MonkeyPatch, var: str, value: str) -> None:
@@ -59,8 +58,7 @@ def test_invalid_values_fail_with_clear_message(monkeypatch: pytest.MonkeyPatch,
 def custom_client(data_dir: Path) -> TestClient:
     s = Settings(_env_file=None, app_mode="mock", data_dir=data_dir,  # type: ignore[call-arg]
                  penwright_trial_days=10, penwright_intro_price=Decimal("29.99"),
-                 penwright_step_up_price=Decimal("59"), penwright_addon_price=Decimal("4.50"),
-                 penwright_notice_days=5, framewise_price=Decimal("15"), lumen_yearly_price=Decimal("180"))
+                 penwright_step_up_price=Decimal("59"), penwright_notice_days=5)
     with TestClient(create_app(s)) as c:
         yield c  # type: ignore[misc]
 
@@ -70,10 +68,8 @@ def test_custom_prices_flow_to_plans_shop_and_checkout(custom_client: TestClient
     pen = c.get("/shop/penwright").text
     assert "Start your 10-day free trial — $0 today" in pen
     assert "Penwright Pro at $29.99/month, with the first charge on day 11" in pen
-    assert "becomes $59/month" in pen and "$4.50/month" in pen and "at least 5 days before" in pen
+    assert "becomes $59/month" in pen and "at least 5 days before" in pen
     assert "$24.99" not in pen and "$49.99" not in pen
-    assert "$15/month" in c.get("/shop/framewise").text
-    assert "$180/year" in c.get("/shop/lumen").text
     assert "(so the real deadline is Day 5)" in c.get("/shop").text  # 11 - 5 - 1
 
     created = c.post("/api/checkout/create", json={"merchant_id": "penwright", "plan_key": "penwright-pro"}).json()
@@ -92,14 +88,14 @@ def test_changed_prices_warn_until_reset(data_dir: Path) -> None:
     old.check_pricing()
     assert old.warnings == []
 
-    new = JsonStore(runtime, seed, pricing=Pricing(framewise_price=Decimal("14")))
+    new = JsonStore(runtime, seed, pricing=Pricing(penwright_intro_price=Decimal("29.99")))
     new.check_pricing()
     assert any("make reset" in w for w in new.warnings)
-    framewise = next(mc for mc in new.load("merchants").items if mc.id == "framewise")
-    assert framewise.plans[0].billing_cycles[0].price == Decimal("12.00")  # stale until reset
+    penwright = next(mc for mc in new.load("merchants").items if mc.id == "penwright")
+    assert penwright.plans[0].billing_cycles[1].price == Decimal("24.99")  # stale until reset
 
     new.reset()
     new.check_pricing()
     assert new.warnings == []
-    framewise = next(mc for mc in new.load("merchants").items if mc.id == "framewise")
-    assert framewise.plans[0].billing_cycles[0].price == Decimal("14")
+    penwright = next(mc for mc in new.load("merchants").items if mc.id == "penwright")
+    assert penwright.plans[0].billing_cycles[1].price == Decimal("29.99")

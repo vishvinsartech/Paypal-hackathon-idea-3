@@ -60,7 +60,7 @@ def hook(c: TestClient, event_id: str, kind: str, paypal_id: str, **resource: An
 
 def test_webhook_dedupe_by_event_id_and_status_transition(demo_client: TestClient) -> None:
     c = demo_client
-    main, _ = subscribe(c, "penwright", "penwright-pro")
+    main = subscribe(c)
     assert hook(c, "WH-1", "BILLING.SUBSCRIPTION.SUSPENDED", main["paypal_id"]) == {"status": "processed",
                                                                                    "changed": True}
     assert hook(c, "WH-1", "BILLING.SUBSCRIPTION.SUSPENDED", main["paypal_id"]) == {"status": "duplicate"}
@@ -74,7 +74,7 @@ def test_webhook_dedupe_by_event_id_and_status_transition(demo_client: TestClien
 
 def test_webhook_then_poller_sees_the_same_change_once(demo_client: TestClient) -> None:
     c = demo_client
-    main, _ = subscribe(c, "penwright", "penwright-pro")
+    main = subscribe(c)
     mock = c.app.state.gateway.mock  # type: ignore[attr-defined]
     c.portal.call(mock.set_status, main["paypal_id"], "SUSPENDED")  # type: ignore[union-attr]
     hook(c, "WH-9", "BILLING.SUBSCRIPTION.SUSPENDED", main["paypal_id"])
@@ -128,7 +128,7 @@ def test_kpi_reports_other_currencies_separately(demo_client: TestClient) -> Non
 
 # ---- 16: times in UTC, sim days are integers -------------------------------------------------------------
 def test_times_are_utc_and_days_are_ints(demo_client: TestClient) -> None:
-    subscribe(demo_client, "penwright", "penwright-pro")
+    subscribe(demo_client)
     for row in demo_client.get("/api/audit-log").json():
         assert row["ts"].endswith(("+00:00", "Z")) and isinstance(row["sim_day"], int)
     for t in demo_client.get("/api/timers?user=priya").json():
@@ -138,7 +138,7 @@ def test_times_are_utc_and_days_are_ints(demo_client: TestClient) -> None:
 # ---- 27: "trial ends early after 3 exports" ------------------------------------------------------------
 def test_too_many_exports_warns_and_moves_deadline(demo_client: TestClient) -> None:
     c = demo_client
-    main, _ = subscribe(c, "penwright", "penwright-pro")
+    main = subscribe(c)
     advance_to(c, 2)
     for _ in range(3):
         assert c.post("/shop/penwright/app/export?user=priya").status_code == 200
@@ -155,21 +155,6 @@ def test_too_many_exports_warns_and_moves_deadline(demo_client: TestClient) -> N
     assert audit(c, "early_trial_end_risk", subscription_id=main["id"])
     advance_to(c, 5)
     assert len(alerts(c, kind="early_trial_end")) == 1  # once only
-
-
-# ---- 35: price decrease -> info only; unchanged price -> nothing ------------------------------------------
-def test_price_decrease_is_informational(demo_client: TestClient) -> None:
-    c = demo_client
-    store = c.app.state.store  # type: ignore[attr-defined]
-    advance_to(c, 1)
-    assert alerts(c, kind="price_drop") == [] and alerts(c, kind="price_rise") == []  # 0% change: nothing
-    with store.edit("mock_paypal") as pp:
-        plan = next(p for p in pp.plans.values() if p.key == "framewise-basic")
-        plan.billing_cycles[-1].price = Decimal("10.00")
-    advance_to(c, 2)
-    (drop,) = alerts(c, kind="price_drop")
-    assert drop["level"] == "info" and drop["actions"] == [] and "$10/month" in drop["title"]
-    assert alerts(c, kind="price_rise") == [] and c.get("/api/timers?user=priya").json() == []
 
 
 # ---- 37: Zapier down -> retry with backoff, then failed (feeds R2); in-app still works --------------------

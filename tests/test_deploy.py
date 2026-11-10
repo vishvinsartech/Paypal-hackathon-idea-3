@@ -28,7 +28,7 @@ def test_render_blueprint() -> None:
 def test_mock_mode_writes_the_outbox(demo_client: TestClient) -> None:
     """Mock mode: email/SMS for warning alerts land in data/runtime/outbox/ with the Zapier payload shape."""
     c = demo_client
-    subscribe(c, "penwright", "penwright-pro")
+    subscribe(c)
     advance_to(c, 5)
     (reminder,) = alerts(c, kind="reminder")
     assert reminder["delivery"] == {"in_app": "shown", "email": "mocked", "sms": "mocked"}

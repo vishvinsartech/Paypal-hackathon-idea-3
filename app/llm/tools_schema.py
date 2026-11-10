@@ -22,10 +22,6 @@ class UsageArgs(SubscriptionArg):
     days: int = Field(30, ge=1, le=365, description="How many past sim days to count")
 
 
-class MerchantArg(BaseModel):
-    merchant: str = Field(description="Merchant id: penwright | framewise | lumen")
-
-
 class ProposeCancelArgs(BaseModel):
     subscription_ids: list[str] = Field(description="Subscriptions to cancel (max 10)")
     reason: str = Field(description="Short reason shown to the user")
@@ -62,8 +58,6 @@ TOOLS: list[ToolSpec] = [
     ToolSpec(name="get_usage", description="How often the user opened the app in the last N days.", args=UsageArgs),
     ToolSpec(name="get_savings_estimate", description="Money at stake per year if this subscription continues.",
              args=SubscriptionArg),
-    ToolSpec(name="compare_billing_options", description="Compare monthly vs yearly billing for a merchant.",
-             args=MerchantArg),
     ToolSpec(name="review_subscription", description="Get the fine-print review and risk score.",
              args=SubscriptionArg),
     ToolSpec(name="propose_cancel", description="Propose cancelling subscriptions. Returns a confirmation card; "

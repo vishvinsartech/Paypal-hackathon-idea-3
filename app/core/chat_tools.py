@@ -17,11 +17,8 @@ from app.core import timers as tm
 from app.core.actions import ConfirmCard, propose_cancel, year_cost
 from app.core.alerts import send_alert
 from app.core.policy import Decision
-from app.core.savings import compare_billing
 from app.core.services import Services
 from app.core.usage import days_used, last_open_day, opens_between, times
-from app.integrations.paypal_gateway import Ctx
-from app.integrations.paypal_types import PayPalError
 from app.llm.base import ToolCall, ToolResult
 from app.llm.tools_schema import TOOLS
 from app.models import Reminder, Subscription
@@ -55,7 +52,7 @@ def _sub_row(svc: Services, sub: Subscription) -> dict[str, Any]:
     price = sub.consent_snapshot.price if sub.consent_snapshot else None
     return {"subscription_id": sub.id, "merchant_id": merchant.id, "merchant": merchant.name,
             "merchant_about": merchant.tagline, "plan": plan.name if plan else sub.plan_key,
-            "plan_key": sub.plan_key, "addon": bool(sub.addon_of), "status": sub.status, "essential": sub.essential,
+            "plan_key": sub.plan_key, "status": sub.status, "essential": sub.essential,
             "next_billing_day": sub.next_billing_day,
             "agreed_price_text": svc.money(price) if price is not None else None}
 
@@ -88,28 +85,6 @@ async def t_savings(svc: Services, user_id: str, a: dict[str, Any]) -> dict[str,
     per_year = await year_cost(svc, sub)
     return {"merchant": svc.merchant(sub.merchant_id).name, "per_year": str(per_year),
             "per_year_text": svc.money(per_year), "basis": "current PayPal plan, first paid year"}
-
-
-async def t_compare(svc: Services, user_id: str, a: dict[str, Any]) -> dict[str, Any]:
-    try:
-        merchant = svc.merchant(str(a["merchant"]).lower())
-    except StopIteration:
-        raise ToolError("Unknown merchant.") from None
-    plans = {p.billing_cycles[-1].interval_unit: p for p in merchant.plans if not p.addon}
-    if "MONTH" not in plans or "YEAR" not in plans:
-        raise ToolError(f"{merchant.name} doesn't offer both monthly and yearly billing.")
-    ctx = Ctx(actor="agent", user_id=user_id, merchant=merchant)
-    try:
-        monthly = await svc.gw.get_plan(svc.gw.plan_id(plans["MONTH"].key), ctx)
-        yearly = await svc.gw.get_plan(svc.gw.plan_id(plans["YEAR"].key), ctx)
-    except PayPalError as exc:
-        raise ToolError(f"PayPal didn't return the plans ({exc.summary()}).") from None
-    cmp = compare_billing(monthly.billing_cycles, yearly.billing_cycles)
-    out: dict[str, Any] = {"merchant": merchant.name}
-    for k, v in cmp.items():
-        out[k], out[f"{k}_text"] = str(v), svc.money(v)
-    out["yearly_terms"] = "Paid up front; no partial refund if cancelled (from the merchant's terms)."
-    return out
 
 
 async def t_review(svc: Services, user_id: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -164,11 +139,11 @@ async def t_propose(svc: Services, user_id: str, a: dict[str, Any]) -> tuple[dic
 
 
 HANDLERS = {"list_subscriptions": t_list, "get_subscription": t_get, "get_usage": t_usage,
-            "get_savings_estimate": t_savings, "compare_billing_options": t_compare,
+            "get_savings_estimate": t_savings,
             "review_subscription": t_review, "keep_subscription": t_keep, "schedule_reminder": t_reminder,
             "send_alert": t_alert}
 LABELS = {"list_subscriptions": "subscriptions", "get_subscription": "subscription", "get_usage": "usage",
-          "get_savings_estimate": "savings", "compare_billing_options": "billing options",
+          "get_savings_estimate": "savings",
           "review_subscription": "fine-print review", "propose_cancel": "confirmation card",
           "keep_subscription": "keep", "schedule_reminder": "reminder", "send_alert": "alert"}
 

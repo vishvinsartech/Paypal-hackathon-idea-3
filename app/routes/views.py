@@ -43,19 +43,19 @@ def sub_view(svc: Services, sub: Subscription, timers: list[Timer]) -> dict[str,
     merchant = svc.merchant(sub.merchant_id)
     plan = next((p for p in merchant.plans if p.key == sub.plan_key), None)
     snap = sub.consent_snapshot
-    review = tm.review_for(svc, sub) if not sub.addon_of else None
+    review = tm.review_for(svc, sub)
     timer = _timer(timers, sub.id)
     trial_end, step_day = step_up(snap.billing_cycles, sub.signup_day) if snap else (None, None)
     prices = [c.price for c in snap.billing_cycles if c.price > 0] if snap else []
     timer_text = None
     if timer and timer.status == "PENDING":
-        timer_text = f"Cancel on Day {timer.fire_day} unless you keep it"
+        timer_text = f"Check-in Day {timer.reminder_day} · cancel Day {timer.fire_day} unless you keep it"
     elif timer:
         timer_text = {"KEPT": "Kept", "FIRED": f"Fired Day {timer.fire_day}", "FAILED": "Failed: needs you",
                       "CANCELLED": "Not needed"}[timer.status]
     return {
         "id": sub.id, "paypal_id": sub.paypal_id, "merchant_id": merchant.id, "merchant": merchant.name,
-        "plan": plan.name if plan else sub.plan_key, "plan_key": sub.plan_key, "addon": bool(sub.addon_of),
+        "plan": plan.name if plan else sub.plan_key, "plan_key": sub.plan_key,
         "status": sub.status, "essential": sub.essential, "fair_trial": merchant.fair_trial_member,
         "signup_day": sub.signup_day, "next_billing_day": sub.next_billing_day,
         "price_text": f"{svc.money(snap.price)}/{_per(snap.billing_cycles)}" if snap else "",
@@ -68,7 +68,8 @@ def sub_view(svc: Services, sub: Subscription, timers: list[Timer]) -> dict[str,
         "deadline_day": timer.deadline_day if timer and timer.kind == "trial" else None,
         "timer": None if timer is None else {"fire_day": timer.fire_day, "status": timer.status,
                                              "kind": timer.kind, "layer2": timer.layer2},
-        "timer_text": timer_text, "cancelled_day": sub.cancelled_day, "cancelled_by": sub.cancelled_by,
+        "timer_text": timer_text, "kept_day": sub.kept_day,
+        "cancelled_day": sub.cancelled_day, "cancelled_by": sub.cancelled_by,
     }
 
 

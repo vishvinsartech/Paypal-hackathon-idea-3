@@ -15,13 +15,14 @@
   });
 
   // ---- alerts -------------------------------------------------------------------------------
-  const ALERT_TESTID = {price_rise: "alert-price-rise", blocked_charge: "blocked-charge"};
-  const BTN_TESTID = {keep: "alert-keep", keep_new_price: "alert-keep", cancel: "alert-cancel", remove_addon: "addon-remove-yes"};
+  const ALERT_TESTID = {timer_set: "alert-timer-set", reminder: "alert-trial-check", cancelled: "alert-done",
+                        blocked_charge: "blocked-charge"};
+  const BTN_TESTID = {keep: "alert-keep", cancel: "alert-cancel"};
 
   function alertHtml(a) {
     const done = !!a.acknowledged_at;
     const buttons = done ? `<span class="muted small">Handled</span>` : a.actions.map((b) =>
-      `<button class="btn btn-sm ${b.action === "cancel" || b.action === "remove_addon" ? "btn-danger" : "btn-ghost"}" data-alert="${esc(a.id)}" data-action="${esc(b.action)}" data-testid="${BTN_TESTID[b.action] || "alert-" + esc(b.action)}">${esc(b.label)}</button>`).join("");
+      `<button class="btn btn-sm ${b.action === "cancel" ? "btn-danger" : "btn-ghost"}" data-alert="${esc(a.id)}" data-action="${esc(b.action)}" data-testid="${BTN_TESTID[b.action] || "alert-" + esc(b.action)}">${esc(b.label)}</button>`).join("");
     const delivery = Object.entries(a.delivery || {}).map(([k, v]) => `${k}: ${v}`).join(" · ");
     return `<article class="alert alert-${esc(a.level)}${done ? " is-done" : ""}" data-testid="${ALERT_TESTID[a.kind] || "alert-" + esc(a.kind)}">
       <header><strong>${esc(a.title)}</strong><span class="muted small">Day ${a.sim_day}</span></header>
@@ -114,7 +115,6 @@
     if (!b) return;
     if (b.dataset.advance) demo(`/api/demo/advance?days=${b.dataset.advance}`);
     else if (b.dataset.jump) demo(`/api/demo/advance?to_day=${b.dataset.jump}`);
-    else if (b.id === "price-rise") demo("/api/demo/price-rise", "Framewise raised its PayPal plan price.");
     else if (b.id === "toggle-fair-trial") demo(`/api/demo/toggle-fair-trial/${document.getElementById("fair-trial-merchant").value}`, "Fair Trial membership toggled.");
     else if (b.id === "demo-reset" && confirm("Reset the demo? This wipes the runtime data.")) {
       api("/api/demo/reset", {method: "POST"}).then(() => location.reload()).catch((e) => toast(e.message, {level: "urgent"}));

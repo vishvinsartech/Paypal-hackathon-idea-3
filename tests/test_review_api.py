@@ -16,7 +16,7 @@ def test_static_capture_sees_the_tricks(settings: Settings) -> None:
     hidden = {b.testid: b.hidden_reason for b in cap.blocks if b.hidden}
     assert hidden.get("tos-hidden") == "display:none" and hidden.get("shop-terms-body") == "collapsed"
     assert cap.linked_pages == ["/shop/penwright/terms"]
-    assert [c.checked for c in cap.checkboxes if c.testid == "shop-addon"] == [True]
+    assert not any(c.checked for c in cap.checkboxes)  # no pre-ticked add-on since D-090
     assert "Simulates the SubGuard browser extension" not in cap.full_text  # our own note is ignored
 
 
@@ -32,17 +32,18 @@ def test_preflight_penwright(client: TestClient) -> None:
     assert {"llm_call", "review_run", "prompt_injection_flagged"} <= set(events)
 
 
-def test_preflight_by_plan_id_and_lumen(client: TestClient) -> None:
-    body = client.post("/api/review/preflight", json={"merchant_url": "/shop/lumen",
-                                                      "plan_id": "P-MOCK-LUMEN_MONTHLY"}).json()
-    assert abs(body["risk_score"] - 15) <= 5 and body["plan_key"] == "lumen-monthly"
+def test_preflight_by_plan_id(client: TestClient) -> None:
+    body = client.post("/api/review/preflight", json={"merchant_url": "/shop/penwright",
+                                                      "plan_id": "P-MOCK-PENWRIGHT_PRO"}).json()
+    assert abs(body["risk_score"] - 87) <= 5 and body["plan_key"] == "penwright-pro"
 
 
 def test_preflight_rejects_other_urls(client: TestClient) -> None:
     assert client.post("/api/review/preflight", json={"merchant_url": "https://evil.example/x"}).status_code == 400
     assert client.post("/api/review/preflight", json={"merchant_url": "/shop/nobody"}).status_code == 404
-    assert client.post("/api/review/preflight", json={"merchant_url": "/shop/lumen",
-                                                      "plan_key": "penwright-pro"}).status_code == 404
+    assert client.post("/api/review/preflight", json={"merchant_url": "/shop/lumen"}).status_code == 404
+    assert client.post("/api/review/preflight", json={"merchant_url": "/shop/penwright",
+                                                      "plan_key": "lumen-monthly"}).status_code == 404
 
 
 def test_register_links_the_preflight_review(client: TestClient) -> None:
@@ -55,12 +56,12 @@ def test_register_links_the_preflight_review(client: TestClient) -> None:
         "user_id": "priya", "review_id": review_id}).json()
     review = client.get(f"/api/reviews/{review_id}").json()
     assert review["subscription_id"] == sub["id"]
-    _, other = buy(client, plan_key="lumen-monthly", merchant="lumen")
+    _, other = buy(client)  # a second subscription without a preflight review still registers
     assert other.status_code == 200  # type: ignore[attr-defined]
 
 
 def test_shop_pages_load_the_companion(client: TestClient) -> None:
-    for page in ("penwright", "framewise", "lumen"):
-        html = client.get(f"/shop/{page}").text
-        assert "/static/companion.js" in html and "Simulates the SubGuard browser extension" in html
-    assert "companion-overlay" in client.get("/static/companion.js").text
+    html = client.get("/shop/penwright").text
+    assert "/static/companion.js" in html and "Simulates the SubGuard browser extension" in html
+    js = client.get("/static/companion.js").text
+    assert "companion-overlay" in js and "I'll check with you before your trial runs out." in js

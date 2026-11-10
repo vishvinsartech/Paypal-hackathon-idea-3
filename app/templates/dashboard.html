@@ -6,9 +6,8 @@
   <a class="btn" href="/shop/penwright?user={{ current_user.id }}" target="_blank" rel="noopener" data-testid="demo-open-shop">Open Penwright shop</a>
   <button class="btn btn-ghost" data-advance="1" data-testid="sim-plus-1">+1 day</button>
   <span class="demo-group" role="group" aria-label="Jump to day">
-    {% for d in [5, 6, 15, 21, 27] %}<button class="btn btn-ghost" data-jump="{{ d }}" data-testid="sim-jump-{{ d }}">Day {{ d }}</button>{% endfor %}
+    {% for d in [5, 6, 15] %}<button class="btn btn-ghost" data-jump="{{ d }}" data-testid="sim-jump-{{ d }}">Day {{ d }}</button>{% endfor %}
   </span>
-  <button class="btn btn-ghost" id="price-rise" data-testid="sim-price-rise">Framewise price rise</button>
   <span class="demo-group">
     <label class="sr-only" for="fair-trial-merchant">Merchant</label>
     <select id="fair-trial-merchant">{% for m in merchants %}<option value="{{ m.id }}">{{ m.name }}</option>{% endfor %}</select>
@@ -67,7 +66,7 @@
     <h2 id="audit-h">Audit log</h2>
     <span id="chain" class="chain" data-testid="audit-chain">checking…</span>
     <label class="sr-only" for="audit-filter">Filter audit log</label>
-    <input id="audit-filter" type="search" placeholder="Filter, e.g. R2">
+    <input id="audit-filter" type="search" placeholder="Filter, e.g. R2" data-testid="audit-filter">
     <button class="btn btn-ghost" id="audit-export" data-testid="audit-log-export">Export CSV</button>
     <a class="small" href="/api/audit-log.csv">server CSV</a>
   </div>
@@ -79,12 +78,11 @@
   <header class="chat-head">
     <strong>SubGuard chat</strong>
     <span class="badge badge-llm" data-testid="chat-provider">{{ llm.name }} · {{ llm.model }}</span>
-    <button class="btn btn-ghost btn-sm" id="chat-close" aria-label="Close chat">✕</button>
+    <button class="btn btn-ghost btn-sm" id="chat-close" aria-label="Close chat" data-testid="chat-close">✕</button>
   </header>
   <div class="chat-log" id="chat-log" aria-live="polite"></div>
   <div class="chat-suggest" id="chat-suggest">
-    <button class="btn btn-ghost btn-sm">Is it still worth it? I barely used it.</button>
-    <button class="btn btn-ghost btn-sm">Should I switch to yearly?</button>
+    <button class="btn btn-ghost btn-sm">Should I keep Penwright?</button>
     <button class="btn btn-ghost btn-sm">Cancel Penwright</button>
   </div>
   <form class="chat-form" id="chat-form">

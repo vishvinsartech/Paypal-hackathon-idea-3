@@ -53,10 +53,9 @@ def auditor(store: JsonStore, provider: object, timeout: float = 5.0) -> Auditor
 def run_review(store: JsonStore, provider: object, capture: PageCapture, key: str, *, fair_trial: bool = True,
                plan: PlanView | None = None, timeout: float = 5.0) -> ReviewData:
     plan = plan or plan_for(key)
-    addons = [plan_for("penwright-ai-pack")] if key == "penwright-pro" else []
     return asyncio.run(auditor(store, provider, timeout).review(
         capture, plan, merchant=merchant(store, key.split("-")[0], fair_trial), plan_key=key, signup_day=0,
-        user_id="priya", addon_plans=addons))
+        user_id="priya"))
 
 
 class ScriptedProvider:

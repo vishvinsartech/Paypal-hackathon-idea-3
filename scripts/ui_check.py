@@ -1,9 +1,9 @@
-"""Milestone 6 browser check: the full Story A in mock mode, driven through the real UI with Playwright.
+"""Browser check: the demo story (Priya + Penwright) in mock mode, driven through the real UI with Playwright.
 
 Starts its own mock server on a free port with a throwaway DATA_DIR (unless --base-url is given), then:
-shop -> companion (risk ~87, Continue) -> add-on removed (confirm card) -> timer chip -> Day 5 toast ->
-Day 6 auto-cancel + notice -> Day 15 blocked charge -> Day 21 price rise -> chat "$228/yr" card -> confirm ->
-KPI $872.76 -> audit-log CSV export -> subscription page. Fails on any console error or page error.
+shop -> companion (risk ~87, summary, "I'll check with you...", Continue) -> timer shown -> Day 5 check-in toast ->
+chat "Should I keep Penwright?" -> Cancel -> confirm card $524.88/yr -> CANCELLED + notice -> KPI $524.88 ->
+Day 15 blocked charge -> audit-log CSV export -> subscription page. Fails on any console error or page error.
 
 Usage: python scripts/ui_check.py [--base-url http://127.0.0.1:8000] [--headed] [--shots DIR]
 """
@@ -69,15 +69,16 @@ def step(msg: str) -> None:
     print(f"  - {msg}", flush=True)
 
 
-def story_a(base: str, headed: bool) -> None:
+def story(base: str, headed: bool) -> None:
     httpx.post(f"{base}/api/demo/reset", timeout=30).raise_for_status()
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=not headed)
         ctx = browser.new_context(viewport={"width": 1440, "height": 1000}, accept_downloads=True)
         dash = watch(ctx.new_page())
         dash.goto(f"{base}/?demo=1")
-        expect(dash.get_by_test_id("subs-grid").locator(".ag-row")).to_have_count(1)
-        step("dashboard loaded with Framewise in the grid")
+        expect(dash.get_by_test_id("timeline")).to_contain_text("No subscriptions yet.")
+        expect(dash.get_by_test_id("user-switch")).to_have_count(0)
+        step("dashboard loaded: Priya, no subscriptions yet, no user switcher")
 
         with ctx.expect_page() as shop_info:
             dash.get_by_test_id("demo-open-shop").click()
@@ -91,57 +92,55 @@ def story_a(base: str, headed: bool) -> None:
         assert abs(score - 87) <= 5, score
         for t in ("NOTICE_PERIOD", "TERMS_MISMATCH", "PROMPT_INJECTION_ATTEMPT"):
             expect(shop.get_by_test_id(f"finding-{t}").first).to_be_visible()
+        expect(shop.get_by_test_id("companion-summary")).to_be_visible()
+        expect(shop.get_by_test_id("companion-promise")).to_have_text("I'll check with you before your trial runs out.")
         shot(shop, "01_companion")
         shop.get_by_test_id("companion-continue").click()
         expect(shop.get_by_test_id("shop-open-subguard")).to_be_visible(timeout=15000)
-        step(f"companion: risk {score}, findings shown, Continue -> subscribed (+ add-on)")
+        step(f"Day 0: companion risk {score}, summary + promise shown, Continue -> subscribed")
 
         dash.bring_to_front()
         dash.reload()
-        dash.get_by_test_id("addon-remove-yes").click()
-        card = dash.get_by_test_id("confirm-card")
-        expect(card).to_contain_text("$119.88/yr")
-        card.get_by_test_id("confirm-button").click()
-        expect(dash.get_by_test_id("status-penwright-addon")).to_have_text("CANCELLED")
-        expect(dash.get_by_test_id("timer-chip")).to_contain_text("Cancel on Day 6 unless you keep it")
-        step("add-on removed via confirm card; timer chip shows Day 6")
+        promise = "I'll check with you before your trial runs out."
+        expect(dash.get_by_test_id("alert-timer-set")).to_contain_text(promise)
+        expect(dash.get_by_test_id("timer-chip")).to_contain_text("Check-in Day 5")
+        step("Day 0: timer shown (check-in Day 5, cancel Day 6)")
 
         dash.get_by_test_id("sim-jump-5").click()
-        expect(dash.get_by_test_id("toast-alert").filter(has_text="real deadline is in 2 days")).to_be_visible()
-        step("Day 5: reminder toast")
-        dash.get_by_test_id("sim-jump-6").click()
+        expect(dash.get_by_test_id("toast-alert").filter(has_text="Your Penwright trial is ending")).to_be_visible()
+        check = dash.get_by_test_id("alert-trial-check")
+        expect(check).to_contain_text("Your real last day to cancel is Day 7. You've opened it twice.")
+        expect(check.get_by_test_id("alert-keep")).to_be_visible()
+        step("Day 5: keep-or-cancel check-in (toast + alert with Keep / Cancel)")
+
+        dash.get_by_test_id("chat-open").click()
+        dash.get_by_test_id("chat-input").fill("Should I keep Penwright?")
+        dash.get_by_test_id("chat-send").click()
+        expect(dash.locator("#chat-log")).to_contain_text("the first paid year costs $524.88")
+        shot(dash, "02_chat")
+        dash.locator("#chat-close").click()
+        step("chat: 'Should I keep Penwright?' answered with $524.88 and Day 7")
+
+        check.get_by_test_id("alert-cancel").click()
+        card = dash.get_by_test_id("confirm-card")
+        expect(card).to_contain_text("$524.88/yr")
+        card.get_by_test_id("confirm-button").click()
         expect(dash.get_by_test_id("status-penwright")).to_have_text("CANCELLED")
+        expect(dash.get_by_test_id("alert-done")).to_contain_text("Done. You won't be charged.")
         expect(dash.get_by_test_id("cancellation-notice").first).to_contain_text("cancel@penwright.example")
-        shot(dash, "02_day6")
-        step("Day 6: auto-cancelled, cancellation notice stored")
+        expect(dash.locator("#kpi-protected")).to_have_text("$524.88/yr")
+        shot(dash, "03_cancelled")
+        step("Cancel -> confirm card $524.88/yr -> CANCELLED, notice stored, Money protected $524.88/yr")
+
         dash.get_by_test_id("sim-jump-15").click()
         expect(dash.get_by_test_id("blocked-charge").first).to_contain_text("First charge due today: blocked")
         step("Day 15: blocked charge")
-        dash.get_by_test_id("sim-jump-21").click()
-        expect(dash.get_by_test_id("demo-day")).to_have_text("21")
-        dash.get_by_test_id("sim-price-rise").click()
-        expect(dash.get_by_test_id("alert-price-rise")).to_contain_text("$19")
-        expect(dash.get_by_test_id("alert-price-rise").get_by_test_id("alert-keep")).to_have_text("Keep at $19")
-        step("Day 21: price-rise alert with Keep at $19 / Cancel")
-
-        dash.get_by_test_id("chat-open").click()
-        dash.get_by_test_id("chat-input").fill("Is it still worth it? I barely used it.")
-        dash.get_by_test_id("chat-send").click()
-        chat_card = dash.locator("#chat").get_by_test_id("confirm-card")
-        expect(chat_card).to_contain_text("$228/yr")
-        answer = "You opened it 3 times this month. Keeping it costs $228 a year."
-        expect(dash.locator("#chat-log")).to_contain_text(answer)
-        shot(dash, "03_chat_card")
-        chat_card.get_by_test_id("confirm-button").click()
-        expect(dash.get_by_test_id("chat-done")).to_contain_text("Framewise: cancelled in PayPal.")
-        expect(dash.locator("#kpi-protected")).to_have_text("$872.76/yr")
-        step("chat: $228/yr card -> confirmed -> done; Money protected $872.76/yr")
 
         expect(dash.get_by_test_id("audit-chain")).to_contain_text("chain verified")
         with dash.expect_download() as dl_info:
             dash.get_by_test_id("audit-log-export").click()
         csv_text = Path(dl_info.value.path()).read_text(encoding="utf-8")
-        assert "paypal_cancel" in csv_text and "R2" in csv_text, "CSV export missing rows"
+        assert "paypal_cancel" in csv_text and "R1" in csv_text, "CSV export missing rows"
         step(f"audit log CSV exported ({len(csv_text.splitlines())} lines), chain verified")
 
         sub_id = next(s["id"] for s in httpx.get(f"{base}/api/subscriptions?user=priya").json()
@@ -154,12 +153,6 @@ def story_a(base: str, headed: bool) -> None:
         expect(page.locator("#sub-audit-grid .ag-row").first).to_be_visible()
         shot(page, "04_subscription")
         step("subscription page: findings grid, notice, audit entries")
-
-        john = watch(ctx.new_page())
-        john.goto(f"{base}/?user=john")
-        expect(john.get_by_test_id("subs-grid").locator(".ag-row")).to_have_count(1)
-        expect(john.get_by_test_id("status-lumen")).to_have_text("ACTIVE")
-        step("John's dashboard: Lumen active")
         browser.close()
 
 
@@ -179,7 +172,7 @@ def main() -> int:
         proc, base, data = start_server()
     print(f"UI check against {base}")
     try:
-        story_a(base, args.headed)
+        story(base, args.headed)
     finally:
         if proc is not None:
             proc.terminate()
@@ -189,7 +182,7 @@ def main() -> int:
     if errors:
         print("Console/page errors:\n  " + "\n  ".join(errors))
         return 1
-    print("UI check passed: Story A in the browser, no console errors.")
+    print("UI check passed: the demo story in the browser, no console errors.")
     return 0
 
 

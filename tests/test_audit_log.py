@@ -82,7 +82,7 @@ def test_mask_secrets_leaves_plain_values() -> None:
 
 def test_query_filters(store: JsonStore) -> None:
     _fill(store, 2)
-    store.audit.append(actor="user", event="keep", user_id="john")
+    store.audit.append(actor="user", event="keep", user_id="intruder")
     assert len(store.audit.query(user="priya")) == 2
     assert len(store.audit.query(event="keep")) == 1
     assert len(store.audit.query(since_day=1)) == 0

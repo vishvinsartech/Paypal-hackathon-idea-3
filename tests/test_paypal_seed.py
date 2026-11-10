@@ -57,15 +57,14 @@ async def test_seed_creates_everything_then_reuses(store: JsonStore) -> None:
     sdk, rest = FakeSdk(), FakeRest()
     items = await seeder(store, sdk, rest).run()
     ids = store.load("sandbox_ids")
-    assert set(ids.products) == {"penwright", "framewise", "lumen"}
-    assert set(ids.plans) == {"penwright-pro", "penwright-ai-pack", "framewise-basic", "lumen-monthly",
-                              "lumen-yearly"}
-    assert all(i.action == "created" for i in items) and len(items) == 8
+    assert set(ids.products) == {"penwright"}
+    assert set(ids.plans) == {"penwright-pro"}
+    assert all(i.action == "created" for i in items) and len(items) == 2
     again = await seeder(store, sdk, rest).run()
     assert all(i.action == "reused" for i in again)
-    assert len(sdk.plans) == 5 and len(rest.products) == 3
+    assert len(sdk.plans) == 1 and len(rest.products) == 1
     events = [e for e in store.audit.query() if e.event == "sandbox_seed"]
-    assert len(events) == 8  # reuse writes nothing
+    assert len(events) == 2  # reuse writes nothing
 
 
 async def test_price_change_creates_a_new_plan(store: JsonStore, data_dir: Any) -> None:
@@ -77,24 +76,25 @@ async def test_price_change_creates_a_new_plan(store: JsonStore, data_dir: Any) 
     items = await seeder(pricier, sdk, rest).run()
     new = pricier.load("sandbox_ids").plans["penwright-pro"]
     assert new != old
-    assert {i.key: i.action for i in items}["penwright-pro"] == "replaced"
-    assert {i.key: i.action for i in items}["framewise-basic"] == "reused"
+    assert {i.key: i.action for i in items} == {"penwright": "reused", "penwright-pro": "replaced"}
 
 
 async def test_missing_remote_plan_or_inactive_plan_is_recreated(store: JsonStore) -> None:
     sdk, rest = FakeSdk(), FakeRest()
     await seeder(store, sdk, rest).run()
     ids = store.load("sandbox_ids")
-    del sdk.plans[ids.plans["lumen-monthly"]]
-    sdk.plans[ids.plans["lumen-yearly"]].status = "INACTIVE"
-    items = {i.key: i.action for i in await seeder(store, sdk, rest).run()}
-    assert items["lumen-monthly"] == items["lumen-yearly"] == "replaced"
+    del sdk.plans[ids.plans["penwright-pro"]]
+    assert {i.key: i.action for i in await seeder(store, sdk, rest).run()}["penwright-pro"] == "replaced"
+    ids = store.load("sandbox_ids")
+    sdk.plans[ids.plans["penwright-pro"]].status = "INACTIVE"
+    assert {i.key: i.action for i in await seeder(store, sdk, rest).run()}["penwright-pro"] == "replaced"
 
 
 def test_plans_respect_paypal_shape_rules() -> None:
     """PayPal: at most one REGULAR cycle, at most two TRIAL cycles, TRIAL before REGULAR (D-031)."""
     p = Pricing()
-    for merchant in ("penwright", "framewise", "lumen"):
+    assert p.plans_for("framewise") == [] and p.plans_for("lumen") == []  # one merchant since D-090
+    for merchant in ("penwright",):
         for plan in p.plans_for(merchant):
             kinds = [c.tenure_type for c in plan.billing_cycles]
             assert kinds.count("REGULAR") == 1 and kinds.count("TRIAL") <= 2
@@ -105,13 +105,10 @@ def test_paid_trial_does_not_delay_first_charge() -> None:
     pro = Pricing().plans_for("penwright")[0]
     assert first_charge_day(pro.billing_cycles, 0) == 15
     assert first_paid_price(pro.billing_cycles) == Decimal("24.99")
-    framewise = Pricing().plans_for("framewise")[0]
-    assert first_charge_day(framewise.billing_cycles, 0) == 30
-    assert first_paid_price(framewise.billing_cycles) == Decimal("12.00")
 
 
 def test_plan_matches_compares_cycles_and_currency() -> None:
-    plan = Pricing().plans_for("framewise")[0]
+    plan = Pricing().plans_for("penwright")[0]
     view = PlanView(id="P-1", status="ACTIVE", currency="USD", billing_cycles=plan.billing_cycles)
     assert plan_matches(plan, view)
     assert not plan_matches(plan, view.model_copy(update={"currency": "EUR"}))

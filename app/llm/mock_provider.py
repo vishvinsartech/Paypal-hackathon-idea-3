@@ -27,10 +27,7 @@ def pricing_tokens(p: Pricing) -> dict[str, str]:
         "trial_days": str(p.penwright_trial_days), "first_charge_day": str(p.penwright_first_charge_day),
         "intro": p.money(p.penwright_intro_price), "intro_raw": str(p.penwright_intro_price),
         "intro_months": str(p.penwright_intro_months), "step_up": p.money(p.penwright_step_up_price),
-        "addon": p.money(p.penwright_addon_price), "notice_days": str(p.penwright_notice_days),
-        "export_limit": str(p.penwright_export_limit), "framewise": p.money(p.framewise_price),
-        "framewise_raw": str(p.framewise_price), "lumen_monthly": p.money(p.lumen_monthly_price),
-        "lumen_monthly_raw": str(p.lumen_monthly_price), "lumen_yearly": p.money(p.lumen_yearly_price),
+        "notice_days": str(p.penwright_notice_days), "export_limit": str(p.penwright_export_limit),
     }
 
 

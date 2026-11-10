@@ -13,7 +13,7 @@ it. The live list below wins.
 |---|---|---|---|
 | `show_subscription_details` | **subscription_id**, get_additional_details | `gateway.get_subscription` (single-merchant mode) | SDK `get_subscription` |
 | `cancel_subscription` | **subscription_id**, **payload** `{reason}` | `gateway.cancel` (single-merchant mode) | SDK `cancel_subscription` |
-| `show_subscription_plan_details` | **plan_id** | dev: verify `billing_cycles` / price rise | SDK `get_billing_plan` |
+| `show_subscription_plan_details` | **plan_id** | dev: verify `billing_cycles` / step-up price | SDK `get_billing_plan` |
 | `list_subscription_plans` | product_id, page, page_size, total_required | dev: inspect seeded plans | SDK `list_billing_plans` |
 | `list_transactions` | transaction_id, transaction_status, start_date, end_date, … | dev: show no charge happened | none |
 

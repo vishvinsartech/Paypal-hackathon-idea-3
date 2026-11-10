@@ -12,7 +12,6 @@ a { color: #6b3fa0; }
 .price-box { border: 2px solid #eee; border-radius: 12px; padding: 16px 20px; margin: 16px 0; background: #fff; }
 .price-big { font-size: 1.8rem; font-weight: 700; margin: 0 0 8px; }
 .plans { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.addon { display: block; font-family: system-ui, sans-serif; margin-bottom: 6px; }
 
 /* The trap: 9px grey text on white (contrast ~2.8:1, below 3:1). */
 .fineprint { font-size: 9px; color: #9a9a9a; line-height: 1.3; margin: 8px 0 0; }
@@ -32,8 +31,6 @@ a { color: #6b3fa0; }
 
 .theme-penwright .shop-header { background: #2a1440; }
 .theme-penwright .shop-home { color: #f3e9ff; }
-.theme-framewise .shop-header { background: #f0f7ff; }
-.theme-lumen .shop-header { background: #fdf6ec; }
 
 /* SubGuard companion note (simulated browser extension; not part of the merchant's page). */
 .companion-note { font: 13px/1.4 system-ui, sans-serif; color: #1d4f45; background: #e6f7f3; border-radius: 6px; padding: 4px 8px; display: inline-block; }

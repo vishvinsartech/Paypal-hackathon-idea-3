@@ -8,7 +8,7 @@
 <section class="hero sub-head">
   <h1>{{ merchant.name }} <span class="muted">· {{ sub.plan_key }}</span></h1>
   <p>
-    <span class="pill pill-{{ sub.status|lower }}" data-testid="status-{{ merchant.id }}{% if sub.addon_of %}-addon{% endif %}">{{ sub.status }}</span>
+    <span class="pill pill-{{ sub.status|lower }}" data-testid="status-{{ merchant.id }}">{{ sub.status }}</span>
     {% if review %}<span class="risk-big risk-{{ 'high' if review.risk_score >= 60 else ('mid' if review.risk_score >= 30 else 'low') }}" data-testid="risk-score">Risk {{ review.risk_score }}/100</span>{% endif %}
     {% if review %}<span class="muted small">{{ review.data.mode_label }} · {{ review.data.provider }}{% if review.data.injection_flagged %} · hidden instructions to AI found and ignored{% endif %}</span>{% endif %}
   </p>
@@ -54,7 +54,7 @@
           src="/shop/{{ merchant.id }}?user={{ current_user.id }}&evidence=1" data-evidence="{{ evidence | join(',') }}"></iframe>
 </section>
 {% else %}
-<section class="card"><p>No fine-print review for this subscription{% if sub.addon_of %} (it's an add-on: see the main subscription){% endif %}.</p></section>
+<section class="card"><p>No fine-print review for this subscription.</p></section>
 {% endif %}
 
 <div class="two-col">

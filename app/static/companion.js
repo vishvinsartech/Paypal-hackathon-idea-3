@@ -80,7 +80,9 @@
     open(`${head(`<span class="sg-risk ${level}" data-testid="companion-risk" aria-label="Risk ${r.risk_score} out of 100">Risk ${r.risk_score}/100</span>`)}
       <div class="sg-body">
         <p class="sg-mode">${esc(r.mode_label)} · ${esc(r.provider)}${r.injection_flagged ? " · hidden instructions to AI were found and ignored" : ""}</p>
+        ${r.summary ? `<p data-testid="companion-summary">${esc(r.summary)}</p>` : ""}
         ${deadline}
+        ${trap && d.auto_timer_allowed ?`<p data-testid="companion-promise"><strong>I'll check with you before your trial runs out.</strong></p>` : ""}
         <ul>${items}</ul>
         <p><strong>PayPal cross-check</strong> (PayPal is the source of truth)</p>
         <table class="sg-table"><thead><tr><th>Check</th><th>Page</th><th>PayPal plan</th><th></th></tr></thead><tbody>${rows}</tbody></table>

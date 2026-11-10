@@ -1,4 +1,4 @@
-"""Helpers for the Story A / B tests (the `demo_client` fixture lives in conftest.py)."""
+"""Helpers for the demo-story tests (the `demo_client` fixture lives in conftest.py)."""
 
 from __future__ import annotations
 
@@ -6,28 +6,34 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
+from app.models import User
 
-def subscribe(client: TestClient, merchant: str, plan_key: str, user: str = "priya", addon_key: str | None = None,
-              review: bool = True) -> tuple[dict[str, Any], dict[str, Any] | None]:
-    """What the shop does: companion preflight -> create -> mock approve -> register (+ ticked add-on)."""
+
+def subscribe(client: TestClient, merchant: str = "penwright", plan_key: str = "penwright-pro", user: str = "priya",
+              review: bool = True) -> dict[str, Any]:
+    """What the shop does: companion preflight -> create -> mock approve -> register."""
     review_id = None
     if review:
         res = client.post("/api/review/preflight", json={"merchant_url": f"/shop/{merchant}", "plan_key": plan_key,
                                                          "user_id": user})
         review_id = res.json()["review_id"]
+    created = client.post("/api/checkout/create", json={"merchant_id": merchant, "plan_key": plan_key,
+                                                        "user_id": user}).json()
+    client.post("/api/checkout/mock-approve", json={"paypal_id": created["paypal_id"]})
+    res = client.post("/api/subscriptions/register", json={
+        "paypal_id": created["paypal_id"], "merchant_id": merchant, "plan_key": plan_key, "user_id": user,
+        "review_id": review_id})
+    assert res.status_code == 200, res.text
+    return res.json()
 
-    def one(key: str, addon_of: str | None) -> dict[str, Any]:
-        created = client.post("/api/checkout/create", json={"merchant_id": merchant, "plan_key": key,
-                                                            "user_id": user}).json()
-        client.post("/api/checkout/mock-approve", json={"paypal_id": created["paypal_id"]})
-        res = client.post("/api/subscriptions/register", json={
-            "paypal_id": created["paypal_id"], "merchant_id": merchant, "plan_key": key, "user_id": user,
-            "addon_of": addon_of, "review_id": review_id if addon_of is None else None})
-        assert res.status_code == 200, res.text
-        return res.json()
 
-    main = one(plan_key, None)
-    return main, (one(addon_key, main["id"]) if addon_key else None)
+def add_user(client: TestClient, user_id: str = "intruder") -> str:
+    """A second, test-only user for the R5 ownership checks (the demo itself has only Priya)."""
+    store = client.app.state.store  # type: ignore[attr-defined]
+    with store.edit("users") as users:
+        if not any(u.id == user_id for u in users.items):
+            users.items.append(User(id=user_id, name=user_id.title(), email=f"{user_id}@subguard-demo.example"))
+    return user_id
 
 
 def alerts(client: TestClient, user: str = "priya", kind: str | None = None) -> list[dict[str, Any]]:

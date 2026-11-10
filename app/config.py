@@ -49,7 +49,7 @@ class Settings(BaseSettings, PricingFields):
     paypal_autopay_url: str = "https://www.sandbox.paypal.com/myaccount/autopay/"
 
     zapier_catch_hook_url: str = ""
-    demo_seed: bool = True  # mock mode: create Priya's Framewise + John's Lumen on first start / reset
+    demo_seed: bool = True  # mock mode: script Priya's Penwright usage on first start / reset
     render_api_key: str = ""
 
     @field_validator("llm_provider")

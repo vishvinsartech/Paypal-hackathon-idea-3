@@ -12,7 +12,7 @@ CHARGES_PER_YEAR = {"DAY": 365, "WEEK": 52, "MONTH": 12, "YEAR": 1}
 
 def year_one_cost(cycles: Sequence[BillingCycleDef]) -> Decimal:
     """Cost of the first year of PAID billing (free trial cycles skipped).
-    Penwright: 3 x 24.99 + 9 x 49.99 = 524.88; add-on 12 x 9.99 = 119.88; Framewise at $19: 228.00."""
+    Penwright: 3 x 24.99 + 9 x 49.99 = 524.88 (the "Money protected" KPI)."""
     paid = [c for c in cycles if c.price > 0]
     if not paid:
         return Decimal("0.00")
@@ -51,9 +51,3 @@ def protected_by_currency(subs: Sequence[Subscription], user_id: str) -> dict[st
 def money_protected(subs: Sequence[Subscription], user_id: str, currency: str = "USD") -> Decimal:
     """"Money protected" KPI in one currency (the demo currency); other currencies are reported separately."""
     return protected_by_currency(subs, user_id).get(currency, Decimal("0.00"))
-
-
-def compare_billing(monthly: Sequence[BillingCycleDef], yearly: Sequence[BillingCycleDef]) -> dict[str, Decimal]:
-    """Monthly vs yearly for one year (Lumen: $240 vs $200, saves $40). Code maths, never the LLM."""
-    m, y = year_one_cost(monthly), year_one_cost(yearly)
-    return {"monthly_per_year": m, "yearly_per_year": y, "yearly_saves": m - y}

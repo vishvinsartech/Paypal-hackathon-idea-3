@@ -1,6 +1,6 @@
 """Milestone 3 sandbox check: a cancel shows CANCELLED via the SDK and via the PayPal MCP server.
 
-Usage: python scripts/sandbox_cancel_check.py [--headless] [--plan framewise-basic]
+Usage: python scripts/sandbox_cancel_check.py [--headless] [--plan penwright-pro]
 Creates two subscriptions on a seeded plan, approves both as the sandbox buyer (Playwright), then
 cancels #1 through the gateway on the SDK transport and #2 through the gateway on the MCP transport.
 Each result is read back over BOTH transports. Every call lands in the audit log. Run `make seed` first.
@@ -73,5 +73,5 @@ async def main(args: argparse.Namespace) -> int:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--headless", action="store_true")
-    parser.add_argument("--plan", default="framewise-basic")
+    parser.add_argument("--plan", default="penwright-pro")
     sys.exit(asyncio.run(main(parser.parse_args())))

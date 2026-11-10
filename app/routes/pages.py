@@ -48,8 +48,7 @@ def subscription_page(
     if sub is None or sub.owner_id != user:  # R5: only your own subscriptions
         return templates.TemplateResponse(request, "subscription.html", {**ctx, "sub": None}, status_code=404)
     merchant = svc.merchant(sub.merchant_id)
-    main = svc.sub(sub.addon_of) if sub.addon_of else None
-    review = tm.review_for(svc, main or sub)
+    review = tm.review_for(svc, sub)
     snap = sub.consent_snapshot
     notice = next((n for n in store.load("notices").items if n.subscription_id == sub.id), None)
     plans = [{"name": p.name, "year_one": svc.money(year_one_cost(p.billing_cycles))} for p in merchant.plans]

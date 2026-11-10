@@ -1,7 +1,7 @@
 # Zapier setup (optional; sandbox mode only)
 
-SubGuard reaches people **outside the app** through one Zapier Catch Hook: the Day 5 reminder, the Day 21
-price-rise alert, and the written cancellation notice to the merchant. Without a hook (and always in mock
+SubGuard reaches people **outside the app** through one Zapier Catch Hook: the Day 5 "keep it or cancel?"
+check-in, and the written cancellation notice to the merchant. Without a hook (and always in mock
 mode) the same messages are written to `data/runtime/outbox/` as JSON files, so the demo works with no Zapier
 account.
 

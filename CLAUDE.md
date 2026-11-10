@@ -4,7 +4,8 @@ Full spec: `docs/BUILD_PROMPT.md` (source of truth). Progress: `docs/PROGRESS.md
 Decisions: `docs/DECISIONS.md`. Re-read the spec sections a milestone depends on before coding it.
 
 SubGuard = AI helper that reads subscription fine print, checks it against the real PayPal plan,
-scores risk, and cancels trials/price rises through PayPal before the real deadline.
+scores risk, checks in before the real deadline, and cancels trials through PayPal before it.
+Demo story (spec section 2): one persona (Priya), one merchant (Penwright Studio).
 Tagline: "AI reads the fine print. PayPal enforces the outcome."
 
 ## Non-negotiable rules
@@ -23,7 +24,7 @@ to the audit log with its rule id. No suspend/pause anywhere in v1. The only Pay
 - **R3 confirmation token:** single-use, valid 5 minutes, bound to the exact sorted list of subscription
   ids + user id. Issued by `/api/agent/confirm`. Expired / reused / different list -> reject.
 - **R4 rate limits:** max 5 PayPal writes per minute per user; max 10 subscriptions per command.
-- **R5 ownership:** act only on subscriptions the current user owns (John can't touch Priya's).
+- **R5 ownership:** act only on subscriptions the current user owns (tests use a second, test-only user).
 - **R6 essential:** never auto-cancel a subscription tagged `essential` (manual + confirmation still OK).
 - **R7 no fake claims:** only say an action happened if a tool result confirms it. Money figures come
   from code/tool results, never LLM arithmetic.
@@ -71,14 +72,14 @@ to the audit log with its rule id. No suspend/pause anywhere in v1. The only Pay
 
 ### No real brands
 Never use real brands, logos or company names in the app, dummy shop or video. Every merchant page
-shows the banner "Fictional merchant for the SubGuard demo." Merchants: Penwright Studio (trap),
-Framewise ($12/mo, honest), Lumen Notes ($20/mo or $200/yr, honest). Users: Priya, John.
+shows the banner "Fictional merchant for the SubGuard demo." Merchant: Penwright Studio (trap
+"free trial"). User: Priya. No other merchants, users, add-ons, price rises or renewal reminders (D-090).
 
 ## Key numbers (assert in tests, with the DEFAULT prices)
 Prices and terms are `.env` variables (`app/pricing.py`, DECISIONS D-015). Code reads them via
 `settings.pricing` / `store.pricing`; never hardcode a price, trial length or notice period.
-- Money protected KPI: **$872.76** (Penwright 524.88 + add-on 119.88 + Framewise 228.00).
-- Risk: Penwright **87 +/- 5**, Lumen **15 +/- 5**.
+- Money protected KPI: **$524.88** (Penwright 3 x 24.99 + 9 x 49.99).
+- Risk: Penwright **87 +/- 5**.
 - Penwright: first charge Day 15, notice 7 days -> real deadline **Day 7** (15-7-1), timer Day 6,
   reminder Day 5. Layer 2 merchants: timer = deadline - 2.
 - Money is `Decimal` everywhere, stored as strings in JSON. Never float.

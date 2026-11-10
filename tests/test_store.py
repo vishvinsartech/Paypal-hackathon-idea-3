@@ -14,13 +14,13 @@ from app.store import JsonStore, atomic_write_text, utcnow
 
 def test_missing_files_created_from_defaults_and_seeds(store: JsonStore) -> None:
     users = store.load("users")
-    assert [u.id for u in users.items] == ["priya", "john"]
+    assert [u.id for u in users.items] == ["priya"]
     assert store.load("state").sim_day == 0
     assert not store.path("subscriptions").exists()
     store.ensure_all()
     assert all(store.path(name).exists() for name in store.files)
     merchants = {mc.id: mc for mc in store.load("merchants").items}
-    assert set(merchants) == {"penwright", "framewise", "lumen"}
+    assert set(merchants) == {"penwright"}
 
 
 def test_money_round_trips_as_string_decimal(store: JsonStore) -> None:
@@ -86,7 +86,7 @@ def test_corrupt_file_recovered(store: JsonStore, garbage: str) -> None:
 def test_corrupt_users_file_reseeds(store: JsonStore) -> None:
     store.ensure_all()
     store.path("users").write_text("[[[", encoding="utf-8")
-    assert [u.id for u in store.load("users").items] == ["priya", "john"]
+    assert [u.id for u in store.load("users").items] == ["priya"]
 
 
 def test_concurrent_thread_edits_are_serialised(store: JsonStore) -> None:

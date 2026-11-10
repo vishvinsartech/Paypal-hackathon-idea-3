@@ -10,9 +10,9 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from app.core.auditor import Auditor, save_review
-from app.integrations.capture import CaptureError, PageCapture
+from app.integrations.capture import CaptureError
 from app.integrations.paypal_gateway import Ctx, PayPalGateway
-from app.integrations.paypal_types import PayPalError, PlanView
+from app.integrations.paypal_types import PayPalError
 from app.models import Merchant, Review
 from app.routes.deps import get_store
 from app.routes.subscriptions import get_gateway
@@ -42,19 +42,9 @@ def _resolve_plan(merchant: Merchant, gw: PayPalGateway, plan_key: str | None, p
             except PayPalError:
                 continue
         raise HTTPException(404, "Unknown plan id for this merchant")
-    main = next((p.key for p in merchant.plans if not p.addon), None)
-    if main is None:
+    if not keys:
         raise HTTPException(404, "This merchant has no plans")
-    return main
-
-
-async def _addon_plans(capture: PageCapture, merchant: Merchant, gw: PayPalGateway, ctx: Ctx) -> list[PlanView]:
-    addon_keys = {p.key for p in merchant.plans if p.addon}
-    out = []
-    for box in capture.checkboxes:
-        if box.checked and box.value in addon_keys:
-            out.append(await gw.get_plan(gw.plan_id(box.value), ctx))
-    return out
+    return keys[0]
 
 
 @router.post("/review/preflight", response_model=None)
@@ -73,12 +63,11 @@ async def preflight(body: PreflightIn, request: Request, store: JsonStore = Depe
     try:
         capture = await request.app.state.capture.capture(path, str(request.base_url))
         plan = await gw.get_plan(gw.plan_id(plan_key), ctx)
-        addons = await _addon_plans(capture, merchant, gw, ctx)
     except CaptureError as exc:
         return JSONResponse({"error": "SubGuard couldn't read this page.", "detail": str(exc)}, status_code=502)
     auditor: Auditor = request.app.state.auditor
     data = await auditor.review(capture, plan, merchant=merchant, plan_key=plan_key, signup_day=day,
-                                user_id=body.user_id, addon_plans=addons)
+                                user_id=body.user_id)
     async with store.alocked():
         review = save_review(store, data, day)
     store.audit.append(

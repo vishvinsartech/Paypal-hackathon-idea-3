@@ -7,22 +7,6 @@
       "fair_trial_member": true,
       "support_email": "cancel@penwright.example",
       "paypal_payer_id": ""
-    },
-    {
-      "id": "framewise",
-      "name": "Framewise",
-      "tagline": "A simple design app.",
-      "fair_trial_member": true,
-      "support_email": "support@framewise.example",
-      "paypal_payer_id": ""
-    },
-    {
-      "id": "lumen",
-      "name": "Lumen Notes",
-      "tagline": "An AI notes app with honest, clear terms.",
-      "fair_trial_member": true,
-      "support_email": "help@lumen-notes.example",
-      "paypal_payer_id": ""
     }
   ]
 }

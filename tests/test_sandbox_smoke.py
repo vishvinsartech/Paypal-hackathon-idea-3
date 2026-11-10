@@ -38,8 +38,8 @@ async def test_sandbox_oauth_and_seeded_plans() -> None:
     if not ids_file.exists():
         pytest.skip("run `make seed` first (no sandbox_ids.json)")
     ids = SandboxIds.model_validate_json(ids_file.read_text(encoding="utf-8"))
-    if "framewise-basic" not in ids.plans:
-        pytest.skip("framewise-basic isn't seeded")
+    if "penwright-pro" not in ids.plans:
+        pytest.skip("penwright-pro isn't seeded")
     rest = PayPalRest(settings)
     try:
         assert await rest.token()
@@ -47,8 +47,7 @@ async def test_sandbox_oauth_and_seeded_plans() -> None:
         prices = [c.price for c in plan.billing_cycles]
         p = settings.pricing
         assert prices == [0, p.penwright_intro_price, p.penwright_step_up_price]
-        framewise = plan_view(await rest.get_json(f"/v1/billing/plans/{ids.plans['framewise-basic']}"))
-        assert framewise.status == "ACTIVE"
+        assert plan.status == "ACTIVE"
     finally:
         await rest.aclose()
 

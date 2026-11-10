@@ -110,10 +110,11 @@ async def test_duplicate_cancel_claim(gw: PayPalGateway, store: JsonStore) -> No
 
 
 async def test_update_pricing_changes_plan(gw: PayPalGateway) -> None:
-    pid = mock_plan_id("framewise-basic")
-    assert (await gw.get_plan(pid)).billing_cycles[0].price == Decimal("12.00")
-    await gw.update_pricing(pid, 1, Decimal("19"))
-    assert (await gw.get_plan(pid)).billing_cycles[0].price == Decimal("19")
+    """The gateway keeps PayPal's update-pricing write (merchant side); no demo flow uses it since D-090."""
+    pid = mock_plan_id("penwright-pro")
+    assert (await gw.get_plan(pid)).billing_cycles[2].price == Decimal("49.99")
+    await gw.update_pricing(pid, 3, Decimal("59.99"))
+    assert (await gw.get_plan(pid)).billing_cycles[2].price == Decimal("59.99")
 
 
 class DownMcp:
@@ -135,7 +136,7 @@ async def test_mcp_down_falls_back_to_sdk_with_warning(store: JsonStore) -> None
                        paypal_client_secret="s", paypal_transport="mcp", paypal_merchant_mode="single")
     sdk_stand_in = MockPayPal(store)
     gw = PayPalGateway(sandbox, store, mock=None, sdk=sdk_stand_in, mcp=DownMcp(), retry_delays=(0,))
-    view = await sdk_stand_in.create_subscription(mock_plan_id("lumen-monthly"), request_id="r")
+    view = await sdk_stand_in.create_subscription(mock_plan_id("penwright-pro"), request_id="r")
     await sdk_stand_in.approve(view.id)
     out = await gw.cancel(view.id, "test")
     assert out.ok and out.status_after == "CANCELLED"

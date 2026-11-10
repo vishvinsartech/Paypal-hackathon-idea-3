@@ -2,26 +2,15 @@
   "_comment": "Mock-mode chat scripts (app/llm/mock_chat.py). Numbers in 'say' come only from tool results: {tool.field}.",
   "scripts": [
     {
-      "id": "worth_it",
-      "match": ["worth it", "barely used", "barely use"],
-      "merchant": "framewise",
+      "id": "keep_penwright",
+      "match": ["should i keep", "worth it", "keep it", "keep penwright"],
+      "merchant": "penwright",
       "steps": [
         {"call": "list_subscriptions"},
         {"call": "get_usage", "args": {"subscription_id": "$sub", "days": 30}},
         {"call": "get_savings_estimate", "args": {"subscription_id": "$sub"}},
-        {"call": "propose_cancel", "args": {"subscription_ids": ["$sub"], "reason": "You barely use it and the price went up."}},
-        {"say": "You opened it {get_usage.opens_text} this month. Keeping it costs {get_savings_estimate.per_year_text} a year. If you want to cancel, tap Confirm on the card. If not, just ignore it."}
-      ]
-    },
-    {
-      "id": "switch_yearly",
-      "match": ["yearly", "annual"],
-      "merchant": "lumen",
-      "steps": [
-        {"call": "list_subscriptions"},
-        {"call": "compare_billing_options", "args": {"merchant": "$merchant"}},
-        {"call": "get_usage", "args": {"subscription_id": "$sub", "days": 10}},
-        {"say": "Monthly costs {compare_billing_options.monthly_per_year_text} a year. Yearly costs {compare_billing_options.yearly_per_year_text}, so you'd save {compare_billing_options.yearly_saves_text}. Yearly is paid up front, and there's no partial refund if you cancel. You opened {get_usage.merchant} on {get_usage.days_used} of the last {get_usage.window_days} days. It's your call."}
+        {"call": "review_subscription", "args": {"subscription_id": "$sub"}},
+        {"say": "You've opened {get_usage.merchant} {get_usage.opens_text} so far. If you keep it, the first paid year costs {get_savings_estimate.per_year_text}. Your real last day to cancel is Day {review_subscription.real_cancel_deadline_day}. It's your call: say \"cancel Penwright\" and I'll show a confirmation card, or tap Keep."}
       ]
     },
     {

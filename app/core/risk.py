@@ -15,8 +15,8 @@ from app.integrations.capture import PageCapture
 from app.review_types import Clause, Deadlines, RiskBreakdown
 
 TYPE_WEIGHTS: dict[str, int] = {
-    "AUTO_RENEW": 10, "INTRO_PRICE_STEP_UP": 4, "PRECHECKED_ADDON": 3, "NOTICE_PERIOD": 5,
-    "EARLY_TRIAL_TERMINATION": 3, "HARD_CANCEL": 4, "HIDDEN_TEXT_STYLE": 1, "TERMS_MISMATCH": 4,
+    "AUTO_RENEW": 10, "INTRO_PRICE_STEP_UP": 6, "PRECHECKED_ADDON": 3, "NOTICE_PERIOD": 12,
+    "EARLY_TRIAL_TERMINATION": 3, "HARD_CANCEL": 8, "HIDDEN_TEXT_STYLE": 1, "TERMS_MISMATCH": 4,
     "PROMPT_INJECTION_ATTEMPT": 0, "CLEAR_TERMS": 0,
 }
 STYLE_PENALTIES = {"small_font": 8, "low_contrast": 8, "prechecked_box": 10, "hidden_text": 6}

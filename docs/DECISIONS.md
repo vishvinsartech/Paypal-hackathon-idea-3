@@ -106,7 +106,7 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
 
 ## Fine-print review (milestone 4)
 
-- **D-034 Add-on checkout in sandbox is a second PayPal button.** If the add-on box is ticked, the
+- **D-034 Add-on checkout in sandbox is a second PayPal button.** *(Superseded by D-090.)* If the add-on box is ticked, the
   sandbox shop shows a second Subscribe button for the add-on after the main approval
   (`shop/static/checkout_sandbox.js`); the spec allows this simplification. The PayPal button only
   renders after the companion's "Continue to PayPal" (`subguard:continue` event).
@@ -128,7 +128,7 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   3.x SDKs run on `httpx2`, which respx can't intercept. The tests inject fake clients that return real
   SDK response types (`BetaMessage`, `ChatCompletion`), which still exercises request building and
   response parsing in each adapter. No network.
-- **D-043 Risk weights.** Each clause type counts once: AUTO_RENEW 10, NOTICE_PERIOD 5, INTRO_PRICE_STEP_UP 4,
+- **D-043 Risk weights.** *(Weights retuned in D-092.)* Each clause type counts once: AUTO_RENEW 10, NOTICE_PERIOD 5, INTRO_PRICE_STEP_UP 4,
   HARD_CANCEL 4, TERMS_MISMATCH 4, PRECHECKED_ADDON 3, EARLY_TRIAL_TERMINATION 3, HIDDEN_TEXT_STYLE 1,
   PROMPT_INJECTION_ATTEMPT 0, CLEAR_TERMS 0. Plus the spec's style penalties (+8/+8/+10/+6), money factor
   `min(15, year-one cost / 50)` from the PayPal plan (Penwright 524.88 -> 10.50), and a library bonus of
@@ -163,22 +163,22 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   delivered yet, the timer stays PENDING: the warning is retried each day and the timer re-checked. On the
   billing day it becomes FAILED with an urgent alert. R6 (essential) -> timer CANCELLED + urgent alert.
   A failed PayPal cancel -> FAILED + Layer 2 handoff (notice + ACTION NEEDED link), never "Done".
-- **D-053 Scripted demo usage.** The demo seed writes usage events with `source: "seed"` (Priya: Framewise
+- **D-053 Scripted demo usage.** *(Now Penwright only: D-096.)* The demo seed writes usage events with `source: "seed"` (Priya: Framewise
   Days -2, 3, 10 and Penwright Days 2, 4; John: Lumen Days 1-9 and 12). Only days <= today count, so the
   story's numbers ("opened Penwright twice", "3 times this month", "9 of the last 10 days", "2 weeks")
   are reproducible; opening `/shop/<merchant>/app` still adds live events on top.
-- **D-054 Demo seed subscriptions.** In mock mode with `DEMO_SEED=true` (default; tests turn it off),
+- **D-054 Demo seed subscriptions.** *(Superseded by D-090.)* In mock mode with `DEMO_SEED=true` (default; tests turn it off),
   first start and Reset create Priya's Framewise (signup Day -5, so it renews Day 25 and the Day 21 price
   rise lands before it) and John's Lumen monthly (Day 0, reviewed by the real pipeline: risk 15). Penwright
   is not seeded: Priya subscribes through the shop + companion in the demo. Sandbox mode seeds nothing.
-- **D-055 Which subscriptions get a safety timer.** A trial timer is created only for plans that start with a
+- **D-055 Which subscriptions get a safety timer.** *(Renewal reminders and price watching removed: D-090.)* A trial timer is created only for plans that start with a
   free cycle (a trial before the first charge), using the linked review's notice days. Honest no-trial plans
   (Lumen, Framewise) get no auto-cancel timer, only renewal reminders (3 days before, if unused 14+ days)
   and price watching. A price-rise timer (fire = billing day - 1) is created only with
   `auto_cancel_price_rises` on; the price-rise alert itself is its warning.
 - **D-056 Manual cancel for Layer 2 merchants** returns `action_needed` (written notice sent + one-tap
   Automatic payments link) instead of calling PayPal, matching "everything except the final click".
-- **D-057 "Money protected"** = the sum of `protected_year_usd` over subscriptions SubGuard cancelled (by the
+- **D-057 "Money protected"** *(Now $524.88: D-090.)* = the sum of `protected_year_usd` over subscriptions SubGuard cancelled (by the
   user's confirmation or a timer): the year-one cost of the PayPal plan *at cancel time* (Framewise after the
   rise: 12 x $19 = $228). Story A gives 524.88 + 119.88 + 228.00 = **$872.76**.
 - **D-058 Billing days in the sim.** On a subscription's `next_billing_day`, an ACTIVE subscription logs a
@@ -250,6 +250,49 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
 - **D-082 Zapier only in sandbox mode.** Mock mode always writes `data/runtime/outbox/`, even when a hook URL is
   set, so the hosted mock demo never sends real messages. In sandbox mode without a hook, startup logs a warning,
   and the startup audit entry records `notify: outbox|zapier`.
+
+## Story simplified to Priya + Penwright (2026-11-10)
+
+- **D-090 One persona, one merchant.** At the user's request the demo story (spec section 2) is now Priya +
+  Penwright Studio only. Removed from the story, UI, code, fixtures, tests and docs: John, Lumen Notes, Framewise,
+  the Day 21 price-rise flow (`/api/demo/price-rise`, price watching, "Keep at $19"), the pre-ticked add-on
+  (plan `penwright-ai-pack`, checkbox, add-on offer, `addon_of`), the user switcher, monthly-vs-yearly advice
+  (`compare_billing_options`) and renewal reminders. "Money protected" is now **$524.88** (3 x 24.99 + 9 x 49.99).
+  Corner cases 35 and 36 are marked removed; 28 is tested at the formula level; 31 uses a test-only second user.
+- **D-091 Kept although no demo flow uses it.** The safety rules are unchanged, so `policy.py` keeps R2's
+  price-rise condition and the `auto_cancel_price_rises` setting (still unit-tested). The PayPal gateway keeps
+  `update_pricing` (tested). `PRECHECKED_ADDON` stays a generic clause type in the review and the dark-pattern
+  library. The chat's `schedule_reminder` stays (it isn't a renewal reminder). The Penwright export clause stays
+  on the page: it wasn't in the remove list, and corner case 27 still tests it.
+- **D-092 Risk weights retuned.** Removing the add-on removed 13 points (PRECHECKED_ADDON 3 + pre-ticked box 10),
+  so Penwright fell to 74. New weights stress the story's real traps: NOTICE_PERIOD 5 -> 12, HARD_CANCEL 4 -> 8,
+  INTRO_PRICE_STEP_UP 4 -> 6. Penwright = 44 + 22 + 10.50 + 10 = 86.5 -> **87**. Honest terms
+  (AUTO_RENEW + CLEAR_TERMS, $240/yr) still score 15. The "model obeys the injection" test now asserts a
+  code-only score >= 40 (was 50; it's 48 without the pre-ticked box).
+- **D-093 Check-in wording.** Day 0 alert title: *"I'll check with you before your trial runs out."*; its body
+  names the Day 5 check-in and the Day 6 timer, which is how the timer is "shown at creation" (R2). Day 5 uses the
+  requested sentence verbatim and adds *"If I don't hear back, I'll cancel it tomorrow so you're not charged."*
+  so the user knows about the auto-cancel before it happens. Buttons: Keep / Cancel. Alert kind stays `reminder`
+  (test id `alert-trial-check`).
+- **D-094 One "done" step for both cancel paths.** `actions.confirm_cancelled` runs after any confirmed PayPal
+  cancel, from the user's tap or the timer: it sends the written notice (SHA-256 stored) and *"Done. You won't be
+  charged."* Before, only the timer path sent the notice. Alert kind `cancelled` (was `auto_cancelled`),
+  idempotent per subscription; in-app only for a tap, also email/SMS for the timer.
+- **D-095 Keep.** Sets `Subscription.kept_day`, marks pending timers KEPT and acknowledges open Keep/Cancel
+  alerts, so there are no further prompts. On Day 15 a kept subscription just logs `charge_due` (no alert).
+- **D-096 Demo seed = usage only.** `DEMO_SEED` now writes only Priya's scripted Penwright opens (Days 2 and 4),
+  so "You've opened it twice" is reproducible. No subscriptions are seeded; the dashboard starts empty and Priya
+  approves the trial herself on Day 0.
+- **D-097 Mock chat scripts.** "Should I keep Penwright?" calls list_subscriptions, get_usage,
+  get_savings_estimate and review_subscription, then answers with code numbers (opens, $524.88, Day 7) and no
+  card: the decision stays hers. "Cancel Penwright" gives the confirmation card.
+- **D-098 scenes.json before milestone 9.** `demo-video/scenes.json` follows the new story (10 scenes, 172 s, cap
+  175 s). The rest of the video tooling is still milestone 9. `tests/test_scenes.py` checks the duration cap,
+  125 wpm per scene and that every target test id exists. New test ids: `companion-summary`,
+  `companion-promise`, `alert-timer-set`, `alert-trial-check`, `alert-done`, `audit-filter`, `chat-close`.
+- **D-099 Old config and data.** `PENWRIGHT_ADDON_PRICE`, `FRAMEWISE_*` and `LUMEN_*` are gone from
+  `.env.example`; leftover keys in a local `.env` are ignored (`extra="ignore"`). Runtime data from before this
+  change (Framewise/Lumen merchants, John) is stale: run `make reset` (the pricing fingerprint warning says so).
 
 ## Not used in v1 (sponsor tools)
 

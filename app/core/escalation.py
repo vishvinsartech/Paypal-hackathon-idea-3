@@ -1,31 +1,21 @@
-"""One `tick(day)` = everything SubGuard does on a sim day (Story A and Story B, spec 2 / 7.4).
+"""One `tick(day)` = everything SubGuard does on a sim day (the demo story, spec 2 / 7.4).
 
-Order: sync PayPal statuses -> price watch -> early trial end (exports) -> timer warnings -> timer firing ->
-Layer 2 urgent checks -> billing-day events (blocked-charge proof) -> renewal reminders for idle honest
-subscriptions -> reminders the chat scheduled.
+Order: sync PayPal statuses -> early trial end (exports) -> timer check-ins -> timer firing ->
+Layer 2 urgent checks -> billing-day events (blocked-charge proof) -> reminders the chat scheduled.
 Every alert has an idempotency key, so re-running a day never double-sends.
 """
 
 from __future__ import annotations
 
 import re
-import secrets
-from decimal import Decimal
 
 from app.core import timers as tm
 from app.core.alerts import action, send_alert
-from app.core.savings import year_one_cost
 from app.core.services import Services
-from app.core.usage import exports, last_open_day
-from app.integrations.notify import warning_basis
+from app.core.usage import exports
 from app.integrations.paypal_gateway import Ctx
 from app.integrations.paypal_types import DAYS_PER_UNIT, PayPalError, cycle_days
-from app.models import Subscription, Timer
 from app.store import utcnow
-
-RENEWAL_NOTICE_DAYS = 3
-IDLE_DAYS = 14
-UNIT_WORD = {"DAY": "day", "WEEK": "week", "MONTH": "month", "YEAR": "year"}
 
 
 async def apply_status(svc: Services, sub_id: str, status: str, source: str) -> bool:
@@ -89,63 +79,6 @@ async def early_trial_end(svc: Services, day: int) -> None:
                                    subscription_id=sub.id, details={"exports": done, "limit": int(limit.group(1))})
 
 
-async def watch_prices(svc: Services) -> None:
-    """Diff each active subscription's PayPal plan against its consent snapshot (corner cases 35, 36)."""
-    day = svc.day
-    for sub in [s for s in svc.store.load("subscriptions").items if s.status == "ACTIVE" and s.consent_snapshot]:
-        try:
-            plan = await svc.gw.get_plan(sub.plan_id, Ctx(actor="system", user_id=sub.owner_id, subscription_id=sub.id))
-        except PayPalError:
-            continue
-        agreed = sub.consent_snapshot.billing_cycles  # type: ignore[union-attr]
-        changes = [(a.price, c.price, c) for a, c in zip(agreed, plan.billing_cycles, strict=False)
-                   if a.price != c.price]
-        if not changes:
-            continue
-        old, new, cycle = max(changes, key=lambda x: x[1] - x[0])
-        name = svc.merchant(sub.merchant_id).name
-        per = UNIT_WORD[cycle.interval_unit]
-        if new < old:
-            await send_alert(svc, user_id=sub.owner_id, key=f"price-drop:{sub.id}:{new}", kind="price_drop",
-                             level="info", title=f"{name} lowered its price to {svc.money(new)}/{per}",
-                             body=f"You agreed to {svc.money(old)}/{per}. Nothing to do.", subscription_id=sub.id)
-            continue
-        await price_rise(svc, sub, old, new, per, year_one_cost(plan.billing_cycles), day)
-
-
-async def price_rise(svc: Services, sub: Subscription, old: Decimal, new: Decimal, per: str, yearly: Decimal,
-                     day: int) -> None:
-    name = svc.merchant(sub.merchant_id).name
-    user = svc.user(sub.owner_id)
-    auto = bool(user and user.settings.auto_cancel_price_rises)
-    billing = sub.next_billing_day
-    fire_day = billing - 1 if billing is not None else None
-    can_auto = auto and fire_day is not None and fire_day >= day + 1
-    body = (f"{name} raised its price from {svc.money(old)} to {svc.money(new)}/{per}. You agreed to "
-            f"{svc.money(old)}. Keeping it costs {svc.money(yearly)} a year.")
-    if can_auto:
-        body += f" If you don't answer, I'll cancel it on Day {fire_day}, before the next charge."
-    alert, created = await send_alert(
-        svc, user_id=sub.owner_id, key=f"price-rise:{sub.id}:{new}", kind="price_rise", level="warning",
-        title=f"{name} raised its price to {svc.money(new)}/{per}", body=body, subscription_id=sub.id,
-        actions=[action("keep_new_price", f"Keep at {svc.money(new)}", price=str(new)), action("cancel", "Cancel")])
-    if not created:
-        return
-    svc.store.audit.append(actor="system", event="price_rise_detected", user_id=sub.owner_id, subscription_id=sub.id,
-                           details={"agreed": str(old), "new": str(new), "per": per, "auto_cancel": can_auto})
-    if can_auto and fire_day is not None:
-        ok, basis = warning_basis(alert.delivery)
-        timer = Timer(id=f"tm-{secrets.token_hex(5)}", subscription_id=sub.id, kind="price_rise", fire_day=fire_day,
-                      created_day=day, deadline_day=fire_day, reminder_day=day, billing_day=billing,
-                      shown_to_user=alert.delivery.get("in_app") == "shown", warning_delivered=ok,
-                      warned_day=day if ok else None, warned_at=utcnow() if ok else None, warning_basis=basis)
-        async with svc.store.aedit("timers") as timers:
-            timers.items.append(timer)
-        svc.store.audit.append(actor="system", event="timer_created", user_id=sub.owner_id, subscription_id=sub.id,
-                               rule_id="R2", details={"timer_id": timer.id, "kind": "price_rise",
-                                                      "fire_day": fire_day, "warning": basis})
-
-
 async def run_timers(svc: Services, day: int) -> None:
     for timer in [t for t in svc.store.load("timers").items if t.status == "PENDING"]:
         if not timer.warning_delivered and day >= (timer.reminder_day if timer.reminder_day is not None else day):
@@ -191,26 +124,6 @@ async def billing_day(svc: Services, day: int) -> None:
                                    details={"next_billing_day": day + step})
 
 
-async def renewal_reminders(svc: Services, day: int) -> None:
-    """Story B: honest subscriptions get a nudge 3 days before renewal if unused for 2 weeks."""
-    pending = {t.subscription_id for t in svc.store.load("timers").items if t.status == "PENDING"}
-    for sub in svc.store.load("subscriptions").items:
-        if sub.status != "ACTIVE" or sub.id in pending or sub.next_billing_day != day + RENEWAL_NOTICE_DAYS:
-            continue
-        last = last_open_day(svc.store, sub.owner_id, sub.merchant_id, day)
-        idle = day - (last if last is not None else sub.signup_day)
-        if idle < IDLE_DAYS:
-            continue
-        name = svc.merchant(sub.merchant_id).name
-        price = sub.consent_snapshot.price if sub.consent_snapshot else Decimal("0")
-        weeks = idle // 7
-        await send_alert(svc, user_id=sub.owner_id, key=f"renewal:{sub.id}:{sub.next_billing_day}", kind="renewal",
-                         level="warning", title=f"{name} renews in {RENEWAL_NOTICE_DAYS} days",
-                         body=(f"{name} renews in {RENEWAL_NOTICE_DAYS} days for {svc.money(price)}. You haven't used "
-                               f"it for {weeks} week{'s' if weeks != 1 else ''}. Keep or cancel?"),
-                         actions=[action("keep", "Keep"), action("cancel", "Cancel")], subscription_id=sub.id)
-
-
 async def scheduled_reminders(svc: Services, day: int) -> None:
     """Reminders the chat agent scheduled (schedule_reminder tool)."""
     for rem in [r for r in svc.store.load("state").reminders if not r.sent and r.day <= day]:
@@ -225,10 +138,8 @@ async def scheduled_reminders(svc: Services, day: int) -> None:
 
 async def tick(svc: Services, day: int) -> None:
     await sync_statuses(svc)
-    await watch_prices(svc)
     await early_trial_end(svc, day)
     await run_timers(svc, day)
     await layer2_urgent(svc, day)
     await billing_day(svc, day)
-    await renewal_reminders(svc, day)
     await scheduled_reminders(svc, day)

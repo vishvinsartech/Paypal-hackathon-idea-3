@@ -40,7 +40,7 @@ def _pick(script: dict[str, Any], message: str, listing: dict[str, Any]) -> tupl
     want = script.get("merchant", "from_message")
     if want != "from_message":
         found = [s for s in active if s["merchant_id"] == want]
-        return ([s for s in found if not s["addon"]] or found)[:1], want
+        return found[:1], want
     words = {w for w in re.findall(r"[a-z]+", message.lower()) if len(w) > 2 and w not in STOPWORDS}
 
     def text(s: dict[str, Any]) -> str:

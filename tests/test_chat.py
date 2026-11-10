@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from app.llm.base import ChatMessage, ChatTurn, LLMError, ToolCall
 from app.llm.tools_schema import ToolSpec
-from tests.story_helpers import advance_to, alerts, audit, sub, subscribe
+from tests.story_helpers import add_user, advance_to, alerts, audit, sub, subscribe
 
 
 def chat(c: TestClient, message: str, user: str = "priya") -> list[dict[str, Any]]:
@@ -27,51 +27,52 @@ def cards(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [e["card"] for e in events if e["type"] == "card"]
 
 
-def test_framewise_worth_it_gives_228_card_and_confirm_cancels(demo_client: TestClient) -> None:
+def test_should_i_keep_penwright_numbers_from_code(demo_client: TestClient) -> None:
     c = demo_client
-    advance_to(c, 21)
-    c.post("/api/demo/price-rise")
-    events = chat(c, "Is it still worth it? I barely used it.")
+    subscribe(c)
+    advance_to(c, 5)
+    events = chat(c, "Should I keep Penwright?")
     assert [e["name"] for e in events if e["type"] == "tool"] == [
-        "list_subscriptions", "get_usage", "get_savings_estimate", "propose_cancel"]
-    assert "You opened it 3 times this month. Keeping it costs $228 a year." in text(events)
-    (card,) = cards(events)
-    assert card["total_text"] == "$228/yr" and Decimal(card["total_per_year"]) == Decimal("228.00")
-    assert card["items"][0]["merchant"] == "Framewise" and "can't be undone" in card["warning"]
-    fw_id = card["items"][0]["subscription_id"]
-    assert sub(c, fw_id)["status"] == "ACTIVE"  # proposing never cancels
-    assert not audit(c, "paypal_cancel", subscription_id=fw_id)
-    done = c.post("/api/agent/confirm", json={"user_id": "priya", "token": card["token"],
-                                              "subscription_ids": [fw_id]}).json()
-    assert done["all_ok"] and done["results"][0]["transport"] == "mock"
-    assert sub(c, fw_id)["status"] == "CANCELLED"
-    assert audit(c, "paypal_cancel", subscription_id=fw_id, actor="user", rule_id="R1", result="ok")
-    assert audit(c, "chat_tool_call", actor="agent", reason="propose_cancel")
+        "list_subscriptions", "get_usage", "get_savings_estimate", "review_subscription"]
+    answer = text(events)
+    assert "You've opened Penwright Studio twice so far." in answer
+    assert "the first paid year costs $524.88" in answer and "real last day to cancel is Day 7" in answer
+    assert cards(events) == [] and not audit(c, "confirm_token_issued")  # advice only, the decision is hers
     llm = audit(c, "llm_call", actor="agent")
     assert llm and llm[0]["details"]["provider"] == "mock" and "latency_ms" in llm[0]["details"]
-    # the price-rise alert is now moot: no Keep / Cancel buttons left on it
-    assert alerts(c, kind="price_rise")[0]["acknowledged_at"] is not None
 
 
-def test_lumen_switch_to_yearly_numbers_from_code(demo_client: TestClient) -> None:
-    advance_to(demo_client, 10)
-    events = chat(demo_client, "Should I switch to yearly?", user="john")
-    answer = text(events)
-    assert "Monthly costs $240 a year. Yearly costs $200, so you'd save $40." in answer
-    assert "on 9 of the last 10 days" in answer and "no partial refund" in answer
-    assert cards(events) == []
+def test_cancel_by_chat_needs_confirm_then_cancels(demo_client: TestClient) -> None:
+    c = demo_client
+    subscribe(c)
+    advance_to(c, 5)
+    (card,) = cards(chat(c, "Cancel Penwright"))
+    assert card["total_text"] == "$524.88/yr" and Decimal(card["total_per_year"]) == Decimal("524.88")
+    assert card["items"][0]["merchant"] == "Penwright Studio" and "can't be undone" in card["warning"]
+    pw_id = card["items"][0]["subscription_id"]
+    assert sub(c, pw_id)["status"] == "ACTIVE"  # proposing never cancels
+    assert not audit(c, "paypal_cancel", subscription_id=pw_id)
+    done = c.post("/api/agent/confirm", json={"user_id": "priya", "token": card["token"],
+                                              "subscription_ids": [pw_id]}).json()
+    assert done["all_ok"] and done["results"][0]["transport"] == "mock"
+    assert sub(c, pw_id)["status"] == "CANCELLED"
+    assert audit(c, "paypal_cancel", subscription_id=pw_id, actor="user", rule_id="R1", result="ok")
+    assert audit(c, "chat_tool_call", actor="agent", reason="propose_cancel")
+    # the Day 5 check-in is now moot: no Keep / Cancel buttons left on it
+    assert alerts(c, kind="reminder")[0]["acknowledged_at"] is not None
 
 
 def test_ambiguous_cancel_asks_which_one(demo_client: TestClient) -> None:
-    """Corner case 33: 'the writing one' matches Penwright Pro and the AI Writing Pack -> ask, no card."""
-    subscribe(demo_client, "penwright", "penwright-pro", addon_key="penwright-ai-pack")
+    """Corner case 33: 'the writing one' matches two Penwright subscriptions -> ask, no card."""
+    subscribe(demo_client)
+    subscribe(demo_client, review=False)
     events = chat(demo_client, "Cancel the writing one")
     assert "Which one do you mean?" in text(events) and cards(events) == []
     assert not audit(demo_client, "confirm_token_issued")
 
 
 def test_cancel_by_name_gives_card(demo_client: TestClient) -> None:
-    subscribe(demo_client, "penwright", "penwright-pro")
+    subscribe(demo_client)
     events = chat(demo_client, "Cancel Penwright")
     (card,) = cards(events)
     assert card["items"][0]["plan"] == "Penwright Pro" and card["total_text"] == "$524.88/yr"
@@ -103,7 +104,7 @@ class ScriptedLLM:
 def test_model_cannot_cancel_directly(demo_client: TestClient) -> None:
     """Corner case 29: a made-up 'cancel_subscription' tool is blocked (R1) and audited; nothing changes."""
     c = demo_client
-    fw = c.get("/api/subscriptions?user=priya").json()[0]
+    fw = subscribe(c)
     c.app.state.llm = ScriptedLLM([  # type: ignore[attr-defined]
         ChatTurn(tool_calls=[ToolCall(id="1", name="cancel_subscription", arguments={"subscription_id": fw["id"]})],
                  stop="tool_use"),
@@ -116,15 +117,15 @@ def test_model_cannot_cancel_directly(demo_client: TestClient) -> None:
 
 
 def test_model_cannot_touch_other_users_subscription(demo_client: TestClient) -> None:
-    """R5 through the agent: Priya's chat proposing John's Lumen -> error result, no card, no token."""
+    """R5 through the agent: Priya's chat proposing another user's subscription -> error result, no card."""
     c = demo_client
-    lumen = c.get("/api/subscriptions?user=john").json()[0]
+    theirs = subscribe(c, user=add_user(c))
     c.app.state.llm = ScriptedLLM([  # type: ignore[attr-defined]
         ChatTurn(tool_calls=[ToolCall(id="1", name="propose_cancel",
-                                      arguments={"subscription_ids": [lumen["id"]], "reason": "x"})], stop="tool_use"),
+                                      arguments={"subscription_ids": [theirs["id"]], "reason": "x"})], stop="tool_use"),
         ChatTurn(text="That one isn't yours."),
     ])
-    events = chat(c, "cancel Lumen")
+    events = chat(c, "cancel theirs")
     assert cards(events) == [] and [e["ok"] for e in events if e["type"] == "tool"] == [False]
     assert audit(c, "policy_decision", rule_id="R5", decision="blocked")
 
@@ -161,10 +162,10 @@ def test_step_limit(demo_client: TestClient) -> None:
 
 def test_schedule_reminder_fires_on_its_day(demo_client: TestClient) -> None:
     c = demo_client
-    fw = c.get("/api/subscriptions?user=priya").json()[0]
+    pw = subscribe(c)
     c.app.state.llm = ScriptedLLM([  # type: ignore[attr-defined]
         ChatTurn(tool_calls=[ToolCall(id="1", name="schedule_reminder",
-                                      arguments={"subscription_id": fw["id"], "day": 3, "note": "Check Framewise"})],
+                                      arguments={"subscription_id": pw["id"], "day": 3, "note": "Check Penwright"})],
                  stop="tool_use"),
         ChatTurn(text="I'll remind you on Day 3."),
     ])
@@ -173,4 +174,4 @@ def test_schedule_reminder_fires_on_its_day(demo_client: TestClient) -> None:
     advance_to(c, 3)
     advance_to(c, 3)
     notes = alerts(c, kind="reminder_note")
-    assert len(notes) == 1 and notes[0]["body"] == "Check Framewise"
+    assert len(notes) == 1 and notes[0]["body"] == "Check Penwright"

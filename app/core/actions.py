@@ -23,7 +23,7 @@ from app.integrations.paypal_types import PayPalError
 from app.models import ConfirmToken, Subscription
 from app.store import utcnow
 
-DECISION_ACTIONS = {"keep", "cancel", "remove_addon", "keep_new_price"}  # moot once the subscription is cancelled
+DECISION_ACTIONS = {"keep", "cancel"}  # moot once the subscription is cancelled or kept
 UNDO_WARNING = "This can't be undone; you'd need to sign up again."
 
 
@@ -141,6 +141,19 @@ async def cancel_one(svc: Services, sub: Subscription, *, actor: str, rule_id: s
                       transport=out.transport)
 
 
+async def confirm_cancelled(svc: Services, sub: Subscription, result: ItemResult, *, by_timer: bool) -> None:
+    """After a confirmed PayPal cancel (the user's tap or the safety timer): send the merchant the written notice its
+    terms require (stored with SHA-256) and tell the user it's done. Both are idempotent per subscription."""
+    merchant = svc.merchant(sub.merchant_id)
+    await send_cancellation_notice(svc, sub)
+    await send_alert(svc, user_id=sub.owner_id, key=f"cancelled:{sub.id}", kind="cancelled",
+                     level="warning" if by_timer else "info", title="Done. You won't be charged.",
+                     body=(f"I cancelled {merchant.name} in PayPal (status {result.status}) and emailed them the "
+                           "written cancellation notice their terms require. Changed your mind? "
+                           "Tap here to restart the trial."),
+                     actions=[action("restart", "Restart trial", url=f"/shop/{merchant.id}")], subscription_id=sub.id)
+
+
 async def cancel_confirmed(svc: Services, user_id: str, sub_ids: list[str], token: str | None,
                            requested_by: str = "user") -> list[ItemResult] | Decision:
     decisions = svc.policy.check_user_cancel(svc.store, user_id, sub_ids, token, requested_by)
@@ -150,5 +163,8 @@ async def cancel_confirmed(svc: Services, user_id: str, sub_ids: list[str], toke
     for d in decisions:
         sub = svc.sub(d.subscription_id or "")
         if sub is not None:
-            results.append(await cancel_one(svc, sub, actor="user", rule_id="R1", reason="Cancelled by the user"))
+            result = await cancel_one(svc, sub, actor="user", rule_id="R1", reason="Cancelled by the user")
+            if result.outcome == "cancelled":
+                await confirm_cancelled(svc, sub, result, by_timer=False)
+            results.append(result)
     return results

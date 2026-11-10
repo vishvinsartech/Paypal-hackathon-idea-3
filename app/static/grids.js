@@ -17,7 +17,7 @@
   // ---- cell renderers -----------------------------------------------------------------------
   function statusPill(p) {
     const r = p.data;
-    const id = `status-${r.merchant_id}${r.addon ? "-addon" : ""}`;
+    const id = `status-${r.merchant_id}`;
     return html(`<span class="pill pill-${esc(String(p.value).toLowerCase())}" data-testid="${esc(id)}">${esc(p.value)}</span>`);
   }
   function riskBar(p) {

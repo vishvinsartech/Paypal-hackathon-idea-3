@@ -1,7 +1,8 @@
 # Corner cases (spec section 8): where each one is handled and tested
 
 Every case has code and at least one test, or a doc note where the spec allows one ("doc").
-Test names are `file::test`. `tests/test_scenario.py` also runs Story A and Story B end to end.
+Test names are `file::test`. `tests/test_scenario.py` also runs the demo story (Priya + Penwright) end to end.
+Cases 35 and 36 belonged to the price-rise flow, which was removed when the story was simplified (D-090).
 
 ## PayPal and subscription lifecycle
 
@@ -22,10 +23,10 @@ Test names are `file::test`. `tests/test_scenario.py` also runs Story A and Stor
 | # | Case | Code | Tests |
 |---|---|---|---|
 | 10 | Keep at the same moment the timer fires | `core/timers.py` `_claim` under the store lock | `test_policy::test_keep_vs_timer_race_is_consistent` |
-| 11 | Keep after the timer fired: explain + Restart trial | `timers.keep` | `test_story::test_story_a` (`too_late`) |
+| 11 | Keep after the timer fired: explain + Restart trial | `timers.keep` | `test_story::test_no_answer_auto_cancels_on_day6` (`too_late`) |
 | 12 | Warning failed on every channel: no auto-cancel, retry, urgent alert at the deadline | `notify.warning_basis`, `policy._timer_decision`, `timers.fire` | `test_policy::test_failed_warnings_block_auto_cancel` |
 | 13 | Trial/notice too short to warn 24 h ahead: manual decision | `risk.compute_deadlines`, `timers.create_trial_timer` | `test_policy::test_short_trial_needs_a_manual_decision`, `test_auditor::test_short_trial_gets_no_auto_timer` |
-| 14 | Jumping several days: each day in order, no duplicate alerts | `clock.advance`, alert idempotency keys | `test_story::test_story_a_jump_is_idempotent` |
+| 14 | Jumping several days: each day in order, no duplicate alerts | `clock.advance`, alert idempotency keys | `test_story::test_jump_is_idempotent` |
 | 15 | Demo reset: idempotent, keeps `sandbox_ids.json`, archives the audit log | `store.reset`, `/api/demo/reset` | `test_store::test_reset_keeps_sandbox_ids_and_archives_audit_log`, `test_pages::test_demo_reset` |
 | 16 | Times in UTC; sim days are integers | `store.utcnow`, models | `test_corner_cases::test_times_are_utc_and_days_are_ints` |
 
@@ -49,27 +50,27 @@ Test names are `file::test`. `tests/test_scenario.py` also runs Story A and Stor
 | 25 | Page price differs from PayPal: `TERMS_MISMATCH`, PayPal wins | `core/crosscheck.py` | `test_auditor::test_price_on_paypal_differs_from_page_is_mismatch` |
 | 26 | Text only inside an image | `integrations/capture_live.py` sends the screenshot to the vision model | **doc note** below |
 | 27 | "Trial ends after 3 exports": flag it; too many exports -> warn + move the deadline | `escalation.early_trial_end`, shop `POST /shop/<m>/app/export` | `test_corner_cases::test_too_many_exports_warns_and_moves_deadline`, `test_auditor::test_penwright_review_matches_spec` |
-| 28 | Honest merchant (Lumen): low score, `CLEAR_TERMS`, no auto-timer, reminders only | `risk.py`, `timers.on_registered`, `escalation.renewal_reminders` | `test_story::test_story_b`, `test_auditor::test_lumen_is_low_risk_and_clear` |
+| 28 | Honest terms: low score, `CLEAR_TERMS`, no auto-timer (no free trial) | `risk.py`, `timers.on_registered` (timer only for a free trial) | `test_auditor::test_honest_terms_score_low` (no honest merchant in the demo since D-090) |
 
 ## Agent and policy
 
 | # | Case | Code | Tests |
 |---|---|---|---|
 | 29 | LLM tries to cancel directly / too many subscriptions | `policy.py`, `chat_tools.run_tool` | `test_policy::test_r1_cancel_needs_a_confirmation_tap`, `test_policy::test_r4_max_ten_per_command`, `test_chat::test_model_cannot_cancel_directly`, `test_chat::test_too_many_in_one_command_blocked` |
-| 30 | Expired, reused or mismatched token | `policy._consume` | `test_policy::test_r3_expired_reused_mismatched_and_foreign_tokens`, `test_scenario::test_story_a_and_b_end_to_end` (reuse) |
-| 31 | Another user's subscription (John vs Priya) | `policy._precheck`, `chat_tools._own`, subscription page | `test_policy::test_r5_john_cannot_touch_priyas_subscriptions`, `test_chat::test_model_cannot_touch_other_users_subscription`, `test_pages::test_subscription_page` |
+| 30 | Expired, reused or mismatched token | `policy._consume` | `test_policy::test_r3_expired_reused_mismatched_and_foreign_tokens`, `test_scenario::test_story_end_to_end_with_chat` (reuse) |
+| 31 | Another user's subscription (a test-only second user vs Priya) | `policy._precheck`, `chat_tools._own`, subscription page | `test_policy::test_r5_another_user_cannot_touch_priyas_subscriptions`, `test_chat::test_model_cannot_touch_other_users_subscription`, `test_pages::test_subscription_page` |
 | 32 | `essential` is never auto-cancelled | `policy._timer_decision` | `test_policy::test_r6_essential_never_auto_cancelled_but_manual_ok` |
 | 33 | Ambiguous cancel request: ask, don't act | `llm/mock_chat.py`, chat system prompt | `test_chat::test_ambiguous_cancel_asks_which_one` |
 | 34 | Multi-cancel partial failure: per-item results | `actions.cancel_confirmed`, `chat.js` | `test_policy::test_r7_partial_failure_reports_per_item` |
-| 35 | Price decrease: info only; 0 %: nothing; rise: alert, auto-cancel only with the setting | `escalation.watch_prices` | `test_corner_cases::test_price_decrease_is_informational`, `test_story::test_price_rise_unanswered_auto_cancels_before_billing`, `test_policy::test_r2_price_rise_allowed_with_setting` |
-| 36 | Keep at $19: snapshot updated, alerts stop | `routes/actions.keep_new_price` | `test_story::test_keep_at_new_price_updates_consent` |
+| 35 | Price decrease / rise | **Removed** with the price-rise flow (D-090). The R2 rule itself is unchanged in `policy.py` | `test_policy::test_r2_price_rise_allowed_with_setting` (policy only) |
+| 36 | Keep at a new price | **Removed** with the price-rise flow (D-090). Plain Keep: `timers.keep` | `test_story::test_keep_on_day5_means_no_more_prompts` |
 
 ## Notifications and evidence
 
 | # | Case | Code | Tests |
 |---|---|---|---|
 | 37 | Zapier down: retry with backoff, then failed (feeds R2); in-app still works | `integrations/notify.py` | `test_corner_cases::test_zapier_retries_then_fails`, `test_corner_cases::test_zapier_accepts_after_a_retry`, `test_policy::test_failed_warnings_block_auto_cancel` |
-| 38 | Notice stored with SHA-256 of the exact body, recipient, time, delivery result | `alerts.send_cancellation_notice` | `test_story::test_story_a` |
+| 38 | Notice stored with SHA-256 of the exact body, recipient, time, delivery result | `alerts.send_cancellation_notice`, `actions.confirm_cancelled` | `test_story::test_cancel_on_day5`, `test_story::test_no_answer_auto_cancels_on_day6` |
 | 39 | Secrets never in logs or the audit log | `audit_log.mask_secrets`, `main.JsonFormatter` | `test_audit_log::test_secrets_and_emails_masked` |
 
 ## Doc notes
@@ -79,7 +80,7 @@ Test names are `file::test`. `tests/test_scenario.py` also runs Story A and Stor
   `APPROVAL_PENDING` subscription exists only on PayPal's side, and PayPal expires it on its own (D-070).
 - **8. Currencies.** All demo plans are USD (`DEMO_CURRENCY`). Amounts show in each plan's currency, and the
   Money protected KPI only adds amounts in the demo currency; other currencies appear next to it, labelled
-  (for example "$872.76/yr + €60/yr"). A confirmation card that mixes currencies isn't supported in v1:
+  (for example "$524.88/yr + €60/yr"). A confirmation card that mixes currencies isn't supported in v1:
   its total assumes one currency.
 - **26. Text only inside an image.** In sandbox mode, live Playwright sends a full-page screenshot to the vision
   model with the extracted text, so text drawn in an image can still be read. The verbatim-quote check only

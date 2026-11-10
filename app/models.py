@@ -32,7 +32,7 @@ class State(BaseModel):
     last_tick_day: int | None = None
     last_tick_at: datetime | None = None
     pricing_fingerprint: str | None = None  # which .env prices this runtime data was built with
-    demo_seeded: bool = False  # Priya's Framewise + John's Lumen created (mock mode, DEMO_SEED)
+    demo_seeded: bool = False  # Priya's scripted Penwright usage created (mock mode, DEMO_SEED)
     reminders: list[Reminder] = Field(default_factory=list)
     webhook_event_ids: list[str] = Field(default_factory=list)  # last 500 PayPal webhook ids (dedupe)
 
@@ -70,7 +70,6 @@ class PlanDef(BaseModel):
     name: str
     currency: str = "USD"
     billing_cycles: list[BillingCycleDef]
-    addon: bool = False
 
 
 class Merchant(BaseModel):
@@ -108,7 +107,7 @@ class Subscription(BaseModel):
     essential: bool = False
     signup_day: int = 0
     next_billing_day: int | None = None
-    addon_of: str | None = None
+    kept_day: int | None = None  # sim day the user tapped Keep (no more prompts after that)
     consent_snapshot: ConsentSnapshot | None = None
     registered_at: datetime | None = None
     cancel_requested_at: datetime | None = None  # duplicate-cancel claim (released on failure)
@@ -166,7 +165,7 @@ class TimerList(BaseModel):
 class Alert(BaseModel):
     id: str
     user_id: str
-    kind: str = ""  # addon_offer | timer_set | reminder | auto_cancelled | price_rise | blocked_charge | ...
+    kind: str = ""  # timer_set | reminder | cancelled | blocked_charge | urgent | ...
     level: Literal["info", "warning", "urgent", "action_needed"] = "info"
     title: str
     body: str = ""

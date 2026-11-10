@@ -99,8 +99,7 @@ class Auditor:
         return max(0, llm_value or 0)
 
     async def review(self, capture: PageCapture, plan: PlanView, *, merchant: Merchant, plan_key: str | None,
-                     signup_day: int, user_id: str | None = None,
-                     addon_plans: list[PlanView] | None = None) -> ReviewData:
+                     signup_day: int, user_id: str | None = None) -> ReviewData:
         result, dropped = await self._ask(capture, user_id)
         mode = "ai" if result is not None else "basic"
         if result is None:
@@ -118,13 +117,11 @@ class Auditor:
             clauses.append(mismatch)
 
         y1 = year_one_cost(plan.billing_cycles)
-        addon_y1 = sum((year_one_cost(p.billing_cycles) for p in addon_plans or []), start=y1 * 0)
         notice = self._notice_days(clauses, result.notice_days)
         deadlines = compute_deadlines(signup_day, first_charge_day(plan.billing_cycles, signup_day), notice,
                                       layer2=not merchant.fair_trial_member)
         for c in clauses:  # PayPal values win for all money maths; LLM money hints are discarded
-            c.money_impact_usd_year = (y1 if c.type in PLAN_MONEY_TYPES else
-                                       addon_y1 if c.type == "PRECHECKED_ADDON" and addon_y1 else None)
+            c.money_impact_usd_year = y1 if c.type in PLAN_MONEY_TYPES else None
             if c.type == "NOTICE_PERIOD":
                 c.deadline_day = deadlines.real_cancel_deadline_day
 

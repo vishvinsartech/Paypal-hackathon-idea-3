@@ -1,4 +1,4 @@
-"""Demo controls (spec 7.4): reset (+ demo seed), advance the sim clock, Framewise price rise, toggle Fair Trial."""
+"""Demo controls (spec 7.4): reset (+ demo seed), advance the sim clock, toggle Fair Trial."""
 
 from __future__ import annotations
 
@@ -9,18 +9,16 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 from app.clock import advance as clock_advance
 from app.core.auditor import save_review
 from app.core.demo_seed import ReviewFn, seed_demo
-from app.core.escalation import watch_prices
 from app.core.risk import compute_deadlines
 from app.core.services import Services
 from app.integrations.paypal_gateway import Ctx
 from app.routes.actions import get_services
 
 router = APIRouter(prefix="/api/demo")
-PRICE_RISE_PLAN = "framewise-basic"
 
 
 def review_fn(app: FastAPI) -> ReviewFn:
-    """Runs the real review pipeline for seeded subscriptions (so Story B's Lumen review exists)."""
+    """Runs the real review pipeline for seeded subscriptions (none in the current story; kept for reuse)."""
     async def run(merchant_id: str, plan_key: str, user_id: str, day: int) -> str | None:
         svc: Services = app.state.services
         cap = await app.state.capture.capture(f"/shop/{merchant_id}", "http://127.0.0.1:8000/")
@@ -57,21 +55,6 @@ async def advance(days: int = 1, to_day: int | None = None, svc: Services = Depe
         raise HTTPException(400, "days must be between 0 and 400")
     _control(svc, "advance", days=days, to_day=to_day)
     return {"sim_day": await clock_advance(svc, days, to_day=to_day)}
-
-
-@router.post("/price-rise")
-async def price_rise(svc: Services = Depends(get_services)) -> dict[str, str]:
-    """Framewise raises its plan price (sandbox: a real update-pricing-schemes call), then SubGuard diffs it."""
-    merchant = svc.merchant("framewise")
-    plan_id = svc.gw.plan_id(PRICE_RISE_PLAN)
-    ctx = Ctx(actor="merchant_sim", merchant=merchant)
-    plan = await svc.gw.get_plan(plan_id, ctx)
-    seq = max(i for i, c in enumerate(plan.billing_cycles, start=1) if c.tenure_type == "REGULAR")
-    new = svc.settings.pricing.framewise_rise_price
-    _control(svc, "price_rise", plan=PRICE_RISE_PLAN, price=str(new))
-    await svc.gw.update_pricing(plan_id, seq, new, plan.currency, ctx)
-    await watch_prices(svc)
-    return {"plan_id": plan_id, "new_price": str(new)}
 
 
 @router.post("/toggle-fair-trial/{merchant_id}")

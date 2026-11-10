@@ -1,8 +1,6 @@
 {# Checkout area shared by merchant pages. Expects `merchant`, `plan_key`, `settings`, `plan_ids`. #}
-{% set addon = merchant.plans | selectattr("addon") | first %}
 <div class="checkout" data-testid="shop-checkout" data-merchant="{{ merchant.id }}" data-plan-key="{{ plan_key }}"
-     {% if settings.is_sandbox %}data-client-id="{{ settings.paypal_client_id }}" data-plan-id="{{ plan_ids.get(plan_key, '') }}"
-     {% if addon %}data-addon-key="{{ addon.key }}" data-addon-plan-id="{{ plan_ids.get(addon.key, '') }}"{% endif %}{% endif %}>
+     {% if settings.is_sandbox %}data-client-id="{{ settings.paypal_client_id }}" data-plan-id="{{ plan_ids.get(plan_key, '') }}"{% endif %}>
   <div id="paypal-area" class="paypal-area" data-testid="shop-paypal-btn">
     {% if settings.is_sandbox %}
     <button type="button" class="paypal-btn" data-sandbox-start>Pay with PayPal (sandbox)</button>

@@ -1,5 +1,5 @@
 {
-  "summary": "A {{trial_days}}-day free trial that turns into a paid plan at {{intro}}/month, rises to {{step_up}}/month later, adds a pre-ticked add-on, and needs written notice by email {{notice_days}} days before billing to cancel.",
+  "summary": "A {{trial_days}}-day free trial that turns into a paid plan at {{intro}}/month, rises to {{step_up}}/month later, and needs written notice by email {{notice_days}} days before billing to cancel.",
   "first_charge_day": {{first_charge_day}},
   "first_charge_amount": "{{intro_raw}}",
   "notice_days": {{notice_days}},
@@ -21,15 +21,6 @@
       "deadline_day": null,
       "severity": 4,
       "evidence_testid": "shop-fineprint"
-    },
-    {
-      "type": "PRECHECKED_ADDON",
-      "quote": "The AI Writing Pack add-on is billed at {{addon}}/month unless you untick it.",
-      "plain_english": "A {{addon}}/month add-on is already ticked. You didn't choose it.",
-      "money_impact_usd_year": null,
-      "deadline_day": null,
-      "severity": 4,
-      "evidence_testid": "shop-addon"
     },
     {
       "type": "NOTICE_PERIOD",

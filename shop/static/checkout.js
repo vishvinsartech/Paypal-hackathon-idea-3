@@ -1,4 +1,4 @@
-// Demo-shop checkout (mock mode): create -> approve -> register, plus the add-on if it's ticked.
+// Demo-shop checkout (mock mode): create -> approve -> register.
 // The SubGuard companion (companion.js) reviews the page first; this runs only after "Continue to PayPal".
 (function () {
   "use strict";
@@ -19,11 +19,11 @@
     return data;
   }
 
-  async function subscribe(merchantId, planKey, addonOf) {
+  async function subscribe(merchantId, planKey) {
     const created = await post("/api/checkout/create", {merchant_id: merchantId, plan_key: planKey, user_id: user});
     await post("/api/checkout/mock-approve", {paypal_id: created.paypal_id});
     return post("/api/subscriptions/register", {
-      paypal_id: created.paypal_id, merchant_id: merchantId, plan_key: planKey, user_id: user, addon_of: addonOf || null,
+      paypal_id: created.paypal_id, merchant_id: merchantId, plan_key: planKey, user_id: user,
       review_id: area.dataset.reviewId || null,
     });
   }
@@ -33,13 +33,8 @@
     status.textContent = "Talking to PayPal (sandbox mock)…";
     try {
       const merchantId = area.dataset.merchant;
-      const main = await subscribe(merchantId, area.dataset.planKey, null);
-      const addon = document.querySelector("[data-testid=shop-addon]");
-      let msg = "Subscribed. PayPal status: " + main.status + ".";
-      if (addon && addon.checked) {
-        await subscribe(merchantId, addon.value, main.id);
-        msg += " The add-on was added too.";
-      }
+      const main = await subscribe(merchantId, area.dataset.planKey);
+      const msg = "Subscribed. PayPal status: " + main.status + ".";
       status.innerHTML = "";
       status.append(msg + " ");
       const link = document.createElement("a");

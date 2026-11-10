@@ -13,7 +13,7 @@ from app.store import JsonStore, utcnow
 
 router = APIRouter(prefix="/shop")
 templates = Jinja2Templates(directory=ROOT_DIR / "shop" / "templates")
-PAGES = {"penwright": "penwright.html", "framewise": "framewise.html", "lumen": "lumen.html"}
+PAGES = {"penwright": "penwright.html"}
 
 
 def _merchant(store: JsonStore, merchant_id: str) -> Merchant:
@@ -43,8 +43,8 @@ async def _record(store: JsonStore, user: str, merchant_id: str, kind: str) -> t
     """Append one usage event for today; returns (day, opens, exports) for this user + merchant."""
     day = store.load("state").sim_day
     subs = store.load("subscriptions").items
-    sub = next((s for s in subs if s.owner_id == user and s.merchant_id == merchant_id
-                and s.addon_of is None and s.status == "ACTIVE"), None)
+    sub = next((s for s in subs if s.owner_id == user and s.merchant_id == merchant_id and s.status == "ACTIVE"),
+               None)
     async with store.aedit("usage") as usage:
         usage.items.append(UsageEvent(user_id=user, merchant_id=merchant_id, kind=kind,  # type: ignore[arg-type]
                                       subscription_id=sub.id if sub else None, day=day, at=utcnow()))

@@ -21,12 +21,6 @@
       AI: {{ settings.active_llm_provider }}{% if settings.is_sandbox %} · {{ settings.llm_model }}{% endif %}
     </span>
     <nav class="topbar-right" aria-label="Account">
-      <label class="sr-only" for="user-switch">User</label>
-      <select id="user-switch" data-testid="user-switch">
-        {% for u in users %}
-        <option value="{{ u.id }}" {% if current_user and u.id == current_user.id %}selected{% endif %}>{{ u.name }}</option>
-        {% endfor %}
-      </select>
       <a class="btn btn-ghost" href="/shop" target="_blank" rel="noopener" data-testid="view-shop">View dummy website</a>
       <span class="health" id="health" aria-label="Integration health" data-testid="health-dots"></span>
     </nav>

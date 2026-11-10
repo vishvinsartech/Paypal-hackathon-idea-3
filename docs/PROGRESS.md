@@ -2,6 +2,11 @@
 
 Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its check passes and it is committed.
 
+> **Story simplified after milestone 8 (2026-11-10):** Priya + Penwright only (D-090). The milestone 1-8 entries
+> below are a history log and still mention the old two-story demo (John, Lumen, Framewise, add-on, Day 21
+> price rise, $872.76). Current numbers: Money protected **$524.88**, Penwright risk **87**. See
+> "Story simplification" under the notes.
+
 - [x] **1. Preflight.** Run `claude mcp list`; check Python >= 3.11, Node >= 18 and `npx`; install the APIMatic PayPal context plugin; write `docs/PAYPAL_TOOLS.md` and `docs/PAYPAL_SDK_NOTES.md`; create `docs/DECISIONS.md`.
   - *Check:* tool versions confirmed; the three docs exist.
   - Done 2026-11-10 (commit `3a05a3e`). Python 3.14.4, Node 24.15, npx 11.14. **Open:** the APIMatic plugin isn't installed, and the PayPal MCP isn't started (DECISIONS D-003).
@@ -59,10 +64,26 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
     Then put the URL in README "Hosted demo".
 - [ ] **9. Demo-video tooling, code only** (section 13). Don't record or render a video.
   - *Check:* `make demo-video-check` passes.
+  - Started: `demo-video/scenes.json` exists for the simplified story (10 scenes, 172 s) and
+    `tests/test_scenes.py` checks it statically (D-098). Still to do: `check_scenes.py`, `record_demo.py`,
+    `make_voiceover.py`, `build_video.py`, `make_video.sh`, `demo-video/README.md`.
 - [ ] **10. Docs + submission files**, then a final review against section 15.
   - *Check:* every item in section 15 "Definition of done" is satisfied.
 
 ## Notes for next session
+
+### Story simplification (2026-11-10)
+- Spec section 2 rewritten: Day 0 approve (companion summary, risk 87, "I'll check with you before your trial
+  runs out.") -> Day 5 check-in (Zapier email/SMS + in-app, Keep / Cancel) -> Cancel (demo path) / Keep / no
+  answer (Day 6 auto-cancel, R2) -> Day 15 blocked charge. KPI **$524.88**.
+- Removed: John, Lumen, Framewise, price-rise flow + demo button, add-on, user switcher, yearly advice, renewal
+  reminders (pages, fixtures, seed data, chat tool, tests, docs). Kept on purpose: see D-091.
+- Code: `actions.confirm_cancelled` (notice + "Done" for both cancel paths, D-094), `timers` (new Day 0 / Day 5
+  wording, Keep -> `kept_day`, D-093/D-095), `demo_seed` (usage only, D-096), risk weights retuned (D-092).
+- Checks: 189 tests pass (`-m 'not sandbox'`), ruff clean, `python scripts/tasks.py ui-check` drives the new
+  story in headless Chromium with no console errors.
+- After pulling this: run `make reset` (old runtime data still has Framewise/Lumen/John; D-099). In sandbox mode,
+  `make seed` now creates only the Penwright product and plan.
 
 ### Milestone 7 notes (2026-11-10)
 - Default `pytest` excludes the `sandbox` marker (pyproject `addopts`); `python -m pytest -m sandbox` opts in.

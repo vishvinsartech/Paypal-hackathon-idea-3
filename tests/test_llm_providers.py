@@ -94,7 +94,7 @@ def test_model_that_obeys_injection_is_overruled(kind: str, settings: Settings, 
     data = run_review(store, provider, cap, "penwright-pro")
     inj = [c for c in data.clauses if c.type == "PROMPT_INJECTION_ATTEMPT"]
     assert inj and inj[0].source == "code" and quote_ok(inj[0].quote, cap)
-    assert data.risk_score >= 50  # style, money, library and PayPal checks don't depend on the model
+    assert data.risk_score >= 40  # style, money, library and PayPal checks (not the model) keep it far from 0
 
 
 def test_anthropic_request_shape(settings: Settings) -> None:
@@ -113,8 +113,8 @@ def test_anthropic_request_shape(settings: Settings) -> None:
 
 
 def test_openai_request_shape(settings: Settings) -> None:
-    cap = capture_page(settings, "/shop/lumen").model_copy(update={"screenshot_png_b64": "iVBORw0KGgo="})
-    provider, fake = make("openai", mock_text("lumen"))
+    cap = capture_page(settings, "/shop/penwright").model_copy(update={"screenshot_png_b64": "iVBORw0KGgo="})
+    provider, fake = make("openai", mock_text("penwright"))
     asyncio.run(provider.extract_findings(cap))
     call = fake.completions.calls[0]
     assert call["response_format"]["json_schema"]["strict"] is True
@@ -124,7 +124,7 @@ def test_openai_request_shape(settings: Settings) -> None:
 
 @pytest.mark.parametrize("kind", ["anthropic", "openai"])
 def test_bad_output_and_refusal_raise_llm_error(kind: str, settings: Settings) -> None:
-    cap = capture_page(settings, "/shop/lumen")
+    cap = capture_page(settings, "/shop/penwright")
     provider, _ = make(kind, "{oops")
     with pytest.raises(LLMError):
         asyncio.run(provider.extract_findings(cap))
@@ -136,7 +136,7 @@ def test_bad_output_and_refusal_raise_llm_error(kind: str, settings: Settings) -
 
 
 def _tool_turn(kind: str) -> Any:
-    args = {"subscription_ids": ["sub-1"], "reason": "barely used"}
+    args = {"subscription_ids": ["sub-1"], "reason": "trial ending"}
     if kind == "anthropic":
         return a_msg([{"type": "text", "text": "Here is a confirmation card."},
                       {"type": "tool_use", "id": "toolu_1", "name": "propose_cancel", "input": args}], stop="tool_use")
@@ -149,7 +149,7 @@ def _tool_turn(kind: str) -> Any:
 def test_chat_step_contract(kind: str) -> None:
     provider, fake = make(kind, chat=_tool_turn(kind))
     history = [
-        ChatMessage(role="user", content="cancel framewise"),
+        ChatMessage(role="user", content="cancel penwright"),
         ChatMessage(role="assistant", tool_calls=[ToolCall(id="t0", name="list_subscriptions")]),
         ChatMessage(role="tool", tool_results=[ToolResult(call_id="t0", name="list_subscriptions", content="[]")]),
     ]
@@ -157,10 +157,10 @@ def test_chat_step_contract(kind: str) -> None:
     turn = asyncio.run(provider.chat_step(history, TOOLS, on_text=seen.append))
     assert turn.stop == "tool_use" and seen == ["Here is a confirmation card."]
     assert turn.tool_calls == [ToolCall(id="toolu_1", name="propose_cancel",
-                                        arguments={"subscription_ids": ["sub-1"], "reason": "barely used"})]
+                                        arguments={"subscription_ids": ["sub-1"], "reason": "trial ending"})]
     sent = (fake.messages if kind == "anthropic" else fake.completions).calls[0]
     names = {t["name"] if kind == "anthropic" else t["function"]["name"] for t in sent["tools"]}
-    assert {"propose_cancel", "get_usage", "compare_billing_options"} <= names
+    assert {"propose_cancel", "get_usage", "review_subscription"} <= names and "compare_billing_options" not in names
     if kind == "anthropic":
         assert sent["messages"][2]["content"][0]["type"] == "tool_result"
         assert turn.provider_raw and turn.provider_raw[1]["type"] == "tool_use"

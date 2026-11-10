@@ -9,11 +9,7 @@
 
   <div class="price-box" data-testid="shop-price-box">
     <p class="price-big">{{ p.money(0) }} today</p>
-    <label class="addon">
-      <input type="checkbox" name="addon" value="penwright-ai-pack" checked data-testid="shop-addon">
-      AI Writing Pack
-    </label>
-    <p class="fineprint" data-testid="shop-fineprint">After your {{ p.penwright_trial_days }}-day free trial, your subscription automatically converts to Penwright Pro at {{ p.money(p.penwright_intro_price) }}/month, with the first charge on day {{ p.penwright_first_charge_day }}. After {{ p.penwright_intro_months }} paid months the price becomes {{ p.money(p.penwright_step_up_price) }}/month. The AI Writing Pack add-on is billed at {{ p.money(p.penwright_addon_price) }}/month unless you untick it.</p>
+    <p class="fineprint" data-testid="shop-fineprint">After your {{ p.penwright_trial_days }}-day free trial, your subscription automatically converts to Penwright Pro at {{ p.money(p.penwright_intro_price) }}/month, with the first charge on day {{ p.penwright_first_charge_day }}. After {{ p.penwright_intro_months }} paid months the price becomes {{ p.money(p.penwright_step_up_price) }}/month.</p>
   </div>
 
   <details class="terms-accordion" data-testid="shop-terms">

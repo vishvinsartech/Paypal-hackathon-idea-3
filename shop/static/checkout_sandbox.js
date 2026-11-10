@@ -1,6 +1,5 @@
 // Demo-shop checkout (sandbox mode): the real PayPal JS SDK Subscribe button.
 // It renders only after the SubGuard companion's "Continue to PayPal" (event `subguard:continue`).
-// If the add-on box is ticked, a second button for the add-on appears after the main approval (D-034).
 (function () {
   "use strict";
   const area = document.querySelector("[data-testid=shop-checkout]");
@@ -25,11 +24,11 @@
     });
   }
 
-  async function register(paypalId, planKey, addonOf) {
+  async function register(paypalId, planKey) {
     const res = await fetch("/api/subscriptions/register", {
       method: "POST", headers: {"Content-Type": "application/json"},
       body: JSON.stringify({paypal_id: paypalId, merchant_id: area.dataset.merchant, plan_key: planKey,
-        user_id: user, addon_of: addonOf || null, review_id: area.dataset.reviewId || null}),
+        user_id: user, review_id: area.dataset.reviewId || null}),
     });
     const data = await res.json().catch(() => ({}));
     if (res.status === 202) throw new Error("PayPal hasn't activated it yet (status " + data.status + ")");
@@ -37,14 +36,14 @@
     return data;
   }
 
-  function render(paypal, container, planId, planKey, addonOf, onDone) {
+  function render(paypal, container, planId, planKey, onDone) {
     return paypal.Buttons({
       style: {shape: "pill", label: "subscribe"},
       createSubscription: (_data, actions) => actions.subscription.create({plan_id: planId}),
       onApprove: async (data) => {
         status.textContent = "Approved. Confirming with PayPal…";
         try {
-          const sub = await register(data.subscriptionID, planKey, addonOf);
+          const sub = await register(data.subscriptionID, planKey);
           onDone(sub);
         } catch (err) {
           status.textContent = "Couldn't confirm the subscription: " + err.message;
@@ -60,18 +59,7 @@
     try {
       const paypal = await loadSdk();
       slot.innerHTML = "";
-      await render(paypal, slot, area.dataset.planId, area.dataset.planKey, null, (main) => {
-        const addon = document.querySelector("[data-testid=shop-addon]");
-        if (addon && addon.checked && area.dataset.addonPlanId) {
-          status.textContent = "Subscribed. Approve the ticked add-on too:";
-          const box = document.createElement("div");
-          slot.innerHTML = "";
-          slot.appendChild(box);
-          render(paypal, box, area.dataset.addonPlanId, area.dataset.addonKey, main.id, () => done());
-        } else {
-          done();
-        }
-      });
+      await render(paypal, slot, area.dataset.planId, area.dataset.planKey, () => done());
     } catch (err) {
       status.textContent = err.message;
     }

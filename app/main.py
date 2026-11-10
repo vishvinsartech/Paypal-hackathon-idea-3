@@ -1,4 +1,4 @@
-"""FastAPI entry point: `uvicorn app.main:app --host 127.0.0.1 --port 8000` (1 worker)."""
+"""FastAPI entry point: `python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload` (1 worker, D-020)."""
 
 from __future__ import annotations
 

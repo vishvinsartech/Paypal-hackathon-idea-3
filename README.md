@@ -57,23 +57,45 @@ The dashboard loads AG Grid from a CDN, so the browser needs internet access.
 Mock mode needs **no accounts and no keys**. PayPal is a local state machine, the AI uses recorded answers, and
 emails/SMS are written to files.
 
-**macOS / Linux**
+**1. Set up** (once):
 
 ```bash
+# macOS / Linux
 git clone <this-repo-url> subguard && cd subguard
 cp .env.example .env
-make setup        # creates .venv, installs requirements, installs Playwright Chromium
-make dev          # serves http://127.0.0.1:8000/
+python3 scripts/tasks.py setup     # or `make setup`: creates .venv, installs requirements + Playwright Chromium
+source .venv/bin/activate
 ```
 
-**Windows (PowerShell, no `make` needed)**
-
 ```powershell
+# Windows PowerShell
 git clone <this-repo-url> subguard; cd subguard
 copy .env.example .env
 python scripts/tasks.py setup
-python scripts/tasks.py dev
+.venv\Scripts\Activate.ps1
 ```
+
+**2. Run the server.** This is the standard way to start SubGuard, on every OS (venv active):
+
+```bash
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+It runs in the mode set by `APP_MODE` in `.env` (`mock` by default). To pick the mode for one run instead:
+
+```bash
+# macOS / Linux
+APP_MODE=sandbox python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+```powershell
+# Windows PowerShell (applies to this terminal until you close it or set it back to mock)
+$env:APP_MODE = "sandbox"; python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+Shortcuts that run the same command: `make dev` / `make dev-sandbox`, or `python scripts/tasks.py dev` /
+`dev-sandbox` (a thin wrapper that uses `.venv`'s Python, so it works without activating the venv). Always one
+worker: the JSON store relies on one in-process lock (D-020), so don't add `--workers`.
 
 Then open:
 
@@ -164,7 +186,7 @@ that still match are reused. Options: `make seed ARGS="--demo-subs"` (or `python
 ### 4. Run
 
 ```bash
-make dev-sandbox                     # python scripts/tasks.py dev-sandbox
+make dev-sandbox                     # = APP_MODE=sandbox python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 The top bar shows **PayPal Sandbox** and the AI provider + model. In the shop, the real PayPal **Subscribe**
@@ -202,8 +224,8 @@ through the PayPal MCP server, and reads both back as `CANCELLED`.
 | `make` | Without `make` | What it does |
 |---|---|---|
 | `make setup` | `python scripts/tasks.py setup` | Create `.venv`, install requirements, install Playwright Chromium |
-| `make dev` | `python scripts/tasks.py dev` | Run on http://127.0.0.1:8000/ in **mock** mode (auto-reload) |
-| `make dev-sandbox` | `python scripts/tasks.py dev-sandbox` | Same, in **sandbox** mode |
+| `make dev` | `python scripts/tasks.py dev` | `python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload` (mode from `.env`, default **mock**) |
+| `make dev-sandbox` | `python scripts/tasks.py dev-sandbox` | Same with `APP_MODE=sandbox` |
 | `make seed` | `python scripts/tasks.py seed [--demo-subs]` | Create the sandbox products and plans |
 | `make sandbox-check` | `python scripts/tasks.py sandbox-check` | Real cancel via SDK + MCP in the sandbox |
 | `make reset` | `python scripts/tasks.py reset` | Wipe `data/runtime/` (keeps `sandbox_ids.json`; the old audit log is archived) |
@@ -213,7 +235,8 @@ through the PayPal MCP server, and reads both back as `CANCELLED`.
 | `make zapier-check` | `python scripts/tasks.py zapier-check` | Send one test notification to your Zapier hook |
 | `make demo-video-check` / `make demo-video` | `python scripts/tasks.py demo-video-check` / `demo-video` | Demo-video tooling (not built yet; see `docs/PROGRESS.md`) |
 
-On macOS/Linux, `make` uses `python3` by default; override with `make dev PYTHON=python`.
+On macOS/Linux, `make dev` uses `.venv/bin/python` if it exists (else `python`); the other targets use `python3`
+by default (override with `make test PYTHON=python`).
 
 ---
 
@@ -284,7 +307,8 @@ To deploy:
 2. In the Render dashboard click **New → Blueprint** and pick the repo. `render.yaml` deploys branch `main`;
    edit it if you deploy another branch.
 3. Click **Apply**. Render installs `requirements.txt`, starts
-   `uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1`, and checks `/healthz`.
+   `python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT` (no `--reload`; `WEB_CONCURRENCY=1` keeps one
+   worker), and checks `/healthz`.
 4. Open `https://<service>.onrender.com/?demo=1` and put that URL above.
 
 ---

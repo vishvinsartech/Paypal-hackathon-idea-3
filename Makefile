@@ -1,16 +1,21 @@
-# SubGuard. Every target delegates to scripts/tasks.py, which also works on Windows without make.
+# SubGuard. The standard way to run the server is the uvicorn command in `dev` (README "Quick start").
+# The other targets delegate to scripts/tasks.py, which also works on Windows without make.
 PYTHON ?= python3
+# The venv's Python if `make setup` created it, so `make dev` works without activating the venv.
+VENV_PY := $(if $(wildcard .venv/bin/python),.venv/bin/python,python)
+SERVE := -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 
 .PHONY: setup dev dev-sandbox seed sandbox-check reset test lint ui-check zapier-check demo-video-check demo-video
 
 setup:
 	$(PYTHON) scripts/tasks.py setup
 
+# One worker only (JSON store lock, DECISIONS D-020): uvicorn's default, and --reload never forks workers.
 dev:
-	$(PYTHON) scripts/tasks.py dev
+	$(VENV_PY) $(SERVE)
 
 dev-sandbox:
-	$(PYTHON) scripts/tasks.py dev-sandbox
+	APP_MODE=sandbox $(VENV_PY) $(SERVE)
 
 seed:
 	$(PYTHON) scripts/tasks.py seed $(ARGS)

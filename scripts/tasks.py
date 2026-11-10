@@ -38,9 +38,13 @@ def setup() -> int:
     )
 
 
-def dev(mode: str = "mock") -> int:
-    return run(py(), "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000",
-               "--reload", "--workers", "1", env={"APP_MODE": mode})
+SERVE = ("-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000", "--reload")
+
+
+def dev(mode: str | None = None) -> int:
+    """Thin wrapper: exactly `python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload` with the venv's
+    Python. `dev` keeps APP_MODE from the environment / .env (default mock); `dev-sandbox` sets it to sandbox."""
+    return run(py(), *SERVE, env={"APP_MODE": mode} if mode else None)
 
 
 def reset() -> int:
@@ -56,7 +60,7 @@ def not_yet(name: str, milestone: int) -> int:
 
 TASKS = {
     "setup": setup,
-    "dev": lambda: dev("mock"),
+    "dev": lambda: dev(),
     "dev-sandbox": lambda: dev("sandbox"),
     "seed": lambda: run(py(), "scripts/seed_sandbox.py", *sys.argv[2:]),
     "sandbox-check": lambda: run(py(), "scripts/sandbox_cancel_check.py", *sys.argv[2:]),

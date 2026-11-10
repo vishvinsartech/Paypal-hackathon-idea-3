@@ -49,7 +49,8 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
 ## Storage and app structure (milestone 2)
 
 - **D-020 One uvicorn worker.** JSON storage + one in-process lock only works in a single process,
-  so `dev` and Render run `--workers 1`.
+  so the server always runs one worker (how that's enforced since D-100: uvicorn's default + `WEB_CONCURRENCY=1`
+  on Render).
 - **D-021 Lock design.** One `threading.RLock` (re-entrant, so the audit log can append inside an
   edit) plus one `asyncio.Lock`. Async code uses `store.aedit()` / `store.alocked()`, which take the
   asyncio lock first, because the RLock alone can't separate two coroutines on the same thread.
@@ -293,6 +294,17 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
 - **D-099 Old config and data.** `PENWRIGHT_ADDON_PRICE`, `FRAMEWISE_*` and `LUMEN_*` are gone from
   `.env.example`; leftover keys in a local `.env` are ignored (`extra="ignore"`). Runtime data from before this
   change (Framewise/Lumen merchants, John) is stale: run `make reset` (the pricing fingerprint warning says so).
+
+## Server start (2026-11-10)
+
+- **D-100 One standard start command.** Locally: `python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+  --reload` (README Quick start shows it directly, since `make` may not exist on Windows). `make dev` and
+  `python scripts/tasks.py dev` run exactly that with the venv's Python; `dev-sandbox` adds `APP_MODE=sandbox`.
+  `dev` no longer forces mock: the mode comes from the environment / `.env` (default mock), same as the bare
+  command. There's no separate launcher script. Render runs `python -m uvicorn app.main:app --host 0.0.0.0
+  --port $PORT` (no `--reload`). **Still one worker** (D-020): no command passes `--workers`, uvicorn defaults to
+  1, `--reload` never forks workers, and `render.yaml` pins `WEB_CONCURRENCY=1` because uvicorn reads that
+  variable as its default worker count and a host could set it.
 
 ## Not used in v1 (sponsor tools)
 

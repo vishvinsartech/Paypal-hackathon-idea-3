@@ -10,14 +10,17 @@ services:
     autoDeploy: true
     # Mock mode reviews pages with the static HTML capture, so no Playwright browser download is needed.
     buildCommand: pip install --upgrade pip && pip install -r requirements.txt
-    # JSON storage needs exactly one worker (one process-wide lock, D-020).
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+    # JSON storage needs exactly one worker (one process-wide lock, D-020). Uvicorn's default is 1 worker unless
+    # WEB_CONCURRENCY says otherwise, so it's pinned to 1 below (D-100).
+    startCommand: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /healthz
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.10
       - key: APP_MODE
         value: mock
+      - key: WEB_CONCURRENCY
+        value: "1"
       - key: DEMO_SEED
         value: "true"
       - key: LLM_PROVIDER

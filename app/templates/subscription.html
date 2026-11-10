@@ -66,14 +66,22 @@
     {% else %}<p class="muted">No snapshot (not confirmed ACTIVE).</p>{% endif %}
   </section>
   <section class="card">
-    <h2>Cancellation notice</h2>
+    <h2>Cancellation email</h2>
     {% if notice %}
     <div data-testid="cancellation-notice">
-      <p><strong>{{ notice.subject }}</strong> → {{ notice.to }} · Day {{ notice.sim_day }} · {{ notice.delivery }}</p>
+      {% if notice.status == "sent" %}
+      <p class="ok"><strong>{{ "Opened in Gmail (demo)" if notice.sent_via == "gmail_compose_link" else "Email sent (demo)" }}</strong>
+        · Day {{ notice.sim_day }} · edited: {{ "yes" if notice.edited else "no" }}</p>
+      {% else %}
+      <p><strong>Your cancellation email is ready to review and send.</strong></p>
+      {% endif %}
+      <p><strong>{{ notice.subject }}</strong> → {{ notice.to }}</p>
       <pre>{{ notice.body }}</pre>
-      <p class="small">SHA-256: <code>{{ notice.sha256 }}</code></p>
+      <p class="small muted">Drafted by {{ notice.drafted_by }} · SHA-256: <code>{{ notice.sha256 }}</code></p>
+      <button class="btn btn-sm" data-email-open="{{ notice.id }}" data-testid="email-review">{{ "View sent email" if notice.status == "sent" else "Review email" }}</button>
     </div>
-    {% else %}<p class="muted">No notice sent.</p>{% endif %}
+    <p class="muted tiny">Demo only. Production would send from the user's own Gmail/Outlook with send-only permission.</p>
+    {% else %}<p class="muted">No cancellation email yet.</p>{% endif %}
   </section>
 </div>
 

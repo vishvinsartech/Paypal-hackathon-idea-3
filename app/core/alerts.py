@@ -1,4 +1,4 @@
-"""Alerts to the user (in-app + email/SMS) and written cancellation notices to merchants.
+"""Alerts to the user (in-app + email/SMS). The merchant cancellation email lives in notices.py.
 
 Alerts are idempotent by key: jumping several days or re-running a tick never sends twice (corner case 14).
 Info alerts are in-app only; warning / urgent / action_needed alerts also go out on the user's channels.
@@ -6,12 +6,11 @@ Info alerts are in-app only; warning / urgent / action_needed alerts also go out
 
 from __future__ import annotations
 
-import hashlib
 import secrets
 from typing import Literal
 
 from app.core.services import Services
-from app.models import Alert, Notice, Subscription
+from app.models import Alert
 from app.store import utcnow
 
 Level = Literal["info", "warning", "urgent", "action_needed"]
@@ -48,36 +47,3 @@ async def send_alert(svc: Services, *, user_id: str, key: str, kind: str, level:
                        details={"alert_id": alert.id, "kind": kind, "level": level, "key": key,
                                 "target": svc.notifier.target})
     return alert, True
-
-
-def notice_body(svc: Services, sub: Subscription, merchant_name: str) -> str:
-    user = svc.user(sub.owner_id)
-    return (f"To {merchant_name} support,\n\n"
-            f"Please cancel my subscription (PayPal subscription id {sub.paypal_id}, plan {sub.plan_key}) "
-            f"with effect before the next billing date. This is my written notice as required by your terms.\n"
-            f"Account email: {user.email if user else ''}\n\n"
-            f"Sent on my behalf by SubGuard on sim day {svc.day}.\n")
-
-
-async def send_cancellation_notice(svc: Services, sub: Subscription) -> Notice:
-    """The written notice the merchant's terms require, stored with a SHA-256 proof (corner case 38)."""
-    store = svc.store
-    existing = next((n for n in store.load("notices").items if n.subscription_id == sub.id), None)
-    if existing is not None:
-        return existing
-    merchant = svc.merchant(sub.merchant_id)
-    body = notice_body(svc, sub, merchant.name)
-    subject = f"Cancellation notice: subscription {sub.paypal_id}"
-    result = await svc.notifier.send(kind="merchant_cancellation", to={"email": merchant.support_email},
-                                     subject=subject, body=body, idempotency_key=f"notice:{sub.id}",
-                                     channels=["email"])
-    notice = Notice(id=f"nt-{secrets.token_hex(5)}", subscription_id=sub.id, merchant_id=merchant.id,
-                    sim_day=svc.day, to=merchant.support_email, subject=subject, body=body,
-                    sha256=hashlib.sha256(body.encode("utf-8")).hexdigest(), sent_at=utcnow(),
-                    delivery=result.get("email", "failed"))
-    async with store.aedit("notices") as notices:
-        notices.items.append(notice)
-    store.audit.append(actor="system", event="cancellation_notice_sent", user_id=sub.owner_id,
-                       subscription_id=sub.id, result=notice.delivery,
-                       details={"notice_id": notice.id, "to": notice.to, "sha256": notice.sha256})
-    return notice

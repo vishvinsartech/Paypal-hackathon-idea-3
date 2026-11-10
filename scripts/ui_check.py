@@ -2,8 +2,9 @@
 
 Starts its own mock server on a free port with a throwaway DATA_DIR (unless --base-url is given), then:
 shop -> companion (risk ~87, summary, "I'll check with you...", Continue) -> timer shown -> Day 5 check-in toast ->
-chat "Should I keep Penwright?" -> Cancel -> confirm card $524.88/yr -> CANCELLED + notice -> KPI $524.88 ->
-Day 15 blocked charge -> audit-log CSV export -> subscription page. Fails on any console error or page error.
+chat "Should I keep Penwright?" -> Cancel -> confirm card $524.88/yr -> CANCELLED -> email preview (edit, empty To
+disables Send, Gmail link) -> KPI $524.88 -> Day 11 blocked charge -> audit-log CSV export -> subscription page.
+Fails on any console error or page error.
 
 Usage: python scripts/ui_check.py [--base-url http://127.0.0.1:8000] [--headed] [--shots DIR]
 """
@@ -107,9 +108,11 @@ def story(base: str, headed: bool) -> None:
         step("Day 0: timer shown (check-in Day 5, cancel Day 6)")
 
         dash.get_by_test_id("sim-jump-5").click()
-        expect(dash.get_by_test_id("toast-alert").filter(has_text="Your Penwright trial is ending")).to_be_visible()
+        toast = dash.get_by_test_id("toast-alert").filter(has_text="Your Penwright trial ends on Day 10")
+        expect(toast).to_be_visible()
         check = dash.get_by_test_id("alert-trial-check")
-        expect(check).to_contain_text("Your real last day to cancel is Day 7. You've opened it twice.")
+        expect(check).to_contain_text("Your Penwright trial ends on Day 10, but your real last day to cancel is Day 7. "
+                                      "You've opened it twice. Do you want to keep it?")
         expect(check.get_by_test_id("alert-keep")).to_be_visible()
         step("Day 5: keep-or-cancel check-in (toast + alert with Keep / Cancel)")
 
@@ -125,16 +128,34 @@ def story(base: str, headed: bool) -> None:
         card = dash.get_by_test_id("confirm-card")
         expect(card).to_contain_text("$524.88/yr")
         card.get_by_test_id("confirm-button").click()
-        expect(dash.get_by_test_id("status-penwright")).to_have_text("CANCELLED")
-        expect(dash.get_by_test_id("alert-done")).to_contain_text("Done. You won't be charged.")
-        expect(dash.get_by_test_id("cancellation-notice").first).to_contain_text("cancel@penwright.example")
+        email = dash.get_by_test_id("email-preview")
+        expect(email.get_by_test_id("email-paypal-done")).to_have_text("Cancelled in PayPal. You won't be charged.")
+        expect(dash.get_by_test_id("status-penwright")).to_have_text("CANCELLED")  # PayPal first, then the email
+        body = email.get_by_test_id("email-body")
+        expect(body).to_have_value(re.compile("at least 3 days before the next billing date"))
+        shot(dash, "03_email_preview")
+        email.get_by_test_id("email-to").fill("")
+        expect(email.get_by_test_id("email-send")).to_be_disabled()
+        email.get_by_test_id("email-to").fill("cancel@penwright.example")
+        body.fill(body.input_value() + "\nEdited by Priya.")
+        dash.context.route("https://mail.google.com/**", lambda route: route.fulfill(body="Gmail stub"))
+        with dash.context.expect_page() as gmail_info:
+            email.get_by_test_id("email-open-gmail").click()
+        gmail = gmail_info.value
+        gmail.wait_for_load_state()
+        assert gmail.url.startswith("https://mail.google.com/mail/?view=cm") and "Edited%20by%20Priya." in gmail.url
+        gmail.close()
+        expect(email.get_by_test_id("email-sent")).to_have_text("Opened in Gmail (demo)")
+        email.get_by_test_id("email-dismiss").click()
+        expect(dash.get_by_test_id("alert-done")).to_contain_text("Cancelled in PayPal. You won't be charged.")
+        expect(dash.get_by_test_id("cancellation-notice").first).to_contain_text("edited: yes")
         expect(dash.locator("#kpi-protected")).to_have_text("$524.88/yr")
         shot(dash, "03_cancelled")
-        step("Cancel -> confirm card $524.88/yr -> CANCELLED, notice stored, Money protected $524.88/yr")
+        step("Cancel -> confirm card -> CANCELLED in PayPal -> email preview edited -> Gmail link -> $524.88/yr")
 
-        dash.get_by_test_id("sim-jump-15").click()
+        dash.get_by_test_id("sim-jump-11").click()
         expect(dash.get_by_test_id("blocked-charge").first).to_contain_text("First charge due today: blocked")
-        step("Day 15: blocked charge")
+        step("Day 11: blocked charge")
 
         expect(dash.get_by_test_id("audit-chain")).to_contain_text("chain verified")
         with dash.expect_download() as dl_info:
@@ -149,10 +170,53 @@ def story(base: str, headed: bool) -> None:
         page.goto(f"{base}/subscriptions/{sub_id}?user=priya")
         expect(page.get_by_test_id("risk-score")).to_contain_text("/100")
         expect(page.get_by_test_id("finding-PROMPT_INJECTION_ATTEMPT").first).to_be_visible()
-        expect(page.get_by_test_id("cancellation-notice")).to_contain_text("SHA-256")
+        expect(page.get_by_test_id("cancellation-notice")).to_contain_text("Opened in Gmail (demo)")
+        page.get_by_test_id("email-review").click()
+        expect(page.get_by_test_id("email-sent")).to_be_visible()  # already handed over: shows the sent email
+        page.get_by_test_id("email-dismiss").click()
         expect(page.locator("#sub-audit-grid .ag-row").first).to_be_visible()
         shot(page, "04_subscription")
         step("subscription page: findings grid, notice, audit entries")
+        browser.close()
+
+
+def autoplay(base: str, headed: bool) -> None:
+    """The "Start demo" button: runs to the check-in, pauses for Priya, then finishes. All three answers."""
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=not headed)
+        dash = watch(browser.new_page(viewport={"width": 1440, "height": 1000}))
+        dash.goto(f"{base}/")
+        start = dash.get_by_test_id("demo-start")
+        for answer, expected, outcome in (("cancel", "$524.88", "Cancelled Day 5"),
+                                          ("keep", "Kept on purpose", "Kept"),
+                                          ("skip", "$524.88", "Auto-cancelled Day 6 (R2)")):
+            start.click()
+            dlg = dash.get_by_test_id("decision-dialog")
+            expect(dlg).to_be_visible(timeout=40000)
+            expect(dlg).to_contain_text("but your real last day to cancel is Day 7. You've opened it twice.")
+            expect(dash.get_by_test_id("step-read")).to_contain_text("Risk 87 · cancel by Day 7")
+            if answer == "cancel":
+                shot(dash, "05_autoplay_ask")
+            dash.get_by_test_id(f"decision-{answer}").click()
+            if answer == "cancel":
+                card = dash.locator("#confirm-dialog").get_by_test_id("confirm-card")
+                expect(card).to_contain_text("$524.88/yr")
+                card.get_by_test_id("confirm-button").click()
+                email = dash.get_by_test_id("email-preview")
+                email.get_by_test_id("email-send").click()
+                expect(email.get_by_test_id("email-sent")).to_have_text("Email sent (demo)")
+                email.get_by_test_id("email-dismiss").click()
+            done = dash.get_by_test_id("pipeline-done")
+            expect(done).to_contain_text(expected, timeout=40000)
+            expect(dash.get_by_test_id("step-outcome")).to_contain_text(outcome)
+            expect(dash.get_by_test_id("demo-day")).to_have_text("11")
+            if answer == "cancel":
+                expect(dash.locator("#kpi-protected")).to_have_text("$524.88/yr")
+                shot(dash, "06_autoplay_done")
+            if answer == "skip":
+                expect(dash.get_by_test_id("email-ready")).to_contain_text("ready to review and send")
+            expect(start).to_be_enabled()
+            step(f"Start demo -> paused at the check-in -> {answer} -> {outcome}")
         browser.close()
 
 
@@ -173,6 +237,7 @@ def main() -> int:
     print(f"UI check against {base}")
     try:
         story(base, args.headed)
+        autoplay(base, args.headed)
     finally:
         if proc is not None:
             proc.terminate()

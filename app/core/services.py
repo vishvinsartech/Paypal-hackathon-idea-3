@@ -8,6 +8,7 @@ from app.config import Settings
 from app.core.policy import Policy
 from app.integrations.notify import Notifier
 from app.integrations.paypal_gateway import PayPalGateway
+from app.llm.base import LLMProvider
 from app.models import Merchant, Subscription, User
 from app.store import JsonStore
 
@@ -19,6 +20,7 @@ class Services:
     gw: PayPalGateway
     notifier: Notifier
     policy: Policy = field(default_factory=Policy)
+    llm: LLMProvider | None = None  # drafts the cancellation email (falls back to a template without it)
 
     @property
     def day(self) -> int:

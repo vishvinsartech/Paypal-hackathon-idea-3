@@ -16,14 +16,14 @@ from app.store import JsonStore
 
 def test_defaults_are_the_spec_numbers() -> None:
     p = Pricing()
-    assert (p.penwright_trial_days, p.penwright_intro_price, p.penwright_intro_months) == (14, Decimal("24.99"), 3)
+    assert (p.penwright_trial_days, p.penwright_intro_price, p.penwright_intro_months) == (10, Decimal("24.99"), 3)
     assert p.penwright_step_up_price == Decimal("49.99")
-    assert (p.penwright_notice_days, p.penwright_export_limit, p.penwright_first_charge_day) == (7, 3, 15)
+    assert (p.penwright_notice_days, p.penwright_export_limit, p.penwright_first_charge_day) == (3, 3, 11)
     assert not {"penwright_addon_price", "framewise_price", "lumen_monthly_price"} & set(Pricing.model_fields)
     pro = p.plans_for("penwright")[0]
     cycles = [(c.tenure_type, c.price, c.interval_unit, c.interval_count, c.total_cycles) for c in pro.billing_cycles]
     assert cycles == [
-        ("TRIAL", Decimal("0.00"), "DAY", 14, 1), ("TRIAL", Decimal("24.99"), "MONTH", 1, 3),
+        ("TRIAL", Decimal("0.00"), "DAY", 10, 1), ("TRIAL", Decimal("24.99"), "MONTH", 1, 3),
         ("REGULAR", Decimal("49.99"), "MONTH", 1, 0)]
     assert Settings(_env_file=None).pricing == p  # type: ignore[call-arg]
 

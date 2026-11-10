@@ -9,8 +9,11 @@
     backgroundColor: "#11213a", foregroundColor: "#e8eef7", headerBackgroundColor: "#1a2e4d",
     accentColor: "#2ec4b6", borderColor: "#23406b", oddRowBackgroundColor: "#0f1d33",
     fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif", fontSize: 13, browserColorScheme: "dark",
+    rowHoverColor: "rgba(46,196,182,0.08)", valueChangeValueHighlightBackgroundColor: "rgba(46,196,182,0.35)",
   });
-  const base = {theme, animateRows: false, suppressCellFocus: false, domLayout: "autoHeight",
+  // Motion: rows animate when they move, changed cells flash teal, new audit entries flash (off for reduced motion).
+  const motion = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const base = {theme, animateRows: motion, suppressCellFocus: false, domLayout: "autoHeight",
                 defaultColDef: {sortable: true, filter: true, resizable: true, flex: 1, minWidth: 90}};
   const html = (s) => { const d = document.createElement("span"); d.innerHTML = s; return d; };
 
@@ -40,6 +43,7 @@
   if (subsEl) {
     const grid = AG.createGrid(subsEl, Object.assign({}, base, {
       rowData: [], getRowId: (p) => p.data.id,
+      defaultColDef: Object.assign({}, base.defaultColDef, {enableCellChangeFlash: motion}),
       columnDefs: [
         {field: "merchant", headerName: "Merchant"},
         {field: "plan", headerName: "Plan"},
@@ -72,7 +76,7 @@
   const auditEl = document.getElementById("audit-grid");
   if (auditEl) {
     const grid = AG.createGrid(auditEl, Object.assign({}, base, {
-      rowData: [], domLayout: "normal", pagination: true, paginationPageSize: 50, paginationPageSizeSelector: false,
+      rowData: [], getRowId: (p) => String(p.data.seq), domLayout: "normal", pagination: true, paginationPageSize: 50, paginationPageSizeSelector: false,
       columnDefs: [
         {field: "seq", headerName: "#", maxWidth: 80, sort: "desc"},
         {field: "ts", headerName: "Time (UTC)", valueFormatter: (p) => (p.value || "").replace("T", " ").slice(0, 19), minWidth: 160},
@@ -88,8 +92,17 @@
         {field: "reason", headerName: "Reason", minWidth: 220, tooltipField: "reason"},
       ],
     }));
+    let maxSeq = null; // flash entries that arrive after the first load
     onRefresh(async () => {
-      grid.setGridOption("rowData", await api("/api/audit-log"));
+      const rows = await api("/api/audit-log");
+      grid.setGridOption("rowData", rows);
+      const top = rows.reduce((m, r) => Math.max(m, r.seq), 0);
+      if (motion && maxSeq !== null && top > maxSeq) {
+        const fresh = [];
+        grid.forEachNode((n) => { if (n.data.seq > maxSeq) fresh.push(n); });
+        grid.flashCells({rowNodes: fresh, flashDuration: 900, fadeDuration: 900});
+      }
+      maxSeq = top; // after a reset the log shrinks, and this follows it down
       const v = await api("/api/audit-log/verify");
       const chain = document.getElementById("chain");
       chain.textContent = v.ok ? `chain verified ✓ (${v.entries} entries)` : `chain BROKEN ✗ ${v.reason || ""}`;

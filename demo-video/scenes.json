@@ -21,8 +21,8 @@
     {
       "id": "02_shop",
       "duration": 16,
-      "on_screen": "Penwright Studio: \"14-day free trial, $0 today\"",
-      "narration": "Priya wants Penwright, a fictional AI writing app. Fourteen days free. The real terms hide in tiny grey text and a folded Terms section.",
+      "on_screen": "Penwright Studio: \"10-day free trial, $0 today\"",
+      "narration": "Priya wants Penwright, a fictional AI writing app. Ten days free. The real terms hide in tiny grey text and a folded Terms section.",
       "actions": [
         {"action": "goto", "url": "/shop/penwright"},
         {"action": "hover", "target": "shop-fineprint"},
@@ -32,9 +32,9 @@
     },
     {
       "id": "03_companion",
-      "duration": 32,
+      "duration": 30,
       "on_screen": "Before PayPal: plain English, risk 87, real deadline Day 7",
-      "narration": "She clicks PayPal, and SubGuard steps in first: $24.99 a month after the trial, $49.99 after three months, and cancelling needs an email seven days before billing. So her real deadline is Day 7, not Day 14. Risk: 87. A hidden note telling AI to call it risk-free is flagged and ignored. And SubGuard promises to check with her before the trial runs out.",
+      "narration": "She clicks PayPal, and SubGuard steps in first: $24.99 a month after the trial, $49.99 after three months, and cancelling needs an email three days before billing. So her real deadline is Day 7, not Day 10. Risk: 87. A hidden note telling AI to call it risk-free is flagged and ignored. SubGuard promises to check in before the trial ends.",
       "actions": [
         {"action": "click", "target": "shop-paypal-btn"},
         {"action": "wait_for", "target": "companion-overlay"},
@@ -62,7 +62,7 @@
       "id": "05_day5_checkin",
       "duration": 18,
       "on_screen": "Day 5: \"Do you want to keep it?\"",
-      "narration": "Day 5. By email, text and in the app: your trial is ending, your real last day to cancel is Day 7, you've opened it twice. Keep it, or cancel?",
+      "narration": "Day 5. By email, text and in the app: your trial ends on Day 10, but your real last day to cancel is Day 7. You've opened it twice. Keep it, or cancel?",
       "actions": [
         {"action": "click", "target": "sim-jump-5"},
         {"action": "wait_for", "target": "toast-alert"},
@@ -71,7 +71,7 @@
     },
     {
       "id": "06_chat",
-      "duration": 20,
+      "duration": 16,
       "on_screen": "\"Should I keep Penwright?\"",
       "narration": "Priya asks the chat. Should I keep Penwright? SubGuard answers with real numbers from code: the first paid year costs $524.88, and the decision stays hers.",
       "actions": [
@@ -84,17 +84,19 @@
     },
     {
       "id": "07_cancel",
-      "duration": 24,
-      "on_screen": "Cancel, confirm, done. Proof stored.",
-      "narration": "She taps Cancel and confirms. SubGuard cancels through PayPal, emails Penwright the written notice its terms require, and stores a SHA-256 proof. Done. She won't be charged. Every step is in the audit log.",
+      "duration": 30,
+      "on_screen": "Cancelled in PayPal first. Then the email her terms require.",
+      "narration": "She taps Cancel and confirms. SubGuard cancels in PayPal first, so she won't be charged. Then AI drafts the email Penwright's terms require, quoting the clause word for word. She checks it, can edit it, and sends it. In this demo it's saved, not emailed. Every step is in the audit log.",
       "actions": [
         {"action": "click", "target": "alert-cancel"},
         {"action": "wait_for", "target": "confirm-card"},
         {"action": "click", "target": "confirm-button"},
-        {"action": "highlight", "target": "alert-done"},
-        {"action": "highlight", "target": "status-penwright"},
-        {"action": "scroll_to", "target": "cancellation-notice"},
-        {"action": "highlight", "target": "cancellation-notice"},
+        {"action": "wait_for", "target": "email-preview"},
+        {"action": "highlight", "target": "email-paypal-done"},
+        {"action": "highlight", "target": "email-body"},
+        {"action": "click", "target": "email-send"},
+        {"action": "wait_for", "target": "email-sent"},
+        {"action": "click", "target": "email-dismiss"},
         {"action": "type", "target": "audit-filter", "text": "R1"},
         {"action": "highlight", "target": "audit-log-grid"}
       ]
@@ -103,7 +105,7 @@
       "id": "08_no_answer",
       "duration": 12,
       "on_screen": "No answer? Auto-cancel on Day 6 (rule R2)",
-      "narration": "No answer? SubGuard cancels on Day 6. Code allows it only because she was told on Day 0 and warned on Day 5.",
+      "narration": "No answer? SubGuard cancels on Day 6, because she was told on Day 0 and warned on Day 5. The email still waits for her.",
       "actions": [
         {"action": "type", "target": "audit-filter", "text": "R2"},
         {"action": "highlight", "target": "audit-log-grid"}
@@ -112,11 +114,11 @@
     {
       "id": "09_proof",
       "duration": 10,
-      "on_screen": "Day 15: first charge blocked",
-      "narration": "Day 15. The first charge is due, and blocked. There's no active PayPal subscription.",
+      "on_screen": "Day 11: first charge blocked",
+      "narration": "Day 11. The first charge is due, and blocked. There's no active PayPal subscription.",
       "actions": [
         {"action": "scroll_to", "target": "brand"},
-        {"action": "click", "target": "sim-jump-15"},
+        {"action": "click", "target": "sim-jump-11"},
         {"action": "highlight", "target": "blocked-charge"}
       ]
     },

@@ -59,6 +59,7 @@
     done.classList.toggle("msg-warn", !allOk);
     history.push({role: "assistant", content: done.textContent});
     await refresh();
+    await window.SG.openDrafts(out);
   }
 
   function transportName(t) {

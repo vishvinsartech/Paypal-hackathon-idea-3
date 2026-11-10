@@ -1,17 +1,42 @@
 // Dashboard panels: KPIs, alerts (+ toasts for new ones), timeline, notices, demo control bar.
+// Motion: KPIs count up and glow when they change, the day chip bumps, new alerts slide in, the timeline's
+// "today" line slides. CSS turns it all off under prefers-reduced-motion.
 (function () {
   "use strict";
   const {user, esc, api, toast, onRefresh, refresh} = window.SG;
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   let seenAlerts = null; // ids already shown; null until the first load (no toasts on page load)
 
   // ---- KPIs + sim day -----------------------------------------------------------------------
+  // Sets `text` on el; if its number changed, counts up/down to it (same prefix, suffix and decimals).
+  function setKpi(id, text) {
+    const el = document.getElementById(id);
+    if (el.textContent === String(text)) return;
+    const m = String(text).match(/^([^\d-]*)(-?[\d,]*\.?\d+)(.*)$/s);
+    const from = parseFloat((el.textContent.match(/-?[\d,]*\.?\d+/) || ["0"])[0].replace(/,/g, ""));
+    el.closest(".kpi").classList.remove("is-bumped");
+    void el.offsetWidth;
+    el.closest(".kpi").classList.add("is-bumped");
+    if (!m || reduce) { el.textContent = text; return; }
+    const [, pre, num, post] = m;
+    const to = parseFloat(num.replace(/,/g, ""));
+    const decimals = (num.split(".")[1] || "").length;
+    const start = performance.now();
+    const fmt = (v) => pre + v.toLocaleString("en-US", {minimumFractionDigits: decimals, maximumFractionDigits: decimals}) + post;
+    (function frame(now) {
+      const t = Math.min(1, (now - start) / 900);
+      el.textContent = t < 1 ? fmt(from + (to - from) * (1 - Math.pow(1 - t, 3))) : text;
+      if (t < 1) requestAnimationFrame(frame);
+    })(start);
+  }
+
   onRefresh(async () => {
     const k = await api(`/api/kpis?user=${user}`);
     const extra = Object.values(k.other_currencies || {}).map((t) => ` + ${t}/yr`).join("");
-    document.getElementById("kpi-protected").textContent = k.money_protected_text + "/yr" + extra;
-    document.getElementById("kpi-patterns").textContent = k.dark_patterns_caught;
-    document.getElementById("kpi-cancelled").textContent = k.subscriptions_cancelled;
-    document.getElementById("kpi-watches").textContent = k.active_watches;
+    setKpi("kpi-protected", k.money_protected_text + "/yr" + extra);
+    setKpi("kpi-patterns", String(k.dark_patterns_caught));
+    setKpi("kpi-cancelled", String(k.subscriptions_cancelled));
+    setKpi("kpi-watches", String(k.active_watches));
   });
 
   // ---- alerts -------------------------------------------------------------------------------
@@ -19,12 +44,12 @@
                         blocked_charge: "blocked-charge"};
   const BTN_TESTID = {keep: "alert-keep", cancel: "alert-cancel"};
 
-  function alertHtml(a) {
+  function alertHtml(a, isNew) {
     const done = !!a.acknowledged_at;
     const buttons = done ? `<span class="muted small">Handled</span>` : a.actions.map((b) =>
       `<button class="btn btn-sm ${b.action === "cancel" ? "btn-danger" : "btn-ghost"}" data-alert="${esc(a.id)}" data-action="${esc(b.action)}" data-testid="${BTN_TESTID[b.action] || "alert-" + esc(b.action)}">${esc(b.label)}</button>`).join("");
     const delivery = Object.entries(a.delivery || {}).map(([k, v]) => `${k}: ${v}`).join(" · ");
-    return `<article class="alert alert-${esc(a.level)}${done ? " is-done" : ""}" data-testid="${ALERT_TESTID[a.kind] || "alert-" + esc(a.kind)}">
+    return `<article class="alert alert-${esc(a.level)}${done ? " is-done" : ""}${isNew ? " is-new" : ""}" data-testid="${ALERT_TESTID[a.kind] || "alert-" + esc(a.kind)}">
       <header><strong>${esc(a.title)}</strong><span class="muted small">Day ${a.sim_day}</span></header>
       <p>${esc(a.body)}</p><div class="row">${buttons}</div>
       <p class="muted tiny">Delivered: ${esc(delivery)}</p></article>`;
@@ -33,7 +58,8 @@
   onRefresh(async () => {
     const alerts = await api(`/api/alerts?user=${user}`);
     const box = document.getElementById("alerts");
-    box.innerHTML = alerts.length ? alerts.map(alertHtml).join("") : `<p class="muted">No alerts yet.</p>`;
+    const isNew = (a) => seenAlerts !== null && !seenAlerts.has(a.id);
+    box.innerHTML = alerts.length ? alerts.map((a) => alertHtml(a, isNew(a))).join("") : `<p class="muted">No alerts yet.</p>`;
     if (seenAlerts !== null) {
       alerts.filter((a) => !seenAlerts.has(a.id)).reverse().forEach((a) =>
         toast(a.body, {title: a.title, level: a.level, testid: "toast-alert"}));
@@ -51,6 +77,7 @@
     try {
       const out = await api(`/api/alerts/${btn.dataset.alert}/act`, {method: "POST", body: {user_id: user, action}});
       if (out.confirm) await window.SG.confirmInDialog(out.confirm);
+      else if (out.notice_id) await window.SG.openEmail(out.notice_id);
       else if (out.url) {
         if (popup) popup.location.href = out.url; else window.open(out.url, "_blank", "noopener");
         if (out.note) toast(out.note);
@@ -67,11 +94,25 @@
     return `<span class="tl-mark ${cls}" style="left:${x(day)}%" title="${esc(label)}" aria-label="${esc(label)}"></span>`;
   }
 
+  let shownRows = null; // subscription ids already on the timeline (new rows animate in)
+  let lastTodayX = null;
+
   onRefresh(async () => {
     const view = await api(`/api/view/subscriptions?user=${user}`);
-    document.querySelectorAll(".js-day").forEach((el) => { el.textContent = view.today; });
+    document.querySelectorAll(".js-day").forEach((el) => {
+      if (el.textContent === String(view.today)) return;
+      el.textContent = view.today;
+      el.classList.remove("day-bump");
+      void el.offsetWidth;
+      el.classList.add("day-bump");
+    });
     const box = document.getElementById("timeline");
-    if (!view.rows.length) { box.innerHTML = `<p class="muted">No subscriptions yet.</p>`; return; }
+    if (!view.rows.length) {
+      box.innerHTML = `<p class="muted">No subscriptions yet.</p>`;
+      shownRows = new Set();
+      lastTodayX = null;
+      return;
+    }
     const days = view.rows.flatMap((r) => [r.signup_day, r.next_billing_day, r.timer && r.timer.fire_day]).filter((d) => d != null);
     const lo = Math.min(0, ...days), hi = Math.max(31, view.today + 3, ...days.map((d) => d + 2));
     const x = (d) => Math.max(0, Math.min(100, ((d - lo) / (hi - lo)) * 100));
@@ -85,17 +126,36 @@
       if (r.cancelled_day != null) parts.push(marker("tl-cancel", r.cancelled_day, x, `Cancelled: Day ${r.cancelled_day}`));
       const chip = r.timer_text && t && t.status === "PENDING" ? `<span class="chip chip-teal" data-testid="timer-chip">${esc(r.timer_text)}</span>` : "";
       const step = r.step_up_text ? `<span class="muted tiny">→ ${esc(r.step_up_text)} from Day ${r.step_up_day}</span>` : "";
-      return `<div class="tl-row"><div class="tl-label"><strong>${esc(r.merchant)}</strong> <span class="muted small">${esc(r.plan)}</span> ${chip} ${step}</div>
+      const fresh = shownRows !== null && !shownRows.has(r.id);
+      return `<div class="tl-row${fresh ? " is-new" : ""}"><div class="tl-label"><strong>${esc(r.merchant)}</strong> <span class="muted small">${esc(r.plan)}</span> ${chip} ${step}</div>
         <div class="tl-track">${parts.join("")}<span class="tl-today" style="left:${x(view.today)}%" title="Today: Day ${view.today}"></span></div></div>`;
     }).join("") + `<div class="tl-axis"><span>Day ${lo}</span><span>Day ${hi}</span></div>`;
+    shownRows = new Set(view.rows.map((r) => r.id));
+    // slide the "today" line from where it was to where it is now
+    const todayX = x(view.today);
+    const lines = box.querySelectorAll(".tl-today");
+    if (lastTodayX !== null && lastTodayX !== todayX && !reduce) {
+      lines.forEach((l) => { l.style.transition = "none"; l.style.left = lastTodayX + "%"; });
+      void box.offsetWidth;
+      lines.forEach((l) => { l.style.transition = ""; l.style.left = todayX + "%"; });
+    }
+    lastTodayX = todayX;
   });
 
-  // ---- notices ------------------------------------------------------------------------------
+  // ---- cancellation emails (drafted after the PayPal cancel; sent only by Priya's click) ----------
+  const SENT_LABEL = {demo_outbox: "Email sent (demo)", gmail_compose_link: "Opened in Gmail (demo)"};
   onRefresh(async () => {
     const notices = await api(`/api/notices?user=${user}`);
+    const drafts = notices.filter((n) => n.status === "draft");
+    const ready = document.getElementById("email-ready");
+    ready.hidden = !drafts.length;
+    ready.innerHTML = drafts.map((n) => `<p><strong>Your cancellation email is ready to review and send.</strong>
+      <button class="btn btn-sm" data-email-open="${esc(n.id)}" data-testid="email-review">Review email</button></p>`).join("");
     document.getElementById("notices").innerHTML = notices.length ? notices.map((n) => `
-      <details class="notice" data-testid="cancellation-notice"><summary><strong>${esc(n.subject)}</strong> → ${esc(n.to)} · Day ${n.sim_day} · ${esc(n.delivery)}</summary>
-      <pre>${esc(n.body)}</pre><p class="small">SHA-256: <code data-testid="notice-sha256">${esc(n.sha256)}</code></p></details>`).join("")
+      <details class="notice" data-testid="cancellation-notice"><summary><strong>${esc(n.subject)}</strong> → ${esc(n.to)} ·
+        ${n.status === "sent" ? esc(SENT_LABEL[n.sent_via] || "sent") + ` · edited: ${n.edited ? "yes" : "no"}` : "draft, not sent"}</summary>
+      <pre>${esc(n.body)}</pre><p class="small muted">Drafted by ${esc(n.drafted_by)} · SHA-256: <code data-testid="notice-sha256">${esc(n.sha256)}</code></p>
+      ${n.status === "draft" ? `<button class="btn btn-sm" data-email-open="${esc(n.id)}">Review email</button>` : ""}</details>`).join("")
       : `<p class="muted">None yet.</p>`;
   });
 

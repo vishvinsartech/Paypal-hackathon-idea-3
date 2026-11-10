@@ -29,7 +29,7 @@ def test_penwright_review_matches_spec(settings: Settings, store: JsonStore) -> 
     assert abs(data.risk_score - 87) <= 5
     d = data.deadlines
     assert (d.first_charge_day, d.notice_days, d.real_cancel_deadline_day, d.timer_fire_day, d.reminder_day) == (
-        15, 7, 7, 6, 5)
+        11, 3, 7, 6, 5)
     assert d.auto_timer_allowed and data.mode == "ai" and data.injection_flagged
     assert all(quote_ok(c.quote, cap) for c in data.clauses), "every quote must be verbatim"
     money = {c.type: c.money_impact_usd_year for c in data.clauses}

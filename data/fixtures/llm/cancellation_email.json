@@ -1,0 +1,4 @@
+{
+  "subject": "Please cancel my subscription {{paypal_id}}",
+  "body": "Hello {{merchant_name}},\n\nI'm writing to cancel my subscription.\n\nName: {{user_name}}\nAccount email: {{account_email}}\nPayPal subscription ID: {{paypal_id}}\nDate: {{date_text}}\n\nYour terms say: \"{{clause}}\"\n\nPlease take this email as my written notice. Please cancel the subscription and confirm the cancellation to me in writing.\n\nThank you,\n{{user_name}}"
+}

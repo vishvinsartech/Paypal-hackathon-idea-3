@@ -94,8 +94,16 @@
     if (out) {
       resultLines(out).forEach((l) => toast(l.text, {level: l.ok ? "info" : "urgent", testid: "toast-result"}));
       await refresh();
+      await openDrafts(out);
     }
     return out;
+  }
+
+  // PayPal cancelled first; now show each cancellation email draft for Priya to review and send (D-104).
+  async function openDrafts(out) {
+    for (const r of (out && out.results) || []) {
+      if (r.notice_id && window.SG.openEmail) await window.SG.openEmail(r.notice_id, {justCancelled: true});
+    }
   }
 
   async function proposeCancel(subIds, reason) {
@@ -127,6 +135,6 @@
     }
   }
 
-  window.SG = {user, esc, api, toast, onRefresh, refresh, showCard, resultLines, confirmInDialog, proposeCancel};
+  window.SG = {user, esc, api, toast, onRefresh, refresh, showCard, resultLines, confirmInDialog, proposeCancel, openDrafts};
   loadHealth();
 })();

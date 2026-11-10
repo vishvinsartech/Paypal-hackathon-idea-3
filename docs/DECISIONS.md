@@ -306,6 +306,52 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   1, `--reload` never forks workers, and `render.yaml` pins `WEB_CONCURRENCY=1` because uvicorn reads that
   variable as its default worker count and a host could set it.
 
+## Animated dashboard + Start demo (2026-11-10)
+
+- **D-101 Start demo runs in the browser, through the normal APIs.** `app/static/autoplay.js` resets the demo,
+  runs the preflight review, creates + mock-approves + registers the Penwright subscription, then advances one
+  day at a time. It pauses when the check-in alert appears (Day 5 with default terms; the timer would fire on
+  Day 6) and shows it as a modal: Keep / Cancel / "Don't answer". Answers go through `/api/alerts/{id}/act` like
+  the alert buttons, so Cancel still shows the confirmation card (R1/R3) and "Don't answer" lets the Day 6 timer
+  act under R2. Then it runs to the first charge day. No new server endpoint; mock mode only (sandbox
+  approval needs the real PayPal button, so the button is disabled there).
+- **D-102 Motion.** CSS keyframes + small JS: staggered card entrance, count-up KPIs with a glow, day-chip bump,
+  new alerts slide in, the timeline's today line slides, new timeline rows grow in, risk bars grow, a breathing
+  dot on ACTIVE pills. AG Grid: `animateRows`, `enableCellChangeFlash` on the subscriptions grid, new audit rows
+  flashed with `flashCells` (audit grid keyed by `seq`), theme `rowHoverColor` and
+  `valueChangeValueHighlightBackgroundColor` (both checked in the pinned 36.2.0 bundle). Everything is off under
+  `prefers-reduced-motion`. Panels re-render every 5 s, so animations are only applied to things that are new.
+
+## 10-day trial + cancellation email (2026-11-10)
+
+- **D-103 New Penwright terms.** Defaults are now a 10-day trial (first charge Day 11) and 3 days' written notice
+  (`PENWRIGHT_TRIAL_DAYS=10`, `PENWRIGHT_NOTICE_DAYS=3`). Deadline maths unchanged: 11 − 3 − 1 = Day 7, timer
+  Day 6, check-in Day 5; proof (blocked charge) on Day 11, so the demo bar's jump button is `sim-jump-11`. KPI
+  stays $524.88, risk 87. The PayPal plan keeps the D-031 shape (TRIAL 10 days $0 -> paid TRIAL 3 x 1 month
+  $24.99 -> REGULAR unlimited $49.99) because PayPal rejects two REGULAR cycles; the request's "REGULAR 3 x 1
+  month" is billed identically. `seed_sandbox.py` and the mock fixtures read the plan from `.env` pricing, so
+  they pick the new terms up automatically (run `make reset`, and `make seed` in sandbox mode). Day 5 message:
+  *"Your Penwright trial ends on Day 10, but your real last day to cancel is Day 7. You've opened it twice. Do you
+  want to keep it?"* plus the D-093 "If I don't hear back..." sentence; trial end = billing day − 1.
+- **D-104 Cancellation email replaces the auto-sent notice (supersedes the notice part of D-094).** After any
+  confirmed PayPal cancel (tap or timer) `actions.confirm_cancelled` alerts *"Cancelled in PayPal. You won't be
+  charged."* and `core/notices.create_draft` asks the LLM (`draft_cancellation_notice`) for the email. Code
+  validates it (name, account email, PayPal id, date, the stored review's NOTICE_PERIOD quote verbatim, "cancel"
+  + "confirm" + "writing", under 120 words, no links); any problem or LLM error -> the fixed "standard template".
+  The draft is stored in `notices.json` with `status: draft` and is **never sent without a click**. Layer 2
+  handoffs (corner case 4) also only draft it. No follow-up step after the email.
+- **D-105 Send / Open in Gmail (demo only).** Both finalize the email once: final to/subject/body, `edited`
+  (compared with the draft), SHA-256 of the final body, `sent_at`, `sent_via` (`demo_outbox` |
+  `gmail_compose_link`), written straight to `data/runtime/outbox/` (not through the Notifier, so never Zapier in
+  sandbox mode). A second click returns the stored email (idempotent; also safe under the store lock). Opening
+  Gmail counts as handing it over: we can't know if she pressed Send in Gmail. The Gmail URL is built in the
+  browser at click time (so the popup isn't blocked) with `encodeURIComponent`, and on the server with the same
+  safe set; over 1800 characters -> "Too long for Gmail link; copy the text instead" + Copy, nothing recorded.
+  Empty To or Body disables Send (and the API returns 400). "Close" keeps the server draft; unsent edits are kept
+  per browser in localStorage. "Today's date" is the real UTC date (the sim clock has no calendar).
+- **D-106 Video.** `07_cancel` grows to 30 s (confirm -> email preview -> Send); `03_companion` 32 -> 30 s and
+  `06_chat` 20 -> 16 s, so the total stays 172 s (cap 175).
+
 ## Not used in v1 (sponsor tools)
 
 - **Bryntum:** a CSS timeline is enough for a prototype.

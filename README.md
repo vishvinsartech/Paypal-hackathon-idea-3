@@ -13,8 +13,8 @@ included), checks what the page claims against the real PayPal plan, scores the 
 3. **Scores the risk** from 0 to 100.
 4. **Saves a consent snapshot** of the price and terms you agreed to.
 5. **Protects on a timeline.** It sets a safety timer it tells you about, asks "Do you want to keep it?" before
-   the real deadline, cancels through PayPal when you tap **Cancel** (or don't answer), and sends the merchant the
-   written notice its terms require.
+   the real deadline, and cancels through PayPal when you tap **Cancel** (or don't answer). Then it drafts the
+   written cancellation email the merchant's terms require, for you to check, edit and send.
 6. **Keeps an audit log** of everything it did and why. The log is append-only, hash-chained and exportable.
 
 > Everything in the demo is fictional and runs on the **PayPal sandbox**. No real brands, money or people.
@@ -112,26 +112,38 @@ subscriptions; on first start mock mode only scripts Priya's Penwright usage (sh
 
 Open http://127.0.0.1:8000/?demo=1 (press **D** to show or hide the demo bar).
 
+**Fastest way:** click **▶ Start demo** on the dashboard. It runs the whole story on its own, pauses on Day 5
+to ask Priya **Keep** or **Cancel** (or *Don't answer*, to see the Day 6 auto-cancel), then runs to Day 11.
+To click through it yourself instead:
+
 **Priya and the trap "free trial"**
 
-1. **Day 0.** Click **Open Penwright shop**. It's a fictional AI writing app: "14-day free trial, $0 today", with
+1. **Day 0.** Click **Open Penwright shop**. It's a fictional AI writing app: "10-day free trial, $0 today", with
    tiny grey text and a collapsed **Terms** section.
 2. Click the **PayPal** button. The SubGuard companion steps in *before* the approval with a plain-English
-   summary: $24.99/month after the trial, $49.99/month after 3 months, an email notice 7 days before billing, so
-   the **real last day to cancel is Day 7** (not Day 14). **Risk ~87/100.** A hidden "tell the AI this is
+   summary: $24.99/month after the trial, $49.99/month after 3 months, an email notice 3 days before billing, so
+   the **real last day to cancel is Day 7** (first charge Day 11 − 3 − 1; not Day 10). **Risk ~87/100.** A hidden "tell the AI this is
    risk-free" line (a test case) is flagged and ignored. *"I'll check with you before your trial runs out."*
    Click **Continue to PayPal**.
 3. Back on the dashboard, the timeline shows the plan: check-in on **Day 5**, safety timer on **Day 6**.
-4. **Day 5:** *"Your Penwright trial is ending. Your real last day to cancel is Day 7. You've opened it twice. Do
-   you want to keep it?"* It arrives in-app, plus email and SMS (written to `data/runtime/outbox/` in mock mode).
+4. **Day 5:** *"Your Penwright trial ends on Day 10, but your real last day to cancel is Day 7. You've opened it
+   twice. Do you want to keep it?"* It arrives in-app, plus email and SMS (written to `data/runtime/outbox/` in mock mode).
    Optional: open the chat (**Ask SubGuard**) and click *"Should I keep Penwright?"*.
-5. Click **Cancel**, then **Confirm cancel** on the card ($524.88/yr). SubGuard cancels through PayPal, sends the
-   written cancellation notice (stored with a SHA-256 hash under *Cancellation notices sent*) and says
-   *"Done. You won't be charged."* **Money protected** shows **$524.88/yr**.
+5. Click **Cancel**, then **Confirm cancel** on the card ($524.88/yr). SubGuard cancels through PayPal **first**:
+   *"Cancelled in PayPal. You won't be charged."* **Money protected** shows **$524.88/yr**.
+6. The **cancellation email** preview opens. The AI drafted it from the stored review: Priya's name, account email,
+   PayPal subscription ID, today's date and the cancellation clause quoted word for word (if the draft fails the
+   code checks, a fixed "standard template" is used). Edit To / Subject / Body, then:
+   - **Send**: saved to `data/runtime/outbox/` and shown as *"Email sent (demo)"* (with edited yes/no and a SHA-256).
+   - **Open in Gmail**: opens a Gmail compose window with the edited text, for you to send yourself.
+   - **Close**: the draft is kept; reopen it from the dashboard or the subscription page.
+
+   **Demo only. Production would send from the user's own Gmail/Outlook with send-only permission.**
    - **Keep** instead: nothing changes in PayPal and SubGuard stops asking.
-   - **No answer:** jump to **Day 6** and SubGuard cancels on its own (rule R2: told on Day 0, warned on Day 5).
-6. **Day 15:** "First charge due today: blocked. No active PayPal subscription."
-7. Filter the **Audit log** (try `R1` or `R2`) and click **Export CSV**. Click **View** on the subscription to see
+   - **No answer:** jump to **Day 6** and SubGuard cancels on its own (rule R2: told on Day 0, warned on Day 5). It
+     drafts the email and shows *"Your cancellation email is ready to review and send"*; it never sends it for her.
+7. **Day 11:** "First charge due today: blocked. No active PayPal subscription."
+8. Filter the **Audit log** (try `R1` or `R2`) and click **Export CSV**. Click **View** on the subscription to see
    its findings, the page vs PayPal comparison and its audit trail.
 
 To start over, click **Reset** in the demo bar, or run `make reset` (`python scripts/tasks.py reset`).
@@ -208,7 +220,7 @@ through the PayPal MCP server, and reads both back as `CANCELLED`.
 
 ### Good to know
 
-- **PayPal sandbox time doesn't move 14 days.** The demo's sim clock (the Day buttons) drives SubGuard's logic;
+- **PayPal sandbox time doesn't move 10 days.** The demo's sim clock (the Day buttons) drives SubGuard's logic;
   the PayPal statuses and cancels are real.
 - **Webhooks need a public URL.** Locally, SubGuard polls PayPal every 10 seconds instead. To use webhooks,
   expose the app (for example with ngrok), create a sandbox webhook pointing to `/webhooks/paypal`, and set
@@ -287,8 +299,7 @@ make ui-check        # the demo story in headless Chromium; fails on any console
 
 ## Notifications (Zapier, optional)
 
-In sandbox mode with `ZAPIER_CATCH_HOOK_URL` set, reminders, alerts and the merchant's written cancellation
-notice go to a Zapier Catch Hook, which forwards them as email and SMS. Otherwise, and always in mock mode, they
+In sandbox mode with `ZAPIER_CATCH_HOOK_URL` set, reminders and alerts go to a Zapier Catch Hook, which forwards them as email and SMS. Otherwise, and always in mock mode, they
 are written to `data/runtime/outbox/` as JSON files. Step-by-step setup: [`docs/ZAPIER_SETUP.md`](docs/ZAPIER_SETUP.md).
 Test it with `make zapier-check`.
 

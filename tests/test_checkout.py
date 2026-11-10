@@ -26,7 +26,7 @@ def test_register_penwright(client: TestClient) -> None:
     assert reg.status_code == 200  # type: ignore[attr-defined]
     sub = reg.json()  # type: ignore[attr-defined]
     assert sub["status"] == "ACTIVE" and sub["owner_id"] == "priya" and sub["signup_day"] == 0
-    assert sub["next_billing_day"] == 15  # 14-day trial from Day 0 -> first charge Day 15
+    assert sub["next_billing_day"] == 11  # 10-day trial from Day 0 -> first charge Day 11
     snap = sub["consent_snapshot"]
     assert Decimal(snap["price"]) == Decimal("24.99") and len(snap["billing_cycles"]) == 3
 

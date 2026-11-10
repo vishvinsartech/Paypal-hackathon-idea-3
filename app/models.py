@@ -213,6 +213,9 @@ class UsageList(BaseModel):
 
 # ---- notices.json -----------------------------------------------------------
 class Notice(BaseModel):
+    """The cancellation email to the merchant (D-104): drafted after the PayPal cancel, edited and sent by the user
+    (demo only: "sent" means saved to the outbox, or handed to a Gmail compose link). Never sent without a click."""
+
     id: str
     subscription_id: str
     merchant_id: str = ""
@@ -220,9 +223,20 @@ class Notice(BaseModel):
     to: str
     subject: str
     body: str
-    sha256: str
-    sent_at: datetime
-    delivery: str = "pending"
+    sha256: str  # of `body` (the final text once sent)
+    status: Literal["draft", "sent"] = "draft"
+    drafted_by: str = "standard template"  # "anthropic · <model>", "mock · fixtures" or "standard template"
+    draft_source: Literal["llm", "template"] = "template"
+    draft_problems: list[str] = Field(default_factory=list)  # why the LLM draft was rejected (template used)
+    draft_to: str = ""
+    draft_subject: str = ""
+    draft_body: str = ""
+    created_at: datetime | None = None
+    by_timer: bool = False
+    edited: bool | None = None
+    sent_at: datetime | None = None
+    sent_via: Literal["demo_outbox", "gmail_compose_link"] | None = None
+    delivery: str = "draft"  # draft | demo_outbox | gmail_compose_link
 
 
 class NoticeList(BaseModel):

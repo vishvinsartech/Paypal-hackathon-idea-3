@@ -13,7 +13,16 @@ from pathlib import Path
 from typing import Any
 
 from app.integrations.capture import PageCapture
-from app.llm.base import ChatMessage, ChatTurn, LLMError, TextCallback, parse_review_json
+from app.llm.base import (
+    ChatMessage,
+    ChatTurn,
+    EmailDraft,
+    LLMError,
+    NoticeContext,
+    TextCallback,
+    parse_draft_json,
+    parse_review_json,
+)
 from app.llm.mock_chat import scripted_turn
 from app.llm.tools_schema import ToolSpec
 from app.pricing import Pricing
@@ -72,3 +81,14 @@ class MockProvider:
         if turn.text and on_text:
             on_text(turn.text)
         return turn
+
+    async def draft_cancellation_notice(self, ctx: NoticeContext) -> EmailDraft:
+        """Fixture email with the context filled in (the clause line is dropped when there is no clause)."""
+        path = self.dir / "cancellation_email.json"
+        if not path.exists():
+            raise LLMError("no mock cancellation email fixture")
+        tokens = {**self.tokens, **{k: str(v) for k, v in ctx.model_dump().items()}}
+        draft = parse_draft_json(render_fixture(path.read_text(encoding="utf-8"), tokens))
+        if not ctx.clause:
+            draft.body = "\n".join(line for line in draft.body.split("\n") if '""' not in line)
+        return draft

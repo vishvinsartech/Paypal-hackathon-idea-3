@@ -70,7 +70,7 @@ Cases 35 and 36 belonged to the price-rise flow, which was removed when the stor
 | # | Case | Code | Tests |
 |---|---|---|---|
 | 37 | Zapier down: retry with backoff, then failed (feeds R2); in-app still works | `integrations/notify.py` | `test_corner_cases::test_zapier_retries_then_fails`, `test_corner_cases::test_zapier_accepts_after_a_retry`, `test_policy::test_failed_warnings_block_auto_cancel` |
-| 38 | Notice stored with SHA-256 of the exact body, recipient, time, delivery result | `alerts.send_cancellation_notice`, `actions.confirm_cancelled` | `test_story::test_cancel_on_day5`, `test_story::test_no_answer_auto_cancels_on_day6` |
+| 38 | Cancellation email: drafted after the PayPal cancel, never sent without a click; final text stored with SHA-256, recipient, time, edited, sent_via; idempotent Send; empty To/Body rejected; Gmail link too long | `core/notices.py`, `routes/notices.py`, `static/email.js` | `test_notices.py`, `test_story::test_cancel_on_day5`, `test_story::test_no_answer_auto_cancels_on_day6` |
 | 39 | Secrets never in logs or the audit log | `audit_log.mask_secrets`, `main.JsonFormatter` | `test_audit_log::test_secrets_and_emails_masked` |
 
 ## Doc notes

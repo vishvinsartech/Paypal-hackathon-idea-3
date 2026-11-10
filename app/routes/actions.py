@@ -13,7 +13,7 @@ from app.core.actions import cancel_confirmed, propose_cancel
 from app.core.policy import Decision
 from app.core.savings import money_protected, protected_by_currency
 from app.core.services import Services
-from app.models import Alert, Notice, Timer
+from app.models import Alert, Timer
 from app.store import utcnow
 
 router = APIRouter(prefix="/api")
@@ -93,6 +93,9 @@ async def act(alert_id: str, body: ActIn, svc: Services = Depends(get_services))
         sub = svc.sub(sid)
         out = {"url": f"/shop/{sub.merchant_id if sub else ''}",
                "note": "The merchant may not offer a second free trial."}
+    elif body.action == "review_email":
+        offered = next((a for a in alert.actions if a["action"] == "review_email"), {})
+        out = {"notice_id": offered.get("notice_id")}  # the UI opens the email preview
     elif body.action == "open_autopay":
         out = {"url": svc.settings.paypal_autopay_url}
     else:
@@ -140,12 +143,6 @@ def list_alerts(user: str = "priya", svc: Services = Depends(get_services)) -> l
 def list_timers(user: str = "priya", svc: Services = Depends(get_services)) -> list[Timer]:
     mine = {s.id for s in svc.store.load("subscriptions").items if s.owner_id == user}
     return [t for t in svc.store.load("timers").items if t.subscription_id in mine]
-
-
-@router.get("/notices")
-def list_notices(user: str = "priya", svc: Services = Depends(get_services)) -> list[Notice]:
-    mine = {s.id for s in svc.store.load("subscriptions").items if s.owner_id == user}
-    return [n for n in svc.store.load("notices").items if n.subscription_id in mine]
 
 
 @router.get("/kpis")

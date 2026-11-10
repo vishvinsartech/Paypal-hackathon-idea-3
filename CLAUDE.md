@@ -80,8 +80,10 @@ Prices and terms are `.env` variables (`app/pricing.py`, DECISIONS D-015). Code 
 `settings.pricing` / `store.pricing`; never hardcode a price, trial length or notice period.
 - Money protected KPI: **$524.88** (Penwright 3 x 24.99 + 9 x 49.99).
 - Risk: Penwright **87 +/- 5**.
-- Penwright: first charge Day 15, notice 7 days -> real deadline **Day 7** (15-7-1), timer Day 6,
-  reminder Day 5. Layer 2 merchants: timer = deadline - 2.
+- Penwright: 10-day trial, first charge Day 11, notice 3 days -> real deadline **Day 7** (11-3-1), timer Day 6,
+  reminder Day 5. Proof (blocked charge) on Day 11.
+- Cancel = PayPal cancel FIRST, then an LLM-drafted cancellation email (validated, template fallback) that the
+  user edits and sends. Demo only: "Send" writes to the outbox; never sent without a click (D-104). Layer 2 merchants: timer = deadline - 2.
 - Money is `Decimal` everywhere, stored as strings in JSON. Never float.
 
 ## Code standards

@@ -15,11 +15,17 @@ from app.integrations.capture import PageCapture
 from app.llm.base import (
     AUDITOR_SYSTEM_PROMPT,
     CHAT_SYSTEM_PROMPT,
+    NOTICE_JSON_SCHEMA,
+    NOTICE_SYSTEM_PROMPT,
     ChatMessage,
     ChatTurn,
+    EmailDraft,
     LLMError,
+    NoticeContext,
     TextCallback,
     ToolCall,
+    notice_user_prompt,
+    parse_draft_json,
     parse_review_json,
     review_user_prompt,
 )
@@ -100,3 +106,18 @@ class OpenAIProvider:
             on_text(text)
         stop = "tool_use" if calls else ("max_tokens" if choice.finish_reason == "length" else "end")
         return ChatTurn(text=text, tool_calls=calls, stop=stop, usage=self._usage(response))
+
+    async def draft_cancellation_notice(self, ctx: NoticeContext) -> EmailDraft:
+        response = await self._create(
+            max_completion_tokens=2000,
+            messages=[{"role": "system", "content": NOTICE_SYSTEM_PROMPT},
+                      {"role": "user", "content": notice_user_prompt(ctx)}],
+            response_format={"type": "json_schema",
+                             "json_schema": {"name": "email_draft", "strict": True, "schema": NOTICE_JSON_SCHEMA}},
+        )
+        choice = response.choices[0]
+        if getattr(choice.message, "refusal", None):
+            raise LLMError("the model declined this request")
+        if choice.finish_reason == "length":
+            raise LLMError("draft output was cut off")
+        return parse_draft_json(choice.message.content or "")

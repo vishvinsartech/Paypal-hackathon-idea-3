@@ -119,7 +119,7 @@ def _leading_free_days(cycles: Sequence[BillingCycleDef]) -> int:
 
 
 def first_charge_day(cycles: Sequence[BillingCycleDef], signup_day: int) -> int:
-    """Day of the first paid charge. A 14-day free trial from Day 0 charges on Day 15 (spec section 2).
+    """Day of the first paid charge. A 10-day free trial from Day 0 charges on Day 11 (spec section 2).
     Only the leading free cycles count: a paid TRIAL cycle (intro price, D-031) is already a charge."""
     free = _leading_free_days(cycles)
     if free:

@@ -33,7 +33,7 @@ def test_story_end_to_end_with_chat(demo_client: TestClient) -> None:
 
     # ---- Day 5: the check-in, then Priya asks the chat ----------------------------------------------------------
     advance_to(c, 5)
-    assert alerts(c, kind="reminder")[0]["body"].startswith("Your Penwright trial is ending.")
+    assert alerts(c, kind="reminder")[0]["body"].startswith("Your Penwright trial ends on Day 10, but")
     answer, cards = chat(c, "Should I keep Penwright?")
     assert "You've opened Penwright Studio twice so far." in answer
     assert "the first paid year costs $524.88" in answer and "Day 7" in answer and cards == []
@@ -47,11 +47,11 @@ def test_story_end_to_end_with_chat(demo_client: TestClient) -> None:
     assert done.json()["all_ok"] and sub(c, main["id"])["status"] == "CANCELLED"
     reused = c.post("/api/agent/confirm", json={"user_id": "priya", "token": card["token"], "subscription_ids": ids})
     assert reused.status_code == 403 and reused.json()["rule_id"] == "R3"
-    assert alerts(c, kind="cancelled")[0]["title"] == "Done. You won't be charged."
+    assert alerts(c, kind="cancelled")[0]["title"] == "Cancelled in PayPal. You won't be charged."
     assert c.get("/api/notices?user=priya").json()[0]["to"] == "cancel@penwright.example"
 
-    # ---- Day 15: the blocked first charge -----------------------------------------------------------------------
-    advance_to(c, 15)
+    # ---- Day 11: the blocked first charge -----------------------------------------------------------------------
+    advance_to(c, 11)
     blocked = [a for a in alerts(c, kind="blocked_charge") if a["subscription_id"] == main["id"]]
     assert blocked[0]["body"] == "First charge due today: blocked. No active PayPal subscription."
 

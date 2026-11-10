@@ -17,11 +17,17 @@ from app.integrations.capture import PageCapture
 from app.llm.base import (
     AUDITOR_SYSTEM_PROMPT,
     CHAT_SYSTEM_PROMPT,
+    NOTICE_JSON_SCHEMA,
+    NOTICE_SYSTEM_PROMPT,
     ChatMessage,
     ChatTurn,
+    EmailDraft,
     LLMError,
+    NoticeContext,
     TextCallback,
     ToolCall,
+    notice_user_prompt,
+    parse_draft_json,
     parse_review_json,
     review_user_prompt,
 )
@@ -109,3 +115,14 @@ class AnthropicProvider:
         stop = "tool_use" if calls else ("max_tokens" if response.stop_reason == "max_tokens" else "end")
         raw = [json.loads(b.model_dump_json(exclude_none=True)) for b in response.content]
         return ChatTurn(text=text, tool_calls=calls, stop=stop, usage=usage, provider_raw=raw)
+
+    async def draft_cancellation_notice(self, ctx: NoticeContext) -> EmailDraft:
+        response = await self._create(
+            max_tokens=2000, system=NOTICE_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": notice_user_prompt(ctx)}],
+            output_config={"effort": "low", "format": {"type": "json_schema", "schema": NOTICE_JSON_SCHEMA}},
+        )
+        self._check(response)
+        if response.stop_reason == "max_tokens":
+            raise LLMError("draft output was cut off")
+        return parse_draft_json(next((b.text for b in response.content if b.type == "text"), ""))

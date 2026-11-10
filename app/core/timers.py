@@ -135,8 +135,11 @@ async def warn(svc: Services, timer: Timer, day: int) -> None:
     name = short(svc.merchant(sub.merchant_id).name)
     when = "tomorrow" if timer.fire_day - day == 1 else f"on Day {timer.fire_day}"
     used = opens_between(svc.store, sub.owner_id, sub.merchant_id, sub.signup_day, day)
-    body = (f"Your {name} trial is ending. Your real last day to cancel is Day {timer.deadline_day or timer.fire_day}. "
-            f"You've opened it {times(used)}. Do you want to keep it? "
+    deadline = timer.deadline_day or timer.fire_day
+    billing = timer.billing_day or sub.next_billing_day
+    ends = (f"Your {name} trial ends on Day {billing - 1}, but your real last day to cancel is Day {deadline}."
+            if billing is not None else f"Your {name} trial is ending. Your real last day to cancel is Day {deadline}.")
+    body = (f"{ends} You've opened it {times(used)}. Do you want to keep it? "
             f"If I don't hear back, I'll cancel it {when} so you're not charged.")
     alert, _ = await send_alert(svc, user_id=sub.owner_id, key=f"timer-warn:{timer.id}:{day}", kind="reminder",
                                 level="warning", title=f"{name}: keep it or cancel?", body=body,

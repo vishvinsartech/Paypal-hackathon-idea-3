@@ -2,8 +2,9 @@
 
 R7: results come only from the gateway's outcome (PayPal status re-read after the cancel). A multi-cancel
 reports each item (corner case 34); nothing is claimed for an item that failed.
-Layer 2 merchants (not in Fair Trial) can't be cancelled by SubGuard: it sends the written notice and an
-ACTION NEEDED alert with a one-tap link to PayPal's Automatic payments page instead.
+After a confirmed PayPal cancel, the merchant's written-notice email is only DRAFTED (notices.py); the user
+reviews and sends it. Layer 2 merchants (not in Fair Trial) can't be cancelled by SubGuard: it drafts the email and
+sends an ACTION NEEDED alert with a one-tap link to PayPal's Automatic payments page instead.
 """
 
 from __future__ import annotations
@@ -14,7 +15,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from app.core.alerts import action, send_alert, send_cancellation_notice
+from app.core.alerts import action, send_alert
+from app.core.notices import create_draft
 from app.core.policy import Decision
 from app.core.savings import year_one_cost
 from app.core.services import Services
@@ -56,6 +58,7 @@ class ItemResult(BaseModel):
     rule_id: str | None = None
     protected_year_usd: Decimal | None = None
     transport: str | None = None  # sdk | mcp | rest | mock: shown on the chat's tool chip
+    notice_id: str | None = None  # the cancellation email draft, created after the PayPal cancel
 
 
 async def year_cost(svc: Services, sub: Subscription) -> Decimal:
@@ -88,14 +91,15 @@ async def propose_cancel(svc: Services, user_id: str, sub_ids: list[str], reason
 
 async def layer2_handoff(svc: Services, sub: Subscription, why: str) -> None:
     merchant = svc.merchant(sub.merchant_id)
-    await send_cancellation_notice(svc, sub)
+    notice = await create_draft(svc, sub, by_timer=True)
     await send_alert(
         svc, user_id=sub.owner_id, key=f"layer2:{sub.id}", kind="action_needed", level="action_needed",
         title=f"ACTION NEEDED: cancel {merchant.name} in PayPal",
         body=(f"{why} {merchant.name} isn't a Fair Trial merchant, so only you can stop it in PayPal. "
-              f"I've already sent them the written cancellation notice. Tap below, find {merchant.name} under "
-              f"Automatic payments and cancel it."),
-        actions=[action("open_autopay", "Open PayPal Automatic payments", url=svc.settings.paypal_autopay_url)],
+              f"Tap below, find {merchant.name} under Automatic payments and cancel it. "
+              "Your cancellation email is ready to review and send."),
+        actions=[action("open_autopay", "Open PayPal Automatic payments", url=svc.settings.paypal_autopay_url),
+                 action("review_email", "Review email", notice_id=notice.id)],
         subscription_id=sub.id, cta_url=svc.settings.paypal_autopay_url)
 
 
@@ -141,17 +145,21 @@ async def cancel_one(svc: Services, sub: Subscription, *, actor: str, rule_id: s
                       transport=out.transport)
 
 
-async def confirm_cancelled(svc: Services, sub: Subscription, result: ItemResult, *, by_timer: bool) -> None:
-    """After a confirmed PayPal cancel (the user's tap or the safety timer): send the merchant the written notice its
-    terms require (stored with SHA-256) and tell the user it's done. Both are idempotent per subscription."""
+async def confirm_cancelled(svc: Services, sub: Subscription, result: ItemResult, *, by_timer: bool) -> str:
+    """After a confirmed PayPal cancel (the user's tap or the safety timer): tell the user it's done and draft the
+    written cancellation email the merchant's terms require. The email is never sent here: only the user's click
+    in the preview sends it (D-104). Idempotent per subscription. Returns the draft's notice id."""
     merchant = svc.merchant(sub.merchant_id)
-    await send_cancellation_notice(svc, sub)
+    notice = await create_draft(svc, sub, by_timer=by_timer)
+    who = "Your safety timer cancelled" if by_timer else "I cancelled"
     await send_alert(svc, user_id=sub.owner_id, key=f"cancelled:{sub.id}", kind="cancelled",
-                     level="warning" if by_timer else "info", title="Done. You won't be charged.",
-                     body=(f"I cancelled {merchant.name} in PayPal (status {result.status}) and emailed them the "
-                           "written cancellation notice their terms require. Changed your mind? "
-                           "Tap here to restart the trial."),
-                     actions=[action("restart", "Restart trial", url=f"/shop/{merchant.id}")], subscription_id=sub.id)
+                     level="warning" if by_timer else "info", title="Cancelled in PayPal. You won't be charged.",
+                     body=(f"{who} {merchant.name} in PayPal (status {result.status}). "
+                           "Your cancellation email is ready to review and send. "
+                           "Changed your mind? Tap here to restart the trial."),
+                     actions=[action("review_email", "Review email", notice_id=notice.id),
+                              action("restart", "Restart trial", url=f"/shop/{merchant.id}")], subscription_id=sub.id)
+    return notice.id
 
 
 async def cancel_confirmed(svc: Services, user_id: str, sub_ids: list[str], token: str | None,
@@ -165,6 +173,6 @@ async def cancel_confirmed(svc: Services, user_id: str, sub_ids: list[str], toke
         if sub is not None:
             result = await cancel_one(svc, sub, actor="user", rule_id="R1", reason="Cancelled by the user")
             if result.outcome == "cancelled":
-                await confirm_cancelled(svc, sub, result, by_timer=False)
+                result.notice_id = await confirm_cancelled(svc, sub, result, by_timer=False)
             results.append(result)
     return results

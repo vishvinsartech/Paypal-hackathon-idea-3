@@ -50,13 +50,13 @@ def test_r1_cancel_needs_a_confirmation_tap(demo_client: TestClient) -> None:
 # ---- R2 safety timer ---------------------------------------------------------------------------
 def _timer(**kw: object) -> Timer:
     base: dict[str, object] = dict(id="t", subscription_id="s", kind="trial", fire_day=6, status="PENDING",
-                                   shown_to_user=True, warning_delivered=True, warned_day=5, billing_day=15)
+                                   shown_to_user=True, warning_delivered=True, warned_day=5, billing_day=11)
     return Timer(**{**base, **kw})  # type: ignore[arg-type]
 
 
 def _sub(**kw: object) -> Subscription:
     base: dict[str, object] = dict(id="s", paypal_id="I-1", plan_key="p", plan_id="P", merchant_id="m",
-                                   owner_id="priya", status="ACTIVE", next_billing_day=15)
+                                   owner_id="priya", status="ACTIVE", next_billing_day=11)
     return Subscription(**{**base, **kw})  # type: ignore[arg-type]
 
 
@@ -69,7 +69,7 @@ PRIYA = User(id="priya", name="Priya")
     (_timer(warning_delivered=False, warned_day=None), {}, 6, "R2", False),
     (_timer(warned_day=6), {}, 6, "R2", False),  # warned less than 24 sim-hours before
     (_timer(status="KEPT"), {}, 6, "R2", False),
-    (_timer(), {}, 15, "R2", False),  # billing date reached
+    (_timer(), {}, 11, "R2", False),  # billing date reached
     (_timer(kind="price_rise"), {}, 6, "R2", False),  # auto_cancel_price_rises off
     (_timer(), {"essential": True}, 6, "R6", False),
     (_timer(), {"owner_id": "intruder"}, 6, "R5", False),
@@ -198,7 +198,7 @@ def test_failed_warnings_block_auto_cancel(demo_client: TestClient) -> None:
     c = demo_client
     main = subscribe(c)
     svc_of(c).notifier.fail_in_app = True
-    advance_to(c, 15)
+    advance_to(c, 11)
     assert sub(c, main["id"])["status"] == "ACTIVE"
     assert audit(c, "timer_warning_failed")
     assert audit(c, "policy_decision", rule_id="R2", decision="blocked", subscription_id=main["id"])
@@ -207,7 +207,7 @@ def test_failed_warnings_block_auto_cancel(demo_client: TestClient) -> None:
 
 
 def test_cancel_failure_switches_to_layer2(demo_client: TestClient) -> None:
-    """Corner case 4: PayPal cancel fails -> timer FAILED, written notice + ACTION NEEDED link, no "Done"."""
+    """Corner case 4: PayPal cancel fails -> timer FAILED, email draft + ACTION NEEDED link, no "Done"."""
     c = demo_client
     main = subscribe(c)
     advance_to(c, 5)
@@ -216,7 +216,8 @@ def test_cancel_failure_switches_to_layer2(demo_client: TestClient) -> None:
     assert sub(c, main["id"])["status"] == "ACTIVE" and not alerts(c, kind="cancelled")
     action_needed = alerts(c, kind="action_needed")
     assert action_needed and action_needed[0]["actions"][0]["action"] == "open_autopay"
-    assert c.get("/api/notices?user=priya").json()
+    (draft,) = c.get("/api/notices?user=priya").json()
+    assert draft["status"] == "draft" and not audit(c, "cancellation_email_sent")  # never sent without a click
 
 
 def test_layer2_merchant_flow(demo_client: TestClient) -> None:
@@ -230,7 +231,7 @@ def test_layer2_merchant_flow(demo_client: TestClient) -> None:
     alert = alerts(c, kind="action_needed")[0]
     assert alert["level"] == "action_needed" and alert["actions"][0]["url"].startswith("https://www.sandbox.paypal.com")
     assert c.get("/api/notices?user=priya").json()[0]["subscription_id"] == main["id"]
-    advance_to(c, 14)
+    advance_to(c, 10)
     assert alerts(c, kind="urgent")  # still ACTIVE 24 sim-hours before the charge
 
 

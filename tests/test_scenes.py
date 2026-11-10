@@ -35,7 +35,7 @@ def test_total_under_the_cap_and_narration_fits() -> None:
 
 def test_scenes_tell_the_simplified_story() -> None:
     text = json.dumps(SCENES)
-    assert "$524.88" in text and "Day 7" in text and "Day 15" in text
+    assert "$524.88" in text and "Day 7" in text and "Day 11" in text and "email-send" in text
     for gone in ("Framewise", "Lumen", "John", "add-on", "872.76", "$19", "yearly"):
         assert gone not in text, gone
 

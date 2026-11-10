@@ -103,7 +103,7 @@ def test_plans_respect_paypal_shape_rules() -> None:
 
 def test_paid_trial_does_not_delay_first_charge() -> None:
     pro = Pricing().plans_for("penwright")[0]
-    assert first_charge_day(pro.billing_cycles, 0) == 15
+    assert first_charge_day(pro.billing_cycles, 0) == 11
     assert first_paid_price(pro.billing_cycles) == Decimal("24.99")
 
 

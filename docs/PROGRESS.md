@@ -72,10 +72,21 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
 
 ## Notes for next session
 
+### 10-day trial + cancellation email (2026-11-10)
+- Trial 10 days, first charge Day 11, notice 3 days; deadline Day 7, timer Day 6, check-in Day 5; proof Day 11
+  (`sim-jump-11`). KPI $524.88, risk 87 (D-103).
+- Cancel = PayPal first, then an LLM-drafted cancellation email (validated, template fallback) in an editable
+  preview: Send (demo outbox) / Open in Gmail / Close. Never sent without a click; Send is idempotent (D-104/105).
+  New: `app/core/notices.py`, `app/routes/notices.py`, `app/static/email.js`, `data/fixtures/llm/cancellation_email.json`,
+  `tests/test_notices.py`. Video scenes updated (still 172 s, D-106).
+- Checks: full pytest + ruff clean; `python scripts/ui_check.py` drives the new flow (email preview, empty To
+  disables Send, Gmail link, three Start-demo answers) with no console errors.
+- After pulling: `make reset` (and `make seed` in sandbox mode) so runtime data uses the 10-day plan.
+
 ### Story simplification (2026-11-10)
 - Spec section 2 rewritten: Day 0 approve (companion summary, risk 87, "I'll check with you before your trial
   runs out.") -> Day 5 check-in (Zapier email/SMS + in-app, Keep / Cancel) -> Cancel (demo path) / Keep / no
-  answer (Day 6 auto-cancel, R2) -> Day 15 blocked charge. KPI **$524.88**.
+  answer (Day 6 auto-cancel, R2) -> Day 15 blocked charge (now Day 11, see above). KPI **$524.88**.
 - Removed: John, Lumen, Framewise, price-rise flow + demo button, add-on, user switcher, yearly advice, renewal
   reminders (pages, fixtures, seed data, chat tool, tests, docs). Kept on purpose: see D-091.
 - Code: `actions.confirm_cancelled` (notice + "Done" for both cancel paths, D-094), `timers` (new Day 0 / Day 5

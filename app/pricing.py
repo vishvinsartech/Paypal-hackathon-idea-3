@@ -22,11 +22,11 @@ SYMBOLS = {"USD": "$", "EUR": "€", "GBP": "£"}
 class PricingFields(BaseModel):
     demo_currency: str = Field("USD", pattern=r"^[A-Z]{3}$")
 
-    penwright_trial_days: int = Field(14, ge=1, le=90)
+    penwright_trial_days: int = Field(10, ge=1, le=90)
     penwright_intro_price: Price = Decimal("24.99")
     penwright_intro_months: int = Field(3, ge=1, le=24)
     penwright_step_up_price: Price = Decimal("49.99")
-    penwright_notice_days: int = Field(7, ge=0, le=60)
+    penwright_notice_days: int = Field(3, ge=0, le=60)
     penwright_export_limit: int = Field(3, ge=1, le=100)
 
 

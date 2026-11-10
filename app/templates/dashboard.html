@@ -6,7 +6,7 @@
   <a class="btn" href="/shop/penwright?user={{ current_user.id }}" target="_blank" rel="noopener" data-testid="demo-open-shop">Open Penwright shop</a>
   <button class="btn btn-ghost" data-advance="1" data-testid="sim-plus-1">+1 day</button>
   <span class="demo-group" role="group" aria-label="Jump to day">
-    {% for d in [5, 6, 15] %}<button class="btn btn-ghost" data-jump="{{ d }}" data-testid="sim-jump-{{ d }}">Day {{ d }}</button>{% endfor %}
+    {% for d in [5, 6, 11] %}<button class="btn btn-ghost" data-jump="{{ d }}" data-testid="sim-jump-{{ d }}">Day {{ d }}</button>{% endfor %}
   </span>
   <span class="demo-group">
     <label class="sr-only" for="fair-trial-merchant">Merchant</label>
@@ -22,6 +22,40 @@
   <p class="lead">AI reads the fine print. PayPal enforces the outcome.</p>
   <p class="muted">Day <strong data-testid="sim-day" class="js-day">{{ sim_day }}</strong> of the demo ·
     {{ "PayPal Sandbox" if settings.is_sandbox else "Mock mode (no keys needed)" }}</p>
+</section>
+
+<section class="card email-ready" id="email-ready" data-testid="email-ready" aria-live="polite" hidden></section>
+
+<section class="card pipeline" id="pipeline" data-testid="pipeline" aria-labelledby="pipeline-h">
+  <div class="card-head">
+    <h2 id="pipeline-h">Priya's Penwright trial, step by step</h2>
+    {% if settings.is_sandbox %}
+    <button class="btn btn-start" id="demo-start" data-testid="demo-start" disabled
+            title="Start runs in mock mode. In sandbox mode, approve the trial through the shop.">&#9654; Start demo</button>
+    {% else %}
+    <button class="btn btn-start" id="demo-start" data-testid="demo-start">&#9654; Start demo</button>
+    {% endif %}
+  </div>
+  <div class="pipe">
+    <div class="pipe-rail" aria-hidden="true"><span class="pipe-fill" id="pipe-fill"></span></div>
+    <ol class="steps" id="pipeline-steps">
+      {% for key, title, hint in [("read", "Read the fine print", "Day 0"), ("approve", "Approve with PayPal", "Day 0"),
+                                  ("timer", "Safety timer set", "Day 0"), ("wait", "Days go by", "the trial"),
+                                  ("ask", "Ask Priya", "check-in day"), ("outcome", "Keep or cancel", "her choice"),
+                                  ("proof", "First charge day", "proof")] %}
+      <li class="step" data-step="{{ key }}" data-testid="step-{{ key }}">
+        <span class="step-dot">{{ loop.index }}</span>
+        <span class="step-title">{{ title }}</span>
+        <span class="step-detail" data-hint="{{ hint }}">{{ hint }}</span>
+      </li>
+      {% endfor %}
+    </ol>
+  </div>
+  <p class="pipe-status" id="pipe-status" aria-live="polite" data-testid="pipeline-status">
+    {% if settings.is_sandbox %}In sandbox mode, start from the shop: <a href="/shop/penwright">Open Penwright</a>.
+    {% else %}Press <strong>Start demo</strong> to run the story. It pauses at the check-in so Priya can keep or cancel.{% endif %}
+  </p>
+  <div id="pipe-done"></div>
 </section>
 
 <section class="kpis" aria-label="Key numbers">
@@ -57,7 +91,8 @@
 </section>
 
 <section class="card" aria-labelledby="notices-h">
-  <h2 id="notices-h">Cancellation notices sent</h2>
+  <h2 id="notices-h">Cancellation emails</h2>
+  <p class="muted small">Demo only: "Send" saves the email to the demo outbox; no real email is sent.</p>
   <div id="notices"><p class="muted">None yet.</p></div>
 </section>
 
@@ -93,8 +128,21 @@
 </aside>
 
 <dialog id="confirm-dialog" class="dialog" aria-labelledby="confirm-title"></dialog>
+<dialog id="decision-dialog" class="dialog decision" aria-labelledby="decision-title" data-testid="decision-dialog">
+  <div class="decision-card">
+    <p class="decision-from">SubGuard · email, SMS and in-app</p>
+    <h3 id="decision-title">Penwright: keep it or cancel?</h3>
+    <p id="decision-body"></p>
+    <div class="row">
+      <button class="btn btn-ghost" data-choice="keep" data-testid="decision-keep">Keep</button>
+      <button class="btn btn-danger" data-choice="cancel" data-testid="decision-cancel">Cancel</button>
+    </div>
+    <button class="link-btn" data-choice="skip" data-testid="decision-skip">Don't answer (SubGuard acts on Day 6)</button>
+  </div>
+</dialog>
 {% endblock %}
 {% block scripts %}
 <script src="/static/dashboard.js"></script>
 <script src="/static/chat.js"></script>
+<script src="/static/autoplay.js"></script>
 {% endblock %}

@@ -22,7 +22,7 @@ from tests.test_llm_providers import a_msg, make, o_msg
 
 CLAUSE = ("Cancellation requires written notice by email to cancel@penwright.example at least 3 days before the "
           "next billing date.")
-CTX = NoticeContext(user_name="Priya", account_email="priya@subguard-demo.example", merchant_name="Penwright Studio",
+CTX = NoticeContext(user_name="userA", account_email="usera@subguard-demo.example", merchant_name="Penwright Studio",
                     to="cancel@penwright.example", paypal_id="I-ABC123", date_text="10 November 2026", clause=CLAUSE)
 
 
@@ -41,13 +41,13 @@ def cancel_on_day5(c: TestClient) -> tuple[dict[str, Any], dict[str, Any]]:
     (check,) = alerts(c, kind="reminder")
     _, done = cancel_via_alert(c, check)
     assert done["all_ok"]
-    notice = next(n for n in c.get("/api/notices?user=priya").json() if n["subscription_id"] == main["id"])
+    notice = next(n for n in c.get("/api/notices?user=usera").json() if n["subscription_id"] == main["id"])
     assert done["results"][0]["notice_id"] == notice["id"]
     return main, notice
 
 
 def post_email(c: TestClient, notice: dict[str, Any], kind: str = "send", **edit: str) -> Any:
-    body = {"user_id": "priya", "to": notice["to"], "subject": notice["subject"], "body": notice["body"], **edit}
+    body = {"user_id": "usera", "to": notice["to"], "subject": notice["subject"], "body": notice["body"], **edit}
     return c.post(f"/api/notices/{notice['id']}/{kind}", json=body)
 
 
@@ -78,7 +78,7 @@ def test_template_draft_is_valid_and_short() -> None:
 @pytest.mark.parametrize(("change", "problem"), [
     (lambda b: b.replace(CLAUSE, "You must email them 3 days before billing."), "not quoted verbatim"),
     (lambda b: b.replace("I-ABC123", "your subscription"), "missing PayPal subscription ID"),
-    (lambda b: b.replace("priya@subguard-demo.example", "my email"), "missing account email"),
+    (lambda b: b.replace("usera@subguard-demo.example", "my email"), "missing account email"),
     (lambda b: b.replace("10 November 2026", "today"), "missing date"),
     (lambda b: b.replace("confirm the cancellation in writing", "stop billing"), "confirm in writing"),
     (lambda b: b + " word" * 80, "must be under 120"),
@@ -146,12 +146,12 @@ def test_auto_cancel_drafts_but_never_sends(demo_client: TestClient) -> None:
     main = subscribe(c)
     advance_to(c, 11)  # no answer: Day 6 timer cancels, then nobody clicks anything
     assert sub(c, main["id"])["cancelled_by"] == "timer"
-    (notice,) = c.get("/api/notices?user=priya").json()
+    (notice,) = c.get("/api/notices?user=usera").json()
     assert notice["status"] == "draft" and notice["by_timer"] and notice["sent_via"] is None
     assert not outbox_emails(c) and not audit(c, "cancellation_email_sent")
     (done,) = alerts(c, kind="cancelled")
     assert "Your cancellation email is ready to review and send." in done["body"]
-    res = c.post(f"/api/alerts/{done['id']}/act", json={"user_id": "priya", "action": "review_email"}).json()
+    res = c.post(f"/api/alerts/{done['id']}/act", json={"user_id": "usera", "action": "review_email"}).json()
     assert res == {"notice_id": notice["id"]}
 
 

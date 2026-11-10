@@ -32,7 +32,7 @@ class State(BaseModel):
     last_tick_day: int | None = None
     last_tick_at: datetime | None = None
     pricing_fingerprint: str | None = None  # which .env prices this runtime data was built with
-    demo_seeded: bool = False  # Priya's scripted Penwright usage created (mock mode, DEMO_SEED)
+    demo_seeded: bool = False  # userA's scripted Penwright usage created (mock mode, DEMO_SEED)
     reminders: list[Reminder] = Field(default_factory=list)
     webhook_event_ids: list[str] = Field(default_factory=list)  # last 500 PayPal webhook ids (dedupe)
 

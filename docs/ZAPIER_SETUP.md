@@ -12,10 +12,10 @@ One `POST` per message to `ZAPIER_CATCH_HOOK_URL`, as JSON:
 ```json
 {
   "type": "user_alert",                       // or "merchant_cancellation"
-  "to": {"email": "priya@subguard-demo.example", "phone": "+15550100001"},
+  "to": {"email": "usera@subguard-demo.example", "phone": "+15550100001"},
   "subject": "Penwright: I'll cancel it tomorrow",
   "body": "Your real deadline is in 2 days. ...",
-  "cta_url": "http://127.0.0.1:8000/?user=priya",
+  "cta_url": "http://127.0.0.1:8000/?user=usera",
   "idempotency_key": "timer-warn:tm-1a2b3c:5",
   "channels": ["email", "sms"]                // what the user's settings allow
 }

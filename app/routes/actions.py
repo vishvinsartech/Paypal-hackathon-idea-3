@@ -130,19 +130,19 @@ async def essential(sub_id: str, body: EssentialIn,
 
 
 @router.get("/alerts")
-def list_alerts(user: str = "priya", svc: Services = Depends(get_services)) -> list[Alert]:
+def list_alerts(user: str = "usera", svc: Services = Depends(get_services)) -> list[Alert]:
     return sorted((a for a in svc.store.load("alerts").items if a.user_id == user), key=lambda a: a.created_at,
                   reverse=True)
 
 
 @router.get("/timers")
-def list_timers(user: str = "priya", svc: Services = Depends(get_services)) -> list[Timer]:
+def list_timers(user: str = "usera", svc: Services = Depends(get_services)) -> list[Timer]:
     mine = {s.id for s in svc.store.load("subscriptions").items if s.owner_id == user}
     return [t for t in svc.store.load("timers").items if t.subscription_id in mine]
 
 
 @router.get("/kpis")
-def kpis(user: str = "priya", svc: Services = Depends(get_services)) -> dict[str, Any]:
+def kpis(user: str = "usera", svc: Services = Depends(get_services)) -> dict[str, Any]:
     subs = [s for s in svc.store.load("subscriptions").items if s.owner_id == user]
     ids = {s.id for s in subs}
     reviews = [r for r in svc.store.load("reviews").items if r.subscription_id in ids]

@@ -1,4 +1,4 @@
-"""Numbers behind the AG Charts graphs on Priya's dashboard (D-108). Money comes from PayPal billing cycles in code
+"""Numbers behind the AG Charts graphs on userA's dashboard (D-108). Money comes from PayPal billing cycles in code
 (Decimal, sent as strings; the browser only plots them). Risk from the stored review, usage from usage.json."""
 
 from __future__ import annotations

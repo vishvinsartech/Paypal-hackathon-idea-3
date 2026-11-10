@@ -67,7 +67,7 @@ def test_webhook_dedupe_by_event_id_and_status_transition(demo_client: TestClien
     # a different event for the same transition changes nothing
     assert hook(c, "WH-2", "BILLING.SUBSCRIPTION.SUSPENDED", main["paypal_id"])["changed"] is False
     assert sub(c, main["id"])["status"] == "SUSPENDED"
-    assert all(t["status"] == "CANCELLED" for t in c.get("/api/timers?user=priya").json())  # corner case 5
+    assert all(t["status"] == "CANCELLED" for t in c.get("/api/timers?user=usera").json())  # corner case 5
     assert len(audit(c, "status_sync", subscription_id=main["id"])) == 1
     assert audit(c, "webhook_duplicate")
 
@@ -104,15 +104,15 @@ def test_webhook_signature_required_in_sandbox(demo_client: TestClient) -> None:
 # ---- 8: non-USD plans: format with the plan's currency, never add currencies into one KPI --------------
 def _cancelled(sid: str, currency: str, amount: str) -> Subscription:
     snap = ConsentSnapshot(taken_at=datetime(2026, 1, 1), sim_day=0, price=Decimal("1"), currency=currency)
-    return Subscription(id=sid, paypal_id=sid, plan_key="x", plan_id="x", merchant_id="m", owner_id="priya",
+    return Subscription(id=sid, paypal_id=sid, plan_key="x", plan_id="x", merchant_id="m", owner_id="usera",
                         status="CANCELLED", cancelled_by="user", protected_year_usd=Decimal(amount),
                         consent_snapshot=snap)
 
 
 def test_currencies_never_mixed_in_kpi() -> None:
     subs = [_cancelled("a", "USD", "100.00"), _cancelled("b", "EUR", "50.00"), _cancelled("c", "USD", "1.50")]
-    assert money_protected(subs, "priya", "USD") == Decimal("101.50")
-    assert protected_by_currency(subs, "priya") == {"USD": Decimal("101.50"), "EUR": Decimal("50.00")}
+    assert money_protected(subs, "usera", "USD") == Decimal("101.50")
+    assert protected_by_currency(subs, "usera") == {"USD": Decimal("101.50"), "EUR": Decimal("50.00")}
     p = Pricing()
     assert (p.money("12", "EUR"), p.money("9.99", "GBP"), p.money("5", "JPY"), p.money("20")) == (
         "€12", "£9.99", "5 JPY", "$20")
@@ -122,7 +122,7 @@ def test_kpi_reports_other_currencies_separately(demo_client: TestClient) -> Non
     store = demo_client.app.state.store  # type: ignore[attr-defined]
     with store.edit("subscriptions") as subs:
         subs.items.append(_cancelled("sub-eur", "EUR", "60.00"))
-    k = demo_client.get("/api/kpis?user=priya").json()
+    k = demo_client.get("/api/kpis?user=usera").json()
     assert k["money_protected"] == "0.00" and k["other_currencies"] == {"EUR": "€60"}
 
 
@@ -131,7 +131,7 @@ def test_times_are_utc_and_days_are_ints(demo_client: TestClient) -> None:
     subscribe(demo_client)
     for row in demo_client.get("/api/audit-log").json():
         assert row["ts"].endswith(("+00:00", "Z")) and isinstance(row["sim_day"], int)
-    for t in demo_client.get("/api/timers?user=priya").json():
+    for t in demo_client.get("/api/timers?user=usera").json():
         assert all(isinstance(t[k], int) for k in ("fire_day", "deadline_day", "reminder_day", "billing_day"))
 
 
@@ -141,16 +141,16 @@ def test_too_many_exports_warns_and_moves_deadline(demo_client: TestClient) -> N
     main = subscribe(c)
     advance_to(c, 2)
     for _ in range(3):
-        assert c.post("/shop/penwright/app/export?user=priya").status_code == 200
+        assert c.post("/shop/penwright/app/export?user=usera").status_code == 200
     advance_to(c, 3)
     assert alerts(c, kind="early_trial_end") == []  # 3 exports is still within "more than 3"
-    page = c.post("/shop/penwright/app/export?user=priya").text
+    page = c.post("/shop/penwright/app/export?user=usera").text
     assert 'data-testid="app-exports">4<' in page
     advance_to(c, 4)
     (alert,) = alerts(c, kind="early_trial_end")
     assert "exported 4 documents" in alert["body"] and alert["level"] == "urgent"
     assert [a["action"] for a in alert["actions"]] == ["cancel", "keep"]
-    timer = next(t for t in c.get("/api/timers?user=priya").json() if t["subscription_id"] == main["id"])
+    timer = next(t for t in c.get("/api/timers?user=usera").json() if t["subscription_id"] == main["id"])
     assert timer["deadline_day"] == 4 and "ended early" in timer["note"]
     assert audit(c, "early_trial_end_risk", subscription_id=main["id"])
     advance_to(c, 5)

@@ -1,6 +1,6 @@
-"""Mock-mode demo data (DEMO_SEED=true): Priya's scripted Penwright usage.
+"""Mock-mode demo data (DEMO_SEED=true): userA's scripted Penwright usage.
 
-The story starts with no subscriptions: Priya approves the Penwright trial herself on Day 0. Usage events are
+The story starts with no subscriptions: userA approves the Penwright trial herself on Day 0. Usage events are
 scripted (`source="seed"`) so the Day 5 check-in can say "You've opened it twice" reproducibly (D-053).
 Only days <= today count, so future-dated events "happen" as the clock advances; the subscription id is
 left empty because usage is matched by user + merchant.
@@ -14,7 +14,7 @@ from app.core.services import Services
 from app.models import UsageEvent
 from app.store import utcnow
 
-SCRIPTED_USAGE = {("priya", "penwright"): [2, 4]}
+SCRIPTED_USAGE = {("usera", "penwright"): [2, 4]}
 
 ReviewFn = Callable[[str, str, str, int], Awaitable[str | None]]  # (merchant, plan_key, user, day) -> review id
 
@@ -29,6 +29,6 @@ async def seed_demo(svc: Services, review: ReviewFn | None = None) -> bool:
                                        at=utcnow(), source="seed") for d in days]
     async with svc.store.aedit("state") as state:
         state.demo_seeded = True
-    svc.store.audit.append(actor="system", event="demo_seeded", reason="Demo data: Priya's Penwright usage",
+    svc.store.audit.append(actor="system", event="demo_seeded", reason="Demo data: userA's Penwright usage",
                            details={"usage": {f"{u}:{m}": d for (u, m), d in SCRIPTED_USAGE.items()}})
     return True

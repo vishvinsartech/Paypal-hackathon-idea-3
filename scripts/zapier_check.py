@@ -43,12 +43,12 @@ async def main() -> int:
             idempotency_key=key, channels=["email"])
     else:
         result = await notifier.send(
-            kind="user_alert", to={"email": "priya@subguard-demo.example", "phone": "+15550100001"},
+            kind="user_alert", to={"email": "usera@subguard-demo.example", "phone": "+15550100001"},
             subject="[SubGuard test] Penwright: I'll cancel it tomorrow",
             body=("Your real deadline is in 2 days. You've opened Penwright twice. "
                   "I'll cancel it tomorrow unless you tap Keep. (SubGuard Zapier test, fictional demo data.)"),
             idempotency_key=key, channels=["email", "sms"] if args.sms else ["email"],
-            cta_url="http://127.0.0.1:8000/?user=priya")
+            cta_url="http://127.0.0.1:8000/?user=usera")
     print(f"Delivery: {result}")
     ok = bool(result) and all(v == "accepted" for v in result.values())
     print("Zapier accepted the notification." if ok else "Zapier did NOT accept it (after 3 retries).")

@@ -1,4 +1,4 @@
-// Priya's charts with AG Charts Community 14.2.0 (pinned CDN, MIT; D-108), on her dashboard only. Every element with
+// userA's charts with AG Charts Community 14.2.0 (pinned CDN, MIT; D-108), on her dashboard only. Every element with
 // data-chart="cost|risk|usage" gets a chart fed by GET /api/analytics. Numbers come from code (money
 // is computed server-side from the PayPal plan; this file only plots it). Charts follow the light/dark toggle.
 (function () {

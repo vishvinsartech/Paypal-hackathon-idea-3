@@ -7,7 +7,7 @@
   const area = document.querySelector("[data-testid=shop-checkout]");
   const slot = document.getElementById("paypal-area");
   if (!area || !slot) return;
-  const user = new URLSearchParams(location.search).get("user") || "priya";
+  const user = new URLSearchParams(location.search).get("user") || "usera";
   const status = document.createElement("p");
   status.className = "checkout-status";
   status.setAttribute("role", "status");

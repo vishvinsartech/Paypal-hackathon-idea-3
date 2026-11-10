@@ -47,7 +47,7 @@ def client(settings: Settings) -> Iterator[TestClient]:
 
 @pytest.fixture
 def demo_client(data_dir: Path) -> Iterator[TestClient]:
-    """Mock mode with the demo seed: Priya's scripted Penwright usage (no subscriptions yet)."""
+    """Mock mode with the demo seed: userA's scripted Penwright usage (no subscriptions yet)."""
     settings = Settings(_env_file=None, app_mode="mock", data_dir=data_dir, demo_seed=True)  # type: ignore[call-arg]
     with TestClient(create_app(settings)) as c:
         yield c

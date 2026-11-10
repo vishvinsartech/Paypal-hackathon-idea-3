@@ -3,7 +3,7 @@
 Starts a sandbox-mode server on a throwaway DATA_DIR (with your seeded sandbox_ids.json), then drives the shop:
 companion -> "Continue to PayPal" -> the real PayPal JS SDK Subscribe button -> PayPal's approval pop-up (logs in
 as PAYPAL_SANDBOX_BUYER_EMAIL and consents) -> "Subscribed via PayPal ✓" card (status ACTIVE read live from
-PayPal) on the shop and both dashboards -> Cancel on Priya's dashboard -> the same card shows CANCELLED from
+PayPal) on the shop and both dashboards -> Cancel on userA's dashboard -> the same card shows CANCELLED from
 PayPal + "View in PayPal sandbox" -> opens that link while logged in as the buyer to check it really is the
 automatic-payments page. Prints each step; exits non-zero on any failure. Screenshots with --shots DIR.
 
@@ -116,7 +116,7 @@ async def run(base: str, headed: bool, shots: Path | None) -> None:
         browser = await pw.chromium.launch(headless=not headed)
         ctx = await browser.new_context(viewport={"width": 1440, "height": 1000})
         shop = watch(await ctx.new_page())
-        await shop.goto(f"{base}/shop/penwright?user=priya")
+        await shop.goto(f"{base}/shop/penwright?user=usera")
         await shop.get_by_test_id("shop-paypal-btn").click()
         await expect(shop.get_by_test_id("companion-continue")).to_be_visible(timeout=90000)
         risk = shop.get_by_test_id("companion-risk")
@@ -190,7 +190,7 @@ async def run(base: str, headed: bool, shots: Path | None) -> None:
         link = user_card.get_by_test_id("paypal-autopay-link")
         href = await link.get_attribute("href")
         await shot(me, "s4_user_cancelled")
-        step(f"Priya cancelled: same {sub_id_text}, CANCELLED read live from PayPal, link {href}")
+        step(f"userA cancelled: same {sub_id_text}, CANCELLED read live from PayPal, link {href}")
         await card_says(demo, "#pp-demo", "CANCELLED")
         step("control room card also shows CANCELLED from PayPal")
 
@@ -223,7 +223,7 @@ async def run(base: str, headed: bool, shots: Path | None) -> None:
 async def cleanup(base: str) -> None:
     """Never leave a test subscription ACTIVE in the sandbox: cancel any this run created (asks PayPal, not us)."""
     try:
-        subs = httpx.get(f"{base}/api/subscriptions?user=priya", timeout=10).json()
+        subs = httpx.get(f"{base}/api/subscriptions?user=usera", timeout=10).json()
     except httpx.HTTPError:
         return
     sdk = SdkPayPal(Settings(app_mode="sandbox"))  # type: ignore[call-arg]

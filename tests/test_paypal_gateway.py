@@ -32,7 +32,7 @@ async def active_sub(gw: PayPalGateway, plan_key: str = "penwright-pro") -> str:
 
 async def test_mock_lifecycle_and_audit(gw: PayPalGateway, store: JsonStore) -> None:
     pid = await active_sub(gw)
-    out = await gw.cancel(pid, "test", Ctx(actor="user", user_id="priya"))
+    out = await gw.cancel(pid, "test", Ctx(actor="user", user_id="usera"))
     assert out.ok and out.status_before == "ACTIVE" and out.status_after == "CANCELLED" and out.transport == "mock"
     calls = [e for e in store.audit.entries() if e.event == "paypal_call"]
     assert [e.details["op"] for e in calls] == [
@@ -86,7 +86,7 @@ async def test_gives_up_and_releases_claim(gw: PayPalGateway, store: JsonStore) 
     pid = await active_sub(gw)
     with store.edit("subscriptions") as subs:
         subs.items.append(Subscription(id="sub-1", paypal_id=pid, plan_key="penwright-pro", plan_id="P",
-                                       merchant_id="penwright", owner_id="priya", status="ACTIVE"))
+                                       merchant_id="penwright", owner_id="usera", status="ACTIVE"))
     gw.mock.inject_failure("cancel", 500, times=4)  # type: ignore[union-attr]
     out = await gw.cancel(pid, "test", Ctx(subscription_id="sub-1"))
     assert not out.ok and out.attempts == 4 and out.status_after == "ACTIVE"
@@ -101,7 +101,7 @@ async def test_duplicate_cancel_claim(gw: PayPalGateway, store: JsonStore) -> No
     pid = await active_sub(gw)
     with store.edit("subscriptions") as subs:
         subs.items.append(Subscription(id="sub-1", paypal_id=pid, plan_key="penwright-pro", plan_id="P",
-                                       merchant_id="penwright", owner_id="priya", status="ACTIVE"))
+                                       merchant_id="penwright", owner_id="usera", status="ACTIVE"))
     first = await gw.cancel(pid, "a", Ctx(subscription_id="sub-1"))
     second = await gw.cancel(pid, "b", Ctx(subscription_id="sub-1"))
     assert first.ok and not first.already_cancelled

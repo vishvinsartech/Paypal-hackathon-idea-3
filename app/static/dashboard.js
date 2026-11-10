@@ -1,5 +1,5 @@
 // Live demo (presenter control room, D-112): Money protected, alerts (+ toasts for new ones), timeline, the
-// "email ready" banner and the demo control bar. Priya's product view is /user.
+// "email ready" banner and the demo control bar. userA's product view is /user.
 // Motion: KPIs count up and glow when they change, the day chip bumps, new alerts slide in, the timeline's
 // "today" line slides. CSS turns it all off under prefers-reduced-motion.
 (function () {
@@ -143,7 +143,7 @@
     lastTodayX = todayX;
   });
 
-  // ---- "email ready" banner (the emails themselves are on Priya's dashboard) -----------------------
+  // ---- "email ready" banner (the emails themselves are on userA's dashboard) -----------------------
   onRefresh(async () => {
     const drafts = (await api(`/api/notices?user=${user}`)).filter((n) => n.status === "draft");
     const ready = document.getElementById("email-ready");

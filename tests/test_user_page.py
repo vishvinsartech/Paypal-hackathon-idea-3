@@ -1,4 +1,4 @@
-"""Top bar + footer on both pages, and Priya's dashboard at /user (the product view; D-110, D-112)."""
+"""Top bar + footer on both pages, and userA's dashboard at /user (the product view; D-110, D-112)."""
 
 from __future__ import annotations
 
@@ -33,11 +33,11 @@ def test_top_bar_and_footer_on_both_pages(client: TestClient) -> None:
     html = client.get("/").text
     for href in ("/shop", "/healthz", "/docs"):  # new tabs, so the live demo window stays put
         assert re.search(rf'href="{href}"[^>]*target="_blank"', html), href
-    assert ">Priya's dashboard<" in html
+    assert ">userA's dashboard<" in html
     toggle = re.search(r'<button[^>]*data-testid="theme-toggle"[^>]*>', html)
     assert toggle and 'aria-label="Switch to light theme"' in toggle.group(0)
     assert 'h.dataset.theme = t' in html.split("</head>")[0]  # theme set before first paint
-    assert "ag-charts-community" not in html  # charts only on Priya's dashboard
+    assert "ag-charts-community" not in html  # charts only on userA's dashboard
     user = client.get("/user").text
     assert re.search(r'src="https://cdn\.jsdelivr\.net/npm/ag-charts-community@\d+\.\d+\.\d+/', user)  # pinned
     assert client.get("/healthz").status_code == 200 and client.get("/docs").status_code == 200
@@ -45,7 +45,7 @@ def test_top_bar_and_footer_on_both_pages(client: TestClient) -> None:
 
 def test_user_page_empty_state(client: TestClient) -> None:
     html = client.get("/user").text
-    assert 'data-testid="user-dashboard"' in html and "Hi Priya, here's your SubGuard." in html
+    assert 'data-testid="user-dashboard"' in html and "Hi userA, here's your SubGuard." in html
     assert "No subscriptions yet." in html and "Try the Penwright shop." in html and 'data-testid="user-empty"' in html
     for t in ("user-protected", "user-cancelled", "user-activity", "chart-cost", "chart-usage", "chart-risk",
               "chat-open"):
@@ -64,7 +64,7 @@ def test_card_reminder_and_proof(demo_client: TestClient) -> None:
     assert "Site says: trial ends Day 10 · <strong>Real last day to cancel: Day 7.</strong>" in html
     assert 'data-testid="next-charge">Day 11 · $24.99<' in html
     assert 'data-sub-keep="' in html and 'data-sub-cancel="' in html
-    assert f'href="/subscriptions/{main["id"]}?user=priya" data-testid="view-review">View fine-print review<' in html
+    assert f'href="/subscriptions/{main["id"]}?user=usera" data-testid="view-review">View fine-print review<' in html
     assert "user-reminder" not in html  # no check-in before Day 5
 
     advance_to(c, 5)
@@ -99,7 +99,7 @@ def test_keep_card_means_no_buttons(demo_client: TestClient) -> None:
     c = demo_client
     main = subscribe(c)
     advance_to(c, 5)
-    assert c.post(f"/api/subscriptions/{main['id']}/keep", json={"user_id": "priya"}).json()["status"] == "kept"
+    assert c.post(f"/api/subscriptions/{main['id']}/keep", json={"user_id": "usera"}).json()["status"] == "kept"
     html = c.get("/user").text
     assert "You kept it on Day 5" in html and "data-sub-keep" not in html and "user-reminder" not in html
 
@@ -110,11 +110,11 @@ def test_activity_list_tells_her_story(demo_client: TestClient) -> None:
     subscribe(c)
     advance_to(c, 5)
     cancel_via_alert(c, alerts(c, kind="reminder")[0])
-    n = c.get("/api/notices?user=priya").json()[0]
-    c.post(f"/api/notices/{n['id']}/send", json={"user_id": "priya", "to": n["to"], "subject": n["subject"],
+    n = c.get("/api/notices?user=usera").json()[0]
+    c.post(f"/api/notices/{n['id']}/send", json={"user_id": "usera", "to": n["to"], "subject": n["subject"],
                                                   "body": n["body"]})
     advance_to(c, 11)
-    texts = [f"{r['who']}: {r['text']}" for r in c.get("/api/activity?user=priya").json()]
+    texts = [f"{r['who']}: {r['text']}" for r in c.get("/api/activity?user=usera").json()]
     order = ["SubGuard: Read the fine print for you before PayPal", "You: You approved the trial in PayPal",
              "SubGuard: Set a safety timer and told you about it: check in on Day 5, cancel on Day 6",
              "SubGuard: Asked you", "You: You tapped Cancel.", "PayPal: Cancelled your subscription",

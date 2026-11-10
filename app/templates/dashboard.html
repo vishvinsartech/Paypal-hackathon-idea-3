@@ -29,7 +29,7 @@
 
 <section class="card pipeline" id="pipeline" data-testid="pipeline" aria-labelledby="pipeline-h">
   <div class="card-head">
-    <h2 id="pipeline-h">Priya's Penwright trial, step by step</h2>
+    <h2 id="pipeline-h">userA's Penwright trial, step by step</h2>
     {% if settings.is_sandbox %}
     <button class="btn btn-start" id="demo-start" data-testid="demo-start" disabled
             title="Start runs in mock mode. In sandbox mode, approve the trial through the shop.">&#9654; Start demo</button>
@@ -42,7 +42,7 @@
     <ol class="steps" id="pipeline-steps">
       {% for key, title, hint in [("read", "Read the fine print", "Day 0"), ("approve", "Approve with PayPal", "Day 0"),
                                   ("timer", "Safety timer set", "Day 0"), ("wait", "Days go by", "the trial"),
-                                  ("ask", "Ask Priya", "check-in day"), ("outcome", "Keep or cancel", "her choice"),
+                                  ("ask", "Ask userA", "check-in day"), ("outcome", "Keep or cancel", "her choice"),
                                   ("proof", "First charge day", "proof")] %}
       <li class="step" data-step="{{ key }}" data-testid="step-{{ key }}">
         <span class="step-dot">{{ loop.index }}</span>
@@ -54,7 +54,7 @@
   </div>
   <p class="pipe-status" id="pipe-status" aria-live="polite" data-testid="pipeline-status">
     {% if settings.is_sandbox %}In sandbox mode, start from the shop: <a href="/shop/penwright">Open Penwright</a>.
-    {% else %}Press <strong>Start demo</strong> to run the story. It pauses at the check-in so Priya can keep or cancel.{% endif %}
+    {% else %}Press <strong>Start demo</strong> to run the story. It pauses at the check-in so userA can keep or cancel.{% endif %}
   </p>
   <div id="pipe-done"></div>
 </section>

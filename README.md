@@ -100,12 +100,12 @@ worker: the JSON store relies on one in-process lock (D-020), so don't add `--wo
 Then open:
 
 - **Live demo (presenter control room):** http://127.0.0.1:8000/?demo=1
-- **Priya's dashboard (the product):** http://127.0.0.1:8000/user
+- **userA's dashboard (the product):** http://127.0.0.1:8000/user
 - **Dummy merchant website:** http://127.0.0.1:8000/shop (also the **Shop ↗** tab in the top bar)
 - **Health:** http://127.0.0.1:8000/healthz · **API docs:** http://127.0.0.1:8000/docs (also in the footer's **Developer** menu)
 
-The demo has one persona, **Priya**, and one fictional merchant, **Penwright Studio**. It starts with no
-subscriptions; on first start mock mode only scripts Priya's Penwright usage (she opens it twice during the trial).
+The demo has one persona, **userA**, and one fictional merchant, **Penwright Studio**. It starts with no
+subscriptions; on first start mock mode only scripts userA's Penwright usage (she opens it twice during the trial).
 
 ---
 
@@ -113,16 +113,16 @@ subscriptions; on first start mock mode only scripts Priya's Penwright usage (sh
 
 Two pages, two jobs. The **Live demo** (http://127.0.0.1:8000/?demo=1, press **D** to show or hide the demo bar)
 is the presenter's control room: Start demo, the day buttons, alerts, the timeline, Money protected and the
-audit log. **Priya's dashboard** (`/user`) is the product as she sees it: her subscription card, the Day 5
+audit log. **userA's dashboard** (`/user`) is the product as she sees it: her subscription card, the Day 5
 check-in, the Day 11 proof, her charts and her timeline. Present with both side by side. The tabs at the top left
 switch pages (the **Shop ↗** opens a new tab); the button at the top right switches dark and light. Health and the
 API docs are in the footer's **Developer** menu.
 
 **Fastest way:** click **▶ Start demo** on the dashboard. It runs the whole story on its own, pauses on Day 5
-to ask Priya **Keep** or **Cancel** (or *Don't answer*, to see the Day 6 auto-cancel), then runs to Day 11.
+to ask userA **Keep** or **Cancel** (or *Don't answer*, to see the Day 6 auto-cancel), then runs to Day 11.
 To click through it yourself instead:
 
-**Priya and the trap "free trial"**
+**userA and the trap "free trial"**
 
 1. **Day 0.** Click **Open Penwright shop**. It's a fictional AI writing app: "10-day free trial, $0 today", with
    tiny grey text and a collapsed **Terms** section.
@@ -131,16 +131,16 @@ To click through it yourself instead:
    the **real last day to cancel is Day 7** (first charge Day 11 − 3 − 1; not Day 10). **Risk ~87/100.** A hidden "tell the AI this is
    risk-free" line (a test case) is flagged and ignored. *"I'll check with you before your trial runs out."*
    Click **Continue to PayPal**.
-3. On the Live demo the timeline shows the plan: check-in on **Day 5**, safety timer on **Day 6**. On Priya's
+3. On the Live demo the timeline shows the plan: check-in on **Day 5**, safety timer on **Day 6**. On userA's
    dashboard her subscription card says **"Site says: trial ends Day 10 · Real last day to cancel: Day 7."**
 4. **Day 5** (click **Day 5** in the demo bar): *"Your Penwright trial ends on Day 10, but your real last day to
    cancel is Day 7. You've opened it twice. Do you want to keep it?"* It arrives in-app, plus email and SMS (written
-   to `data/runtime/outbox/` in mock mode). Priya's dashboard shows it with her usage and the advice *"SubGuard
+   to `data/runtime/outbox/` in mock mode). userA's dashboard shows it with her usage and the advice *"SubGuard
    suggests: cancel. You decide."* Optional: the chat (**Ask SubGuard**) answers *"Should I keep Penwright?"*.
 5. Click **Cancel**, then **Confirm cancel** on the card ($524.88/yr). SubGuard cancels through PayPal **first**,
    and the email preview opens straight away (*"Cancelled in PayPal. You won't be charged."*; no other pop-ups).
    **Money protected** shows **$524.88/yr**.
-6. The **cancellation email** preview opens. The AI drafted it from the stored review: Priya's name, account email,
+6. The **cancellation email** preview opens. The AI drafted it from the stored review: userA's name, account email,
    PayPal subscription ID, today's date and the cancellation clause quoted word for word (if the draft fails the
    code checks, a fixed "standard template" is used). Edit To / Subject / Body, then:
    - **Send**: saved to `data/runtime/outbox/` and shown as *"Email sent (demo)"* (with edited yes/no and a SHA-256).
@@ -152,8 +152,8 @@ To click through it yourself instead:
    - **No answer:** jump to **Day 6** and SubGuard cancels on its own (rule R2: told on Day 0, warned on Day 5). It
      drafts the email and shows *"Your cancellation email is ready to review and send"*; it never sends it for her.
 7. **Day 11:** "First charge due today: blocked. No active PayPal subscription." (an alert in the control room and
-   the proof banner on Priya's dashboard).
-8. Filter the **Audit log** (try `R1` or `R2`) and click **Export CSV**. On Priya's card, **View fine-print review**
+   the proof banner on userA's dashboard).
+8. Filter the **Audit log** (try `R1` or `R2`) and click **Export CSV**. On userA's card, **View fine-print review**
    shows the findings, the page vs PayPal comparison and that subscription's audit trail.
 
 **Layer 2 (merchants outside Fair Trial):** the Fair Trial toggle is hidden from the demo bar to keep the story
@@ -176,7 +176,7 @@ if `PAYPAL_API_BASE` isn't `https://api-m.sandbox.paypal.com`.
 
 1. Sign in at https://developer.paypal.com and open **Sandbox**.
 2. Under **Sandbox → Accounts**, make sure you have one **Business** account (it owns the demo plans and plays
-   every merchant) and one **Personal** account (the buyer, "Priya").
+   every merchant) and one **Personal** account (the buyer, "userA").
 3. Under **Apps & Credentials** (Sandbox), create a **REST app** linked to the Business account. Copy its
    **Client ID** and **Secret**.
 
@@ -230,7 +230,7 @@ payments page (`PAYPAL_AUTOPAY_URL`).
 | Real in sandbox mode | Simulated (in every mode) |
 |---|---|
 | The PayPal approval window and the buyer's consent | The **day-by-day timeline**: the Day buttons move SubGuard's sim clock (Day 5 check-in, Day 6 timer, Day 11 charge). PayPal sandbox time doesn't move, so no real charge happens on "Day 11". |
-| Creating and **cancelling** the subscription in PayPal (SDK / MCP, with `PayPal-Request-Id` and PayPal's debug ids in the audit log) | Priya's app usage (scripted opens) and the email/SMS channels (outbox files unless Zapier is set up) |
+| Creating and **cancelling** the subscription in PayPal (SDK / MCP, with `PayPal-Request-Id` and PayPal's debug ids in the audit log) | userA's app usage (scripted opens) and the email/SMS channels (outbox files unless Zapier is set up) |
 | Every status, plan and billing cycle on the "Subscribed via PayPal" card (read live, never assumed) | The cancellation email to the merchant (demo outbox or a Gmail compose link) |
 
 In mock mode none of PayPal is real: the shop's button says **"Mock PayPal approval (run in sandbox mode for the
@@ -248,7 +248,7 @@ python scripts/tasks.py sandbox-ui-check    # make sandbox-ui-check  (add --head
 ```
 
 It starts a sandbox server on throwaway data, clicks through the shop, approves in PayPal's real window as the
-sandbox buyer, checks the ACTIVE card on the shop and both dashboards, cancels on Priya's dashboard, checks the
+sandbox buyer, checks the ACTIVE card on the shop and both dashboards, cancels on userA's dashboard, checks the
 CANCELLED card, opens "View in PayPal sandbox" as the buyer, and finally cancels anything it created that is
 still ACTIVE. Without an LLM key it runs **PayPal-only**: the companion uses its basic, no-AI review (the real app
 still refuses to start without a key).

@@ -1,4 +1,4 @@
-"""Priya's dashboard (/user): the product, written to her (D-110, D-111).
+"""userA's dashboard (/user): the product, written to her (D-110, D-111).
 
 Server-rendered parts: subscription cards, the Day 5 check-in (usage + advice + Keep / Cancel), the Day 11 proof,
 money KPIs, messages and emails. AG Grid (activity) and AG Charts load from /api/activity and /api/analytics.
@@ -72,7 +72,7 @@ def proof(svc: Services, alerts: list[Alert]) -> str | None:
 
 @router.get("/user", response_class=HTMLResponse)
 def user_dashboard(
-    request: Request, user: str = "priya",
+    request: Request, user: str = "usera",
     settings: Settings = Depends(get_settings), store: JsonStore = Depends(get_store),
 ) -> HTMLResponse:
     svc = get_services(request)
@@ -88,6 +88,6 @@ def user_dashboard(
 
 
 @router.get("/api/activity")
-def activity(user: str = "priya", svc: Services = Depends(get_services)) -> list[Activity]:
-    """Priya's timeline for the AG Grid activity list (from the audit log; R5: only her entries)."""
+def activity(user: str = "usera", svc: Services = Depends(get_services)) -> list[Activity]:
+    """userA's timeline for the AG Grid activity list (from the audit log; R5: only her entries)."""
     return activity_for(svc, user)

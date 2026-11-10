@@ -30,7 +30,7 @@ def _base(request: Request, user: str, settings: Settings, store: JsonStore) -> 
 
 @router.get("/", response_class=HTMLResponse)
 def dashboard(
-    request: Request, user: str = "priya", demo: int = 0,
+    request: Request, user: str = "usera", demo: int = 0,
     settings: Settings = Depends(get_settings), store: JsonStore = Depends(get_store),
 ) -> HTMLResponse:
     ctx = _base(request, user, settings, store)
@@ -40,7 +40,7 @@ def dashboard(
 
 @router.get("/subscriptions/{sub_id}", response_class=HTMLResponse)
 def subscription_page(
-    request: Request, sub_id: str, user: str = "priya",
+    request: Request, sub_id: str, user: str = "usera",
     settings: Settings = Depends(get_settings), store: JsonStore = Depends(get_store),
 ) -> HTMLResponse:
     svc = get_services(request)

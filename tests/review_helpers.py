@@ -55,7 +55,7 @@ def run_review(store: JsonStore, provider: object, capture: PageCapture, key: st
     plan = plan or plan_for(key)
     return asyncio.run(auditor(store, provider, timeout).review(
         capture, plan, merchant=merchant(store, key.split("-")[0], fair_trial), plan_key=key, signup_day=0,
-        user_id="priya"))
+        user_id="usera"))
 
 
 class ScriptedProvider:

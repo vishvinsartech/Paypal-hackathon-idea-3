@@ -10,7 +10,7 @@ from app.store import JsonStore
 
 def _fill(store: JsonStore, n: int = 3) -> None:
     for i in range(n):
-        store.audit.append(actor="policy", event="policy_decision", user_id="priya", rule_id="R1",
+        store.audit.append(actor="policy", event="policy_decision", user_id="usera", rule_id="R1",
                            decision="allowed", subscription_id=f"sub-{i}", transport="mock")
 
 
@@ -64,16 +64,16 @@ def test_append_only_and_chain_survives_reload(store: JsonStore) -> None:
 
 def test_secrets_and_emails_masked(store: JsonStore) -> None:
     e = store.audit.append(
-        actor="system", event="paypal_call", reason="sent to priya@subguard-demo.example",
+        actor="system", event="paypal_call", reason="sent to usera@subguard-demo.example",
         details={"access_token": "A21AAsecret", "headers": {"Authorization": "Bearer abc.def"},
                  "note": "Bearer xyz123", "to": "cancel@penwright.example", "api_key": "sk-123"},
     )
     raw = store.audit.path.read_text(encoding="utf-8")
-    for secret in ("A21AAsecret", "abc.def", "xyz123", "sk-123", "priya@", "cancel@"):
+    for secret in ("A21AAsecret", "abc.def", "xyz123", "sk-123", "usera@", "cancel@"):
         assert secret not in raw
     assert e.details["access_token"] == "***"
     assert e.details["to"] == "c***@penwright.example"
-    assert e.reason == "sent to p***@subguard-demo.example"
+    assert e.reason == "sent to u***@subguard-demo.example"
 
 
 def test_mask_secrets_leaves_plain_values() -> None:
@@ -83,7 +83,7 @@ def test_mask_secrets_leaves_plain_values() -> None:
 def test_query_filters(store: JsonStore) -> None:
     _fill(store, 2)
     store.audit.append(actor="user", event="keep", user_id="intruder")
-    assert len(store.audit.query(user="priya")) == 2
+    assert len(store.audit.query(user="usera")) == 2
     assert len(store.audit.query(event="keep")) == 1
     assert len(store.audit.query(since_day=1)) == 0
     assert len(store.audit.query(subscription_id="sub-1")) == 1

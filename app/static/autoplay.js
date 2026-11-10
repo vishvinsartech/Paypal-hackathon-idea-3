@@ -1,5 +1,5 @@
-// "Start demo": runs Priya's story through the same APIs the UI uses (mock mode), with an animated stepper.
-// Day 0 review -> PayPal approval -> safety timer -> days pass -> PAUSE at the check-in for Priya's choice
+// "Start demo": runs userA's story through the same APIs the UI uses (mock mode), with an animated stepper.
+// Day 0 review -> PayPal approval -> safety timer -> days pass -> PAUSE at the check-in for userA's choice
 // (Keep / Cancel / don't answer) -> the rest of the timeline to the first charge day.
 // A cancel still needs the confirmation card's tap (R1/R3); nothing here bypasses the policy.
 (function () {
@@ -51,7 +51,7 @@
   const openCheckin = async (id) => (await api(`/api/alerts?user=${user}`))
     .find((a) => a.kind === "reminder" && a.subscription_id === id && !a.acknowledged_at);
 
-  // ---- Priya's choice --------------------------------------------------------------------------
+  // ---- userA's choice --------------------------------------------------------------------------
   function ask(alert, fireDay) {
     document.getElementById("decision-title").textContent = alert.title;
     document.getElementById("decision-body").textContent = alert.body;
@@ -98,7 +98,7 @@
     await refresh();
 
     mark("read", "active", "reading…");
-    say("<strong>Day 0.</strong> Priya clicks PayPal on Penwright. SubGuard reads the fine print first…");
+    say("<strong>Day 0.</strong> userA clicks PayPal on Penwright. SubGuard reads the fine print first…");
     const pre = await post("/api/review/preflight", {merchant_url: "/shop/penwright", plan_key: "penwright-pro", user_id: user});
     await sleep(1400);
     const deadline = pre.deadlines.real_cancel_deadline_day;
@@ -107,7 +107,7 @@
     await sleep(1600);
 
     mark("approve", "active", "PayPal…");
-    say("Priya approves the trial (mock PayPal approval; sandbox mode shows the real PayPal window).");
+    say("userA approves the trial (mock PayPal approval; sandbox mode shows the real PayPal window).");
     const created = await post("/api/checkout/create", {merchant_id: "penwright", plan_key: "penwright-pro", user_id: user});
     await post("/api/checkout/mock-approve", {paypal_id: created.paypal_id});
     const sub = await post("/api/subscriptions/register", {paypal_id: created.paypal_id, merchant_id: "penwright",
@@ -131,7 +131,7 @@
     for (let d = 1; d <= lastQuiet && !alert; d++) {
       await toDay(d);
       mark("wait", "active", `Day ${d}`);
-      say(`<strong>Day ${d}.</strong> ${d < lastQuiet ? "Priya uses the trial. SubGuard watches the clock." : "Check-in day."}`);
+      say(`<strong>Day ${d}.</strong> ${d < lastQuiet ? "userA uses the trial. SubGuard watches the clock." : "Check-in day."}`);
       alert = await openCheckin(sub.id);
       await sleep(alert ? 300 : 900);
     }
@@ -140,10 +140,10 @@
     let choice = "none";
     if (alert) {
       mark("ask", "active", `Day ${alert.sim_day}`);
-      say(`<strong>Day ${alert.sim_day}.</strong> SubGuard asks Priya by email, SMS and in-app. Waiting for her answer…`);
+      say(`<strong>Day ${alert.sim_day}.</strong> SubGuard asks userA by email, SMS and in-app. Waiting for her answer…`);
       await sleep(700);
       choice = await decide(alert, fireDay);
-      const said = {keep: "Priya: Keep", cancel: "Priya: Cancel", cancel_failed: "Cancel failed", skip: "No answer"}[choice];
+      const said = {keep: "userA: Keep", cancel: "userA: Cancel", cancel_failed: "Cancel failed", skip: "No answer"}[choice];
       mark("ask", choice === "cancel_failed" ? "warn" : "done", said);
     } else {
       mark("ask", "skipped", "no check-in");
@@ -159,7 +159,7 @@
       if (!outcome && s.status === "CANCELLED") {
         outcome = s.cancelled_by === "timer" ? `Auto-cancelled Day ${s.cancelled_day} (R2)` : `Cancelled Day ${s.cancelled_day}`;
         mark("outcome", "done", outcome);
-        say(`<strong>Day ${d}.</strong> Cancelled in PayPal. Priya won't be charged. ` + (s.cancelled_by === "timer"
+        say(`<strong>Day ${d}.</strong> Cancelled in PayPal. userA won't be charged. ` + (s.cancelled_by === "timer"
           ? "Her cancellation email is drafted and waits for her to review and send it."
           : "Her cancellation email was drafted for her to review and send."));
         await sleep(1500);
@@ -178,11 +178,11 @@
     if (final.status === "CANCELLED") {
       mark("proof", "done", `Day ${billing}: charge blocked`);
       say(`<strong>Day ${billing}.</strong> First charge due today: blocked. No active PayPal subscription.`);
-      doneBox.innerHTML = `<p class="pipe-done" data-testid="pipeline-done"><strong>${esc(kpi.money_protected_text)}</strong> kept in Priya's pocket this year. Every step is in the audit log below.</p>`;
+      doneBox.innerHTML = `<p class="pipe-done" data-testid="pipeline-done"><strong>${esc(kpi.money_protected_text)}</strong> kept in userA's pocket this year. Every step is in the audit log below.</p>`;
     } else {
       const row = (await api(`/api/view/subscriptions?user=${user}`)).rows.find((r) => r.id === sub.id);
       mark("proof", "warn", `Day ${billing}: charged`);
-      say(`<strong>Day ${billing}.</strong> Priya kept Penwright, so the first charge goes through as she agreed.`);
+      say(`<strong>Day ${billing}.</strong> userA kept Penwright, so the first charge goes through as she agreed.`);
       doneBox.innerHTML = `<p class="pipe-done" data-testid="pipeline-done">Kept on purpose: Penwright charges <strong>${esc(row ? row.price_text : "")}</strong> from today, and SubGuard won't ask again.</p>`;
     }
   }

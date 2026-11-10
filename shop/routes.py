@@ -53,7 +53,7 @@ async def _record(store: JsonStore, user: str, merchant_id: str, kind: str) -> t
 
 
 @router.get("/{merchant_id}/app", response_class=HTMLResponse)
-async def app_open(request: Request, merchant_id: str, user: str = "priya",
+async def app_open(request: Request, merchant_id: str, user: str = "usera",
                    settings: Settings = Depends(get_settings),
                    store: JsonStore = Depends(get_store)) -> HTMLResponse:
     """Opening the fake app records a usage event for the current sim day."""
@@ -64,7 +64,7 @@ async def app_open(request: Request, merchant_id: str, user: str = "priya",
 
 
 @router.post("/{merchant_id}/app/export", response_class=HTMLResponse)
-async def app_export(request: Request, merchant_id: str, user: str = "priya",
+async def app_export(request: Request, merchant_id: str, user: str = "usera",
                      settings: Settings = Depends(get_settings),
                      store: JsonStore = Depends(get_store)) -> HTMLResponse:
     """'Export a document' in the fake app: an export usage event (Penwright's early-trial-end trap, corner case 27)."""

@@ -2,7 +2,7 @@
 
 Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its check passes and it is committed.
 
-> **Story simplified after milestone 8 (2026-11-10):** Priya + Penwright only (D-090). The milestone 1-8 entries
+> **Story simplified after milestone 8 (2026-11-10):** userA + Penwright only (D-090). The milestone 1-8 entries
 > below are a history log and still mention the old two-story demo (John, Lumen, Framewise, add-on, Day 21
 > price rise, $872.76). Current numbers: Money protected **$524.88**, Penwright risk **87**. See
 > "Story simplification" under the notes.
@@ -83,23 +83,23 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
   `demo-video/README.md` (D-114). **Still to do (milestone 9):** `record_demo.py`, `make_voiceover.py`, recording
   the clip by hand.
 
-### Focus UI: presenter view vs Priya's view (2026-11-10)
-- Live demo = control room (Money protected only, alerts, timeline, audit log; Layer 2 toggle hidden). Priya's
+### Focus UI: presenter view vs userA's view (2026-11-10)
+- Live demo = control room (Money protected only, alerts, timeline, audit log; Layer 2 toggle hidden). userA's
   dashboard = product (subscription card, Day 10 vs Day 7 line, Day 5 check-in with usage + advice, Day 11 proof,
   charts, AG Grid activity list, empty state). Footer + Developer menu; no Restart trial; no extra pop-ups in the
   cancel flow; shop "Show what's hidden" (D-111, D-112).
 - Video: 9 scenes, 169 s, chat removed. Checks: full pytest + ruff clean; `ui_check.py` drives both pages side by
   side with no console errors.
 
-### Analytics + Priya's own view + theme (2026-11-10)
+### Analytics + userA's own view + theme (2026-11-10)
 - AG Charts Community 14.2.0 graphs (`static/charts.js`, `GET /api/analytics`): Live demo 2x2 Analytics card,
-  Priya's dashboard cost / usage / risk (D-108). AG Studio not used: commercial + Enterprise-only + npm-only.
-- `/user` rewritten as Priya's own view (second person, the AG Grid subscriptions with Keep / Cancel) (D-110).
+  userA's dashboard cost / usage / risk (D-108). AG Studio not used: commercial + Enterprise-only + npm-only.
+- `/user` rewritten as userA's own view (second person, the AG Grid subscriptions with Keep / Cancel) (D-110).
 - Light/dark toggle at the top right; CSS tokens, AG Grid theme modes and AG Charts themes all follow it (D-109).
 - Checks: 221 tests, ruff clean, `ui_check.py` covers the charts, the toggle (remembered after reload), the tabs.
 
 ### Judge navigation (2026-11-10)
-- Top-bar tabs (Live demo, Priya's dashboard, Shop, Health, API docs) and the new `/user` page (D-107).
+- Top-bar tabs (Live demo, userA's dashboard, Shop, Health, API docs) and the new `/user` page (D-107).
   `tests/test_user_page.py`; `ui_check.py` also clicks through the tabs.
 
 ### 10-day trial + cancellation email (2026-11-10)

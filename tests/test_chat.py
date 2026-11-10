@@ -13,7 +13,7 @@ from app.llm.tools_schema import ToolSpec
 from tests.story_helpers import add_user, advance_to, alerts, audit, sub, subscribe
 
 
-def chat(c: TestClient, message: str, user: str = "priya") -> list[dict[str, Any]]:
+def chat(c: TestClient, message: str, user: str = "usera") -> list[dict[str, Any]]:
     res = c.post("/api/chat", json={"user_id": user, "message": message})
     assert res.status_code == 200 and res.headers["content-type"].startswith("text/event-stream")
     return [json.loads(line[6:]) for line in res.text.splitlines() if line.startswith("data: ")]
@@ -52,7 +52,7 @@ def test_cancel_by_chat_needs_confirm_then_cancels(demo_client: TestClient) -> N
     pw_id = card["items"][0]["subscription_id"]
     assert sub(c, pw_id)["status"] == "ACTIVE"  # proposing never cancels
     assert not audit(c, "paypal_cancel", subscription_id=pw_id)
-    done = c.post("/api/agent/confirm", json={"user_id": "priya", "token": card["token"],
+    done = c.post("/api/agent/confirm", json={"user_id": "usera", "token": card["token"],
                                               "subscription_ids": [pw_id]}).json()
     assert done["all_ok"] and done["results"][0]["transport"] == "mock"
     assert sub(c, pw_id)["status"] == "CANCELLED"
@@ -117,7 +117,7 @@ def test_model_cannot_cancel_directly(demo_client: TestClient) -> None:
 
 
 def test_model_cannot_touch_other_users_subscription(demo_client: TestClient) -> None:
-    """R5 through the agent: Priya's chat proposing another user's subscription -> error result, no card."""
+    """R5 through the agent: userA's chat proposing another user's subscription -> error result, no card."""
     c = demo_client
     theirs = subscribe(c, user=add_user(c))
     c.app.state.llm = ScriptedLLM([  # type: ignore[attr-defined]

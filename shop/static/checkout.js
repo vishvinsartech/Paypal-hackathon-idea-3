@@ -5,7 +5,7 @@
   const area = document.querySelector("[data-testid=shop-checkout]");
   const btn = area && area.querySelector("[data-mock-approve]");
   if (!btn) return;
-  const user = new URLSearchParams(location.search).get("user") || "priya";
+  const user = new URLSearchParams(location.search).get("user") || "usera";
   const status = document.createElement("p");
   status.className = "checkout-status";
   status.setAttribute("role", "status");

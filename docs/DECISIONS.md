@@ -164,14 +164,14 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   delivered yet, the timer stays PENDING: the warning is retried each day and the timer re-checked. On the
   billing day it becomes FAILED with an urgent alert. R6 (essential) -> timer CANCELLED + urgent alert.
   A failed PayPal cancel -> FAILED + Layer 2 handoff (notice + ACTION NEEDED link), never "Done".
-- **D-053 Scripted demo usage.** *(Now Penwright only: D-096.)* The demo seed writes usage events with `source: "seed"` (Priya: Framewise
+- **D-053 Scripted demo usage.** *(Now Penwright only: D-096.)* The demo seed writes usage events with `source: "seed"` (userA: Framewise
   Days -2, 3, 10 and Penwright Days 2, 4; John: Lumen Days 1-9 and 12). Only days <= today count, so the
   story's numbers ("opened Penwright twice", "3 times this month", "9 of the last 10 days", "2 weeks")
   are reproducible; opening `/shop/<merchant>/app` still adds live events on top.
 - **D-054 Demo seed subscriptions.** *(Superseded by D-090.)* In mock mode with `DEMO_SEED=true` (default; tests turn it off),
-  first start and Reset create Priya's Framewise (signup Day -5, so it renews Day 25 and the Day 21 price
+  first start and Reset create userA's Framewise (signup Day -5, so it renews Day 25 and the Day 21 price
   rise lands before it) and John's Lumen monthly (Day 0, reviewed by the real pipeline: risk 15). Penwright
-  is not seeded: Priya subscribes through the shop + companion in the demo. Sandbox mode seeds nothing.
+  is not seeded: userA subscribes through the shop + companion in the demo. Sandbox mode seeds nothing.
 - **D-055 Which subscriptions get a safety timer.** *(Renewal reminders and price watching removed: D-090.)* A trial timer is created only for plans that start with a
   free cycle (a trial before the first charge), using the linked review's notice days. Honest no-trial plans
   (Lumen, Framewise) get no auto-cancel timer, only renewal reminders (3 days before, if unused 14+ days)
@@ -252,9 +252,9 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   set, so the hosted mock demo never sends real messages. In sandbox mode without a hook, startup logs a warning,
   and the startup audit entry records `notify: outbox|zapier`.
 
-## Story simplified to Priya + Penwright (2026-11-10)
+## Story simplified to userA + Penwright (2026-11-10)
 
-- **D-090 One persona, one merchant.** At the user's request the demo story (spec section 2) is now Priya +
+- **D-090 One persona, one merchant.** At the user's request the demo story (spec section 2) is now userA +
   Penwright Studio only. Removed from the story, UI, code, fixtures, tests and docs: John, Lumen Notes, Framewise,
   the Day 21 price-rise flow (`/api/demo/price-rise`, price watching, "Keep at $19"), the pre-ticked add-on
   (plan `penwright-ai-pack`, checkbox, add-on offer, `addon_of`), the user switcher, monthly-vs-yearly advice
@@ -281,8 +281,8 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   idempotent per subscription; in-app only for a tap, also email/SMS for the timer.
 - **D-095 Keep.** Sets `Subscription.kept_day`, marks pending timers KEPT and acknowledges open Keep/Cancel
   alerts, so there are no further prompts. On Day 15 a kept subscription just logs `charge_due` (no alert).
-- **D-096 Demo seed = usage only.** `DEMO_SEED` now writes only Priya's scripted Penwright opens (Days 2 and 4),
-  so "You've opened it twice" is reproducible. No subscriptions are seeded; the dashboard starts empty and Priya
+- **D-096 Demo seed = usage only.** `DEMO_SEED` now writes only userA's scripted Penwright opens (Days 2 and 4),
+  so "You've opened it twice" is reproducible. No subscriptions are seeded; the dashboard starts empty and userA
   approves the trial herself on Day 0.
 - **D-097 Mock chat scripts.** "Should I keep Penwright?" calls list_subscriptions, get_usage,
   get_savings_estimate and review_subscription, then answers with code numbers (opens, $524.88, Day 7) and no
@@ -354,8 +354,8 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
 
 ## Judge navigation (2026-11-10)
 
-- **D-107 Page tabs + Priya's dashboard.** The top bar gets tabs next to the mode/AI badges: **Live demo** (`/`,
-  with the demo bar), **Priya's dashboard** (`/user`), and **Shop ↗**, **Health ↗**, **API docs ↗**, which open in
+- **D-107 Page tabs + userA's dashboard.** The top bar gets tabs next to the mode/AI badges: **Live demo** (`/`,
+  with the demo bar), **userA's dashboard** (`/user`), and **Shop ↗**, **Health ↗**, **API docs ↗**, which open in
   new tabs so the live demo window stays put. The Shop tab replaces the "View dummy website" button and keeps its
   `view-shop` test id. `/user` is server-rendered from the store; its day-by-day feed (`core/activity.py`) maps
   audit events to plain English and skips low-level ones (PayPal HTTP calls, tokens, LLM calls), so every line is
@@ -363,7 +363,7 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   hidden) so it follows a demo running in another tab. R5: `?user=` only shows that user's data. `timer_created`
   audit entries now include `reminder_day`.
 
-## Analytics, Priya's own view, light/dark theme (2026-11-10)
+## Analytics, userA's own view, light/dark theme (2026-11-10)
 
 - **D-108 AG Charts Community, not AG Studio.** AG Studio (the AG Grid team's dashboard library, v3.1.0) was
   requested. It is Commercial-licensed (45-day trial, then a licence), depends on `ag-grid-enterprise` and
@@ -376,30 +376,30 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   billing cycles (Decimal strings; the browser only plots them), the review's risk breakdown, audit-log entries
   by actor and by day, and trial opens per day with the deadline and first-charge lines. Before any signup the
   cost chart previews the Penwright plan (`preview: true`). Live demo: a 2x2 Analytics card (cost, risk, activity
-  by day, who acted). Priya's dashboard: cost, usage, risk. Actor colours are fixed and match the timeline badges.
+  by day, who acted). userA's dashboard: cost, usage, risk. Actor colours are fixed and match the timeline badges.
 - **D-109 Light / dark theme.** A toggle at the top right sets `<html data-theme>` and `data-ag-theme-mode`. An
   inline `<head>` script applies the saved choice before first paint, so there's no flash. The choice is a
   per-browser convenience in localStorage (try/catch). The default stays **dark**, so the demo video and
   screenshots don't change with the OS setting. CSS uses the same tokens with light values. AG Grid uses one
   `themeQuartz` with `"light"` and `"dark"` params. AG Charts re-renders with `ag-default` / `ag-default-dark` on
   the `sg-theme` event. The shop (fictional merchant) keeps its own look.
-- **D-110 Priya's dashboard is written to her.** `/user` now speaks in the second person ("Hi Priya, here's your
+- **D-110 userA's dashboard is written to her.** `/user` now speaks in the second person ("Hi userA, here's your
   SubGuard", "You tapped Cancel", "Cancelled your subscription after you confirmed"). Her subscriptions are the
   same AG Grid as the live demo (Keep / Cancel with the confirmation card), and the server-rendered table is gone.
   The live refresh swaps only the `[data-live]` sections that changed, and refreshes the grid and charts through
   their APIs.
 
-## Focus UI: presenter view vs Priya's view (2026-11-10)
+## Focus UI: presenter view vs userA's view (2026-11-10)
 
-- **D-111 Check-in advice is a code rule, labelled as advice.** Priya's Day 5 check-in shows her usage ("Opened
+- **D-111 Check-in advice is a code rule, labelled as advice.** userA's Day 5 check-in shows her usage ("Opened
   twice in 5 days (last on Day 4).") and *"SubGuard suggests: cancel. You decide."* The suggestion comes from code,
   not the LLM: fewer than 3 opens during the trial means "cancel", otherwise "keep". The reason quotes the same code
   numbers the chat uses (opens and the first paid year's cost from the PayPal plan), so nothing is invented (R7).
   It never acts: Keep / Cancel stay her taps, and Cancel still needs the confirmation card.
-- **D-112 Live demo = control room, Priya's dashboard = product.** No duplication between them. Live demo: demo bar,
+- **D-112 Live demo = control room, userA's dashboard = product.** No duplication between them. Live demo: demo bar,
   greeting, the email-ready banner, step tracker, **Money protected** only, alerts, timeline and the audit log grid.
   The analytics card, the subscriptions grid, the emails list and the other KPIs are removed. The Fair Trial toggle
-  (Layer 2) stays in the markup but hidden (`layer2-controls`; README explains how to use it). Priya's dashboard: a
+  (Layer 2) stays in the markup but hidden (`layer2-controls`; README explains how to use it). userA's dashboard: a
   subscription card (status, risk, "Site says … · Real last day to cancel …", next charge, timer, Keep / Cancel,
   View fine-print review) replaces the one-row grid, an empty state before signup, the Day 5 check-in, the Day 11
   proof banner, two KPIs (Money protected, Cancelled in PayPal), the AG Charts (only here) and the activity list as

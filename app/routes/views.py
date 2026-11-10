@@ -79,7 +79,7 @@ def _per(cycles: list[BillingCycleDef]) -> str:
 
 
 @router.get("/subscriptions")
-def subscriptions(user: str = "priya", svc: Services = Depends(get_services)) -> dict[str, Any]:
+def subscriptions(user: str = "usera", svc: Services = Depends(get_services)) -> dict[str, Any]:
     timers = svc.store.load("timers").items
     subs = [s for s in svc.store.load("subscriptions").items if s.owner_id == user and s.status != "APPROVAL_PENDING"]
     return {"today": svc.day, "rows": [sub_view(svc, s, timers) for s in subs]}

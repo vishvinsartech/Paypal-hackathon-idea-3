@@ -1,4 +1,4 @@
-/* SubGuard panels: email preview, page tabs, Priya's dashboard, theme toggle, analytics.
+/* SubGuard panels: email preview, page tabs, userA's dashboard, theme toggle, analytics.
    Uses the colour tokens from app.css (dark by default, light under :root[data-theme="light"]). */
 /* ---- cancellation email preview (D-104) ---- */
 .email-dialog { max-width: 620px; }
@@ -55,7 +55,7 @@ body, .card, .topbar, .tab, .btn { transition: background-color .25s, color .25s
 .chart { height: 260px; min-width: 0; }
 .chart-empty { height: 260px; display: grid; place-items: center; color: var(--muted); font-size: .9rem; text-align: center; border: 1px dashed var(--line); border-radius: 8px; }
 
-/* ---- presenter view vs Priya's view (D-112) ---- */
+/* ---- presenter view vs userA's view (D-112) ---- */
 .kpis-one { grid-template-columns: minmax(220px, 360px); }
 .kpis-two { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 .sub-card { border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; background: var(--navy-900); display: grid; gap: 10px; }

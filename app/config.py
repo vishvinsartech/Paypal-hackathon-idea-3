@@ -50,7 +50,7 @@ class Settings(BaseSettings, PricingFields):
     repo_url: str = "https://github.com/vishvinsartech/Paypal-hackathon-idea-3"  # footer "GitHub" + "MIT license" links
 
     zapier_catch_hook_url: str = ""
-    demo_seed: bool = True  # mock mode: script Priya's Penwright usage on first start / reset
+    demo_seed: bool = True  # mock mode: script userA's Penwright usage on first start / reset
     render_api_key: str = ""
 
     @field_validator("llm_provider")

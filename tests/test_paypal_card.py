@@ -14,7 +14,7 @@ from tests.story_helpers import add_user, advance_to, alerts, audit, cancel_via_
 CYCLES = ["10-day trial $0", "3 × $24.99/month", "then $49.99/month"]
 
 
-def card(c: TestClient, sub_id: str, user: str = "priya") -> dict:
+def card(c: TestClient, sub_id: str, user: str = "usera") -> dict:
     res = c.get(f"/api/subscriptions/{sub_id}/paypal?user={user}")
     assert res.status_code == 200, res.text
     return res.json()

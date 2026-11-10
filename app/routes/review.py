@@ -25,7 +25,7 @@ class PreflightIn(BaseModel):
     merchant_url: str
     plan_id: str | None = None
     plan_key: str | None = None
-    user_id: str = "priya"
+    user_id: str = "usera"
 
 
 def _resolve_plan(merchant: Merchant, gw: PayPalGateway, plan_key: str | None, plan_id: str | None) -> str:

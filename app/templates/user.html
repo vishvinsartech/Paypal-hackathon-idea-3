@@ -4,7 +4,7 @@
 {% set u = current_user %}
 <div data-testid="user-dashboard">
 <section class="hero profile" id="live-head" data-live>
-  <span class="avatar" aria-hidden="true">{{ (u.name if u else "?")[:1] }}</span>
+  <span class="avatar" aria-hidden="true">{{ (u.name if u else "?")[:1] | upper }}</span>
   <div>
     <h1>Hi {{ u.name if u else "there" }}, here's your SubGuard.</h1>
     <p class="muted">Day <strong class="js-day">{{ sim_day }}</strong> of the demo · {{ u.email if u else "" }}</p>
@@ -72,7 +72,7 @@
     </div>
   </article>
   {% else %}
-  <p class="empty" data-testid="user-empty">No subscriptions yet. <a href="/shop/penwright?user={{ u.id if u else 'priya' }}" target="_blank" rel="noopener">Try the Penwright shop.</a></p>
+  <p class="empty" data-testid="user-empty">No subscriptions yet. <a href="/shop/penwright?user={{ u.id if u else 'usera' }}" target="_blank" rel="noopener">Try the Penwright shop.</a></p>
   {% endfor %}
   </div>
   <div id="pp-user" data-paypal-cards hidden>

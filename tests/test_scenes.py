@@ -20,7 +20,7 @@ def _ui_sources(client: TestClient) -> str:
     """Rendered pages (static test ids) + the scripts that render the rest."""
     pages = [client.get(u).text for u in ("/?demo=1", "/user", "/shop", "/shop/penwright", "/shop/penwright/terms")]
     scripts = [f.read_text(encoding="utf-8") for f in (ROOT_DIR / "app" / "static").glob("*.js")]
-    # Priya's card, check-in and proof banner render only later in the story, so their template source counts too.
+    # userA's card, check-in and proof banner render only later in the story, so their template source counts too.
     templates = [f.read_text(encoding="utf-8") for f in (ROOT_DIR / "app" / "templates").glob("*.html")]
     return "\n".join(pages + scripts + templates)
 

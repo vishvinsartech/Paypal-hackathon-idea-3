@@ -11,10 +11,10 @@
   (function () { var t = "dark"; try { t = localStorage.getItem("sg-theme") || "dark"; } catch (e) {}
     if (t !== "light") t = "dark"; var h = document.documentElement; h.dataset.theme = t; h.dataset.agThemeMode = t; })();</script>
 </head>
-<body data-user="{{ current_user.id if current_user else 'priya' }}" data-sim-day="{{ sim_day }}">
+<body data-user="{{ current_user.id if current_user else 'usera' }}" data-sim-day="{{ sim_day }}">
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="topbar" role="banner">
-    <a class="brand" href="/?user={{ current_user.id if current_user else 'priya' }}" data-testid="brand">
+    <a class="brand" href="/?user={{ current_user.id if current_user else 'usera' }}" data-testid="brand">
       <img src="/static/shield.svg" alt="" width="28" height="28">
       <span>SubGuard</span>
     </a>
@@ -24,7 +24,7 @@
     <span class="badge badge-llm" data-testid="llm-badge" title="LLM provider">
       AI: {{ settings.active_llm_provider }}{% if settings.is_sandbox %} · {{ settings.llm_model }}{% endif %}
     </span>
-    {% set uid = current_user.id if current_user else 'priya' %}
+    {% set uid = current_user.id if current_user else 'usera' %}
     <nav class="tabs" aria-label="Pages" data-testid="nav-tabs">
       <a class="tab{% if active_tab == 'demo' %} is-active{% endif %}" href="/?user={{ uid }}&amp;demo=1"
          {% if active_tab == 'demo' %}aria-current="page"{% endif %} data-testid="tab-demo">Live demo</a>

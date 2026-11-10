@@ -74,7 +74,7 @@
 
   // ---- dashboards: one card per subscription, re-read from PayPal when our status for it changes ------------
   const hosts = Array.from(document.querySelectorAll("[data-paypal-cards]"));
-  const user = (document.body && document.body.dataset.user) || "priya";
+  const user = (document.body && document.body.dataset.user) || "usera";
   const seen = new Map(); // subscription id -> our status when its card was last read from PayPal
   async function sync() {
     if (!hosts.length || document.hidden) return;

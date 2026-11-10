@@ -159,5 +159,6 @@ class McpPayPal:
         return subscription_view(data, sub_id)
 
     async def cancel_subscription(self, sub_id: str, reason: str, *, request_id: str,
-                                  merchant: Merchant | None = None) -> None:
+                                  merchant: Merchant | None = None) -> str | None:
         await self.call("cancel_subscription", {"subscription_id": sub_id, "payload": {"reason": reason[:128]}})
+        return None  # the MCP tool result carries no PayPal headers

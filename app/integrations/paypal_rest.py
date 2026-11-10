@@ -115,10 +115,15 @@ class PayPalRest:
     async def get_json(self, path: str, *, merchant: Merchant | None = None) -> dict[str, Any]:
         return (await self.request("GET", path, merchant=merchant)).json()
 
+    async def get_json_meta(self, path: str, *, merchant: Merchant | None = None) -> tuple[dict[str, Any], str | None]:
+        resp = await self.request("GET", path, merchant=merchant)
+        return resp.json(), resp.headers.get("paypal-debug-id")
+
     async def cancel_subscription(self, sub_id: str, reason: str, *, request_id: str,
-                                  merchant: Merchant | None = None) -> None:
-        await self.request("POST", f"/v1/billing/subscriptions/{sub_id}/cancel", json_body={"reason": reason[:128]},
-                           request_id=request_id, merchant=merchant)
+                                  merchant: Merchant | None = None) -> str | None:
+        resp = await self.request("POST", f"/v1/billing/subscriptions/{sub_id}/cancel",
+                                  json_body={"reason": reason[:128]}, request_id=request_id, merchant=merchant)
+        return resp.headers.get("paypal-debug-id")
 
     async def update_pricing(self, plan_id: str, sequence: int, price: Decimal, currency: str, *,
                              request_id: str, merchant: Merchant | None = None) -> None:

@@ -411,6 +411,42 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   only. The chat is a shared partial on both pages, collapsed, with Penwright-only suggestions, and is out of the
   video. Video: 9 scenes, 169 s, switching between the two pages (`goto`).
 
+## Real PayPal sandbox approval in the demo (2026-11-10)
+
+- **D-113 Real approval, live status card.** Sandbox checkout: the companion first, then the PayPal JS SDK
+  Subscribe button. `createSubscription` asks **our server** to create the subscription (`/api/checkout/create`
+  with `js_sdk: true`, SDK + `PayPal-Request-Id`, no redirect URLs), because PayPal's console says client-side
+  `actions.subscription` is deprecated; the button then opens PayPal's own approval window. `/register` still
+  waits for ACTIVE (corner case 2). The **"Subscribed via PayPal ✓" card** (`static/paypal-card.js`,
+  `data-testid="paypal-subscribed"`) is standalone so it works on the shop too. It calls
+  `GET /api/subscriptions/{id}/paypal` (R5), which does `gateway.verify()`: a live GET of the subscription and its
+  plan through the **full backend** (SDK in sandbox), not MCP, because MCP tool results carry no HTTP headers and
+  the card shows PayPal's `paypal-debug-id`. Status, plan name and billing cycles are PayPal's, never our JSON; if
+  PayPal and our copy disagree the card shows PayPal's and says so. Each read writes `paypal_subscription_verified`
+  (transport, PayPal debug id, plan debug id, status, plus the request id of our create, or of the cancel once
+  cancelled). Create now also writes `paypal_subscription_created` (request id -> PayPal subscription id), and
+  every backend's `cancel_subscription` returns the success debug id. After a cancel the card shows CANCELLED from
+  PayPal, the cancel call's ids (over MCP labelled "SubGuard ref", since no `PayPal-Request-Id` header is sent
+  that way) and "View in PayPal sandbox" -> `PAYPAL_AUTOPAY_URL`
+  (`https://www.sandbox.paypal.com/myaccount/autopay/`; verified: logged out it redirects to sign-in with
+  `returnUri=/myaccount/autopay`, logged in as the buyer it is PayPal's "Manage your automatic payments" page;
+  the merchant shows there under the sandbox business account's display name). Dashboards re-read from PayPal only
+  when our status for a subscription changes, not on every 4-5 s refresh. Mock mode: the button reads "Mock PayPal
+  approval (run in sandbox mode for the real PayPal window)", and the card says "Mock PayPal (simulated)" with no
+  sandbox link. `scripts/sandbox_ui_check.py` (`make sandbox-ui-check`) tests the whole path with the sandbox
+  buyer. PayPal opens its window from its cross-origin iframe, so the check waits on the browser context's new
+  page, not `page.expect_popup`. It always cancels what it created, and without an LLM key runs PayPal-only by
+  building the sandbox app with a placeholder key (the companion then shows the labelled basic review). The real
+  app's startup check is unchanged. Re-seeded `penwright-pro` for the 10-day terms (`P-3B864581XR137251MNLZRFOI`).
+- **D-114 Hand-recorded PayPal clip in the video.** The recorder runs in mock mode and can't show PayPal's real
+  window, so scene `03b_paypal_approval` has `"type": "clip"` -> `demo-video/clips/paypal_approval.mp4`
+  (gitignored), at most 15 s, no actions. `build_video.py` inserts it after `03_companion`, trims every segment to
+  its scene's duration (never extends), and refuses a cut over `max_total_seconds` (175 s) or 3 minutes.
+  `check_scenes.py` warns (doesn't fail) on a missing clip, and the mock build skips that scene, unless
+  `--require-clips`. To make room, six scenes lost 2-4 s and two narrations a sentence or word (165 s with the
+  clip, 150 s without). Logic shared in `demo-video/videolib.py` and unit-tested without ffmpeg. Recording
+  instructions: `demo-video/README.md`. The automated recorder and voice-over are still milestone 9.
+
 ## Not used in v1 (sponsor tools)
 
 - **Bryntum:** a CSS timeline is enough for a prototype.

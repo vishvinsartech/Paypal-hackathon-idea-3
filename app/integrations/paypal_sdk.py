@@ -25,7 +25,14 @@ from paypalserversdk.paypal_serversdk_client import PaypalServersdkClient
 
 from app.config import Settings
 from app.integrations.paypal_rest import RETRYABLE_STATUSES, PayPalRest
-from app.integrations.paypal_types import PayPalError, PlanView, SubscriptionView, plan_view, subscription_view
+from app.integrations.paypal_types import (
+    PayPalError,
+    PlanView,
+    SubscriptionView,
+    debug_header,
+    plan_view,
+    subscription_view,
+)
 from app.models import Merchant, PlanDef
 
 SdkCall = Callable[[SubscriptionsController], Any]
@@ -90,7 +97,11 @@ class SdkPayPal:
         return self.settings.paypal_merchant_mode == "partner" and bool(merchant and merchant.paypal_payer_id)
 
     async def _sdk(self, call: SdkCall) -> dict[str, Any]:
-        """Run one SDK call in a thread. On 401, rebuild the client (fresh token) and retry once."""
+        return (await self._sdk_meta(call))[0]
+
+    async def _sdk_meta(self, call: SdkCall) -> tuple[dict[str, Any], str | None]:
+        """Run one SDK call in a thread -> (JSON body, paypal-debug-id from `ApiResponse.headers`).
+        On 401, rebuild the client (fresh token) and retry once."""
         for attempt in (1, 2):
             client = self.client
             try:
@@ -101,7 +112,7 @@ class SdkPayPal:
                     self.client = self._client_factory()
                     continue
                 raise err from exc
-            return json.loads(resp.text) if resp.text else {}
+            return (json.loads(resp.text) if resp.text else {}), debug_header(getattr(resp, "headers", None))
         raise AssertionError("unreachable")
 
     async def get_subscription(self, sub_id: str, *, merchant: Merchant | None = None) -> SubscriptionView:
@@ -114,9 +125,24 @@ class SdkPayPal:
             return plan_view(await self.rest.get_json(f"/v1/billing/plans/{plan_id}", merchant=merchant))
         return plan_view(await self._sdk(lambda s: s.get_billing_plan(plan_id)))
 
+    async def get_subscription_meta(self, sub_id: str, *,
+                                    merchant: Merchant | None = None) -> tuple[SubscriptionView, str | None]:
+        if self._partner(merchant):
+            data, debug = await self.rest.get_json_meta(f"/v1/billing/subscriptions/{sub_id}", merchant=merchant)
+        else:
+            data, debug = await self._sdk_meta(lambda s: s.get_subscription({"id": sub_id}))
+        return subscription_view(data, sub_id), debug
+
+    async def get_plan_meta(self, plan_id: str, *, merchant: Merchant | None = None) -> tuple[PlanView, str | None]:
+        if self._partner(merchant):
+            data, debug = await self.rest.get_json_meta(f"/v1/billing/plans/{plan_id}", merchant=merchant)
+        else:
+            data, debug = await self._sdk_meta(lambda s: s.get_billing_plan(plan_id))
+        return plan_view(data), debug
+
     async def cancel_subscription(self, sub_id: str, reason: str, *, request_id: str,
-                                  merchant: Merchant | None = None) -> None:
-        await self.rest.cancel_subscription(sub_id, reason, request_id=request_id, merchant=merchant)
+                                  merchant: Merchant | None = None) -> str | None:
+        return await self.rest.cancel_subscription(sub_id, reason, request_id=request_id, merchant=merchant)
 
     async def update_pricing(self, plan_id: str, sequence: int, price: Decimal, currency: str, *,
                              request_id: str, merchant: Merchant | None = None) -> None:

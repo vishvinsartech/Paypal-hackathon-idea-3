@@ -1,8 +1,9 @@
 """Cross-platform task runner mirroring the Makefile (works on Windows without `make`).
 
 Usage: python scripts/tasks.py <task> [args]
-Tasks: setup dev dev-sandbox seed sandbox-check reset test lint ui-check zapier-check demo-video-check demo-video
-Extra args go to `seed` / `sandbox-check` (e.g. `seed --demo-subs`).
+Tasks: setup dev dev-sandbox seed sandbox-check sandbox-ui-check reset test lint ui-check zapier-check
+       demo-video-check demo-video
+Extra args go to `seed` / `sandbox-check` / `sandbox-ui-check` / the demo-video tasks (e.g. `seed --demo-subs`).
 """
 
 from __future__ import annotations
@@ -53,24 +54,20 @@ def reset() -> int:
     return run(py(), "-c", code)
 
 
-def not_yet(name: str, milestone: int) -> int:
-    print(f"`{name}` arrives in milestone {milestone} (see docs/PROGRESS.md).")
-    return 1
-
-
 TASKS = {
     "setup": setup,
     "dev": lambda: dev(),
     "dev-sandbox": lambda: dev("sandbox"),
     "seed": lambda: run(py(), "scripts/seed_sandbox.py", *sys.argv[2:]),
     "sandbox-check": lambda: run(py(), "scripts/sandbox_cancel_check.py", *sys.argv[2:]),
+    "sandbox-ui-check": lambda: run(py(), "scripts/sandbox_ui_check.py", *sys.argv[2:]),
     "reset": reset,
     "test": lambda: run(py(), "-m", "pytest", "-q"),
     "lint": lambda: run(py(), "-m", "ruff", "check", "."),
     "ui-check": lambda: run(py(), "scripts/ui_check.py", *sys.argv[2:]),
     "zapier-check": lambda: run(py(), "scripts/zapier_check.py", *sys.argv[2:]),
-    "demo-video-check": lambda: not_yet("demo-video-check", 9),
-    "demo-video": lambda: not_yet("demo-video", 9),
+    "demo-video-check": lambda: run(py(), "demo-video/check_scenes.py", *sys.argv[2:]),
+    "demo-video": lambda: run(py(), "demo-video/build_video.py", *sys.argv[2:]),
 }
 
 if __name__ == "__main__":

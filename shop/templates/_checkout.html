@@ -5,11 +5,12 @@
     {% if settings.is_sandbox %}
     <button type="button" class="paypal-btn" data-sandbox-start>Pay with PayPal (sandbox)</button>
     {% else %}
-    <button type="button" class="paypal-btn" data-mock-approve>Approve with PayPal (sandbox mock)</button>
+    <button type="button" class="paypal-btn paypal-btn-mock" data-mock-approve>Mock PayPal approval (run in sandbox mode for the real PayPal window)</button>
     {% endif %}
   </div>
   <p class="companion-note" data-subguard-ignore data-testid="companion-note">&#128737; SubGuard companion active. Simulates the SubGuard browser extension.</p>
   <script src="/static/companion.js" defer></script>
+  <script src="/static/paypal-card.js" defer></script>
   {% if settings.is_sandbox %}<script src="/shop/static/checkout_sandbox.js" defer></script>
   {% else %}<script src="/shop/static/checkout.js" defer></script>{% endif %}
   {% if merchant.fair_trial_member %}

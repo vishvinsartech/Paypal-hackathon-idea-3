@@ -64,13 +64,24 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
     Then put the URL in README "Hosted demo".
 - [ ] **9. Demo-video tooling, code only** (section 13). Don't record or render a video.
   - *Check:* `make demo-video-check` passes.
-  - Started: `demo-video/scenes.json` exists for the simplified story (10 scenes, 172 s) and
-    `tests/test_scenes.py` checks it statically (D-098). Still to do: `check_scenes.py`, `record_demo.py`,
-    `make_voiceover.py`, `build_video.py`, `make_video.sh`, `demo-video/README.md`.
+  - Started: `demo-video/scenes.json` (10 scenes incl. the hand-recorded PayPal clip, 165 s), `check_scenes.py`,
+    `build_video.py`, `videolib.py`, `demo-video/README.md` (D-114). Still to do: `record_demo.py`,
+    `make_voiceover.py`, `make_video.sh`.
 - [ ] **10. Docs + submission files**, then a final review against section 15.
   - *Check:* every item in section 15 "Definition of done" is satisfied.
 
 ## Notes for next session
+
+### Real PayPal sandbox approval (2026-11-10)
+- Sandbox checkout: companion -> real PayPal JS SDK button (server-side create) -> PayPal's approval window.
+  "Subscribed via PayPal ✓" card (live status, plan, cycles, debug ids) on the shop and both dashboards; after
+  Cancel the same card shows CANCELLED from PayPal + "View in PayPal sandbox" (D-113). Re-seeded the 10-day plan.
+- **Verified end to end against the real sandbox** with `make sandbox-ui-check` (buyer approval in PayPal's
+  window, ACTIVE -> CANCELLED read live, autopay page reached as the buyer, ids in the audit log). Run PayPal-only
+  because `.env` has no LLM key: **add `ANTHROPIC_API_KEY` (or `OPENAI_API_KEY`) to run sandbox mode for real.**
+- Video: clip scene `03b_paypal_approval` + `check_scenes.py`, `build_video.py`, `videolib.py`,
+  `demo-video/README.md` (D-114). **Still to do (milestone 9):** `record_demo.py`, `make_voiceover.py`, recording
+  the clip by hand.
 
 ### Focus UI: presenter view vs Priya's view (2026-11-10)
 - Live demo = control room (Money protected only, alerts, timeline, audit log; Layer 2 toggle hidden). Priya's

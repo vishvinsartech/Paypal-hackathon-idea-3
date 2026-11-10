@@ -30,7 +30,7 @@
 
   async function checkout() {
     btn.disabled = true;
-    status.textContent = "Talking to PayPal (sandbox mock)…";
+    status.textContent = "Mock PayPal approval…";
     try {
       const merchantId = area.dataset.merchant;
       const main = await subscribe(merchantId, area.dataset.planKey);
@@ -42,6 +42,10 @@
       link.textContent = "Open SubGuard";
       link.dataset.testid = "shop-open-subguard";
       status.appendChild(link);
+      const card = document.createElement("div");
+      card.dataset.testid = "shop-paypal-card";
+      area.appendChild(card);
+      window.PayPalCard.mount(card, main.id, user);
     } catch (err) {
       status.textContent = "Checkout failed: " + err.message;
       btn.disabled = false;

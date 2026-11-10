@@ -233,3 +233,5 @@ demo-video/audio/*.wav
 *.mp4
 *.webm
 .DS_Store
+demo-video/clips/*
+!demo-video/clips/.gitkeep

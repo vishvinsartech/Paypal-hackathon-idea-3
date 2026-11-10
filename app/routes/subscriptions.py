@@ -14,6 +14,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from app.core.paypal_card import paypal_card
+from app.core.policy import Decision
 from app.core.services import Services
 from app.core.signup import OwnershipError, register_active
 from app.integrations.paypal_gateway import Ctx, PayPalGateway
@@ -46,6 +48,7 @@ class CheckoutIn(BaseModel):
     merchant_id: str
     plan_key: str
     user_id: str = "priya"
+    js_sdk: bool = False  # True: created for the PayPal JS SDK button (no redirect URLs)
 
 
 class ApproveIn(BaseModel):
@@ -68,9 +71,13 @@ async def checkout_create(body: CheckoutIn, request: Request, store: JsonStore =
     if not any(p.key == body.plan_key for p in merchant.plans):
         raise HTTPException(404, "Unknown plan for this merchant")
     base = str(request.base_url).rstrip("/")
-    view = await gw.create_subscription(
-        gw.plan_id(body.plan_key), Ctx(actor="user", user_id=body.user_id, merchant=merchant),
-        return_url=f"{base}/shop/{merchant.id}?approved=1", cancel_url=f"{base}/shop/{merchant.id}?cancelled=1")
+    ctx = Ctx(actor="user", user_id=body.user_id, merchant=merchant)
+    if body.js_sdk:  # the PayPal JS SDK button opens the approval window itself; no redirect URLs (D-113)
+        view = await gw.create_subscription(gw.plan_id(body.plan_key), ctx)
+    else:
+        view = await gw.create_subscription(
+            gw.plan_id(body.plan_key), ctx,
+            return_url=f"{base}/shop/{merchant.id}?approved=1", cancel_url=f"{base}/shop/{merchant.id}?cancelled=1")
     return {"paypal_id": view.id, "status": view.status, "approve_url": view.approve_url}
 
 
@@ -118,6 +125,19 @@ async def register(body: RegisterIn, request: Request, store: JsonStore = Depend
 @router.get("/subscriptions")
 def list_subscriptions(user: str = "priya", store: JsonStore = Depends(get_store)) -> list[Subscription]:
     return [s for s in store.load("subscriptions").items if s.owner_id == user]
+
+
+@router.get("/subscriptions/{sub_id}/paypal", response_model=None)
+async def paypal_status(sub_id: str, request: Request, user: str = "priya") -> dict[str, Any] | JSONResponse:
+    """The "Subscribed via PayPal" card: status, plan and billing cycles read live from PayPal (D-113)."""
+    svc: Services = request.app.state.services
+    sub = svc.sub(sub_id)
+    if sub is None or sub.owner_id != user:  # R5
+        d = svc.policy.record(svc.store, Decision(allowed=False, rule_id="R5", subscription_id=sub_id,
+                                                  reason="You can only view your own subscriptions"),
+                              user_id=user, action="paypal_status", requested_by="user")
+        return JSONResponse({"blocked": True, "rule_id": d.rule_id, "reason": d.reason}, status_code=403)
+    return await paypal_card(svc, sub)
 
 
 def paypal_error_response(exc: PayPalError) -> JSONResponse:

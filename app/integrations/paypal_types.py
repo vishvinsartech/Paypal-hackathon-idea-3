@@ -64,7 +64,9 @@ class PayPalBackend(Protocol):
     async def get_subscription(self, sub_id: str, *, merchant: Merchant | None = None) -> SubscriptionView: ...
 
     async def cancel_subscription(self, sub_id: str, reason: str, *, request_id: str,
-                                  merchant: Merchant | None = None) -> None: ...
+                                  merchant: Merchant | None = None) -> str | None:
+        """Returns PayPal's debug id for the call when the transport exposes it (SDK/REST, mock), else None."""
+        ...
 
 
 class FullBackend(PayPalBackend, Protocol):
@@ -72,12 +74,27 @@ class FullBackend(PayPalBackend, Protocol):
 
     async def get_plan(self, plan_id: str, *, merchant: Merchant | None = None) -> PlanView: ...
 
+    async def get_subscription_meta(self, sub_id: str, *,
+                                    merchant: Merchant | None = None) -> tuple[SubscriptionView, str | None]:
+        """Live read + PayPal's `paypal-debug-id` response header (the live verification card, D-113)."""
+        ...
+
+    async def get_plan_meta(self, plan_id: str, *, merchant: Merchant | None = None) -> tuple[PlanView, str | None]: ...
+
     async def update_pricing(self, plan_id: str, sequence: int, price: Decimal, currency: str, *,
                              request_id: str, merchant: Merchant | None = None) -> None: ...
 
     async def create_subscription(self, plan_id: str, *, request_id: str, return_url: str | None = None,
                                   cancel_url: str | None = None,
                                   merchant: Merchant | None = None) -> SubscriptionView: ...
+
+
+def debug_header(headers: Any) -> str | None:
+    """`paypal-debug-id` from a response's headers, whatever their case."""
+    for key, value in dict(headers or {}).items():
+        if str(key).lower() == "paypal-debug-id":
+            return str(value)
+    return None
 
 
 def subscription_view(data: dict[str, Any], fallback_id: str = "") -> SubscriptionView:

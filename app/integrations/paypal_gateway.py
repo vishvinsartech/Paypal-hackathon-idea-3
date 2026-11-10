@@ -11,6 +11,7 @@ import asyncio
 import uuid
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
+from datetime import datetime
 from decimal import Decimal
 from typing import Any, TypeVar
 
@@ -36,6 +37,15 @@ class Ctx:
     merchant: Merchant | None = None
     rule_id: str | None = None
     extra: dict[str, Any] = field(default_factory=dict)
+
+
+class Verified(BaseModel):
+    subscription: SubscriptionView
+    plan: PlanView
+    transport: str
+    subscription_debug_id: str | None = None
+    plan_debug_id: str | None = None
+    checked_at: datetime
 
 
 class CancelOutcome(BaseModel):
@@ -112,8 +122,15 @@ class PayPalGateway:
             self._audit(op, ctx, transport=backend.transport, result=f"error:{exc.summary()}",
                         request_id=request_id, debug_id=exc.debug_id, **details)
             raise
-        after = value.status if isinstance(value, SubscriptionView) else None
-        self._audit(op, ctx, transport=backend.transport, result="ok", request_id=request_id, after=after, **details)
+        head: Any = value
+        debug = None
+        if isinstance(value, tuple) and len(value) == 2:  # (view, paypal-debug-id) from the *_meta reads
+            head, debug = value
+        elif isinstance(value, str):  # cancel returns PayPal's debug id
+            debug = value
+        after = head.status if isinstance(head, SubscriptionView) else None
+        self._audit(op, ctx, transport=backend.transport, result="ok", request_id=request_id, debug_id=debug,
+                    after=after, **details)
         return value
 
     async def _routed(self, op: str, ctx: Ctx, run: Callable[[PayPalBackend], Awaitable[T]], *,
@@ -140,6 +157,18 @@ class PayPalGateway:
                                   lambda b: b.get_subscription(paypal_id, merchant=ctx.merchant),
                                   paypal_id=paypal_id)
 
+    async def verify(self, paypal_id: str, ctx: Ctx | None = None) -> Verified:
+        """Live read of the subscription and its plan, straight from PayPal (never from our JSON files), with
+        PayPal's debug ids. Uses the full backend (SDK in sandbox) because MCP results carry no headers (D-113)."""
+        ctx = ctx or Ctx()
+        full = self.full
+        sub, sub_debug = await self._call("verify_subscription", ctx, full, lambda: full.get_subscription_meta(
+            paypal_id, merchant=ctx.merchant), paypal_id=paypal_id)
+        plan, plan_debug = await self._call("verify_plan", ctx, full, lambda: full.get_plan_meta(
+            sub.plan_id or "", merchant=ctx.merchant), plan_id=sub.plan_id)
+        return Verified(subscription=sub, plan=plan, transport=full.transport, subscription_debug_id=sub_debug,
+                        plan_debug_id=plan_debug, checked_at=utcnow())
+
     async def get_plan(self, plan_id: str, ctx: Ctx | None = None) -> PlanView:
         ctx = ctx or Ctx()
         full = self.full
@@ -151,11 +180,17 @@ class PayPalGateway:
         ctx = ctx or Ctx()
         rid = request_id or f"subguard-create-{uuid.uuid4()}"
         full = self.full
-        return await self._call(
+        view = await self._call(
             "create_subscription", ctx, full,
             lambda: full.create_subscription(plan_id, request_id=rid, return_url=return_url, cancel_url=cancel_url,
                                              merchant=ctx.merchant),
             request_id=rid, plan_id=plan_id)
+        # Links our PayPal-Request-Id to the subscription id PayPal returned (the card shows it, D-113).
+        self.store.audit.append(actor=ctx.actor, event="paypal_subscription_created", user_id=ctx.user_id,  # type: ignore[arg-type]
+                                transport=full.transport, paypal_request_id=rid,  # type: ignore[arg-type]
+                                status_after=view.status, result="ok",
+                                details={"paypal_id": view.id, "plan_id": plan_id})
+        return view
 
     async def update_pricing(self, plan_id: str, sequence: int, price: Decimal, currency: str = "USD",
                              ctx: Ctx | None = None) -> None:
@@ -209,10 +244,10 @@ class PayPalGateway:
         while True:
             out.attempts += 1
             try:
-                await self._routed("cancel", ctx, lambda b: b.cancel_subscription(
+                out.debug_id = await self._routed("cancel", ctx, lambda b: b.cancel_subscription(
                     paypal_id, reason, request_id=out.request_id, merchant=ctx.merchant),
                     request_id=out.request_id, paypal_id=paypal_id, attempt=out.attempts)
-                out.ok = True
+                out.ok, out.error = True, None
                 return out
             except PayPalError as exc:
                 out.error, out.debug_id = exc.summary(), exc.debug_id

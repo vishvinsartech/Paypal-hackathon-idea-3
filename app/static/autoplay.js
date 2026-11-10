@@ -107,7 +107,7 @@
     await sleep(1600);
 
     mark("approve", "active", "PayPal…");
-    say("Priya approves the trial with PayPal (sandbox mock).");
+    say("Priya approves the trial (mock PayPal approval; sandbox mode shows the real PayPal window).");
     const created = await post("/api/checkout/create", {merchant_id: "penwright", plan_key: "penwright-pro", user_id: user});
     await post("/api/checkout/mock-approve", {paypal_id: created.paypal_id});
     const sub = await post("/api/subscriptions/register", {paypal_id: created.paypal_id, merchant_id: "penwright",

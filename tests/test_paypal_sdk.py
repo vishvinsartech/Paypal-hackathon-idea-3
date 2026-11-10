@@ -162,3 +162,25 @@ def test_plan_request_omits_pricing_for_free_trial() -> None:
     trial, regular = body["billing_cycles"]
     assert "pricing_scheme" not in trial and trial["sequence"] == 1
     assert regular["pricing_scheme"]["fixed_price"] == {"currency_code": "USD", "value": "24.99"}
+
+
+async def test_meta_reads_return_paypal_debug_ids() -> None:
+    """D-113: the live verification card shows PayPal's debug id from `ApiResponse.headers`."""
+    sub_resp, plan_resp = FakeHttpResponse(200, SUB), FakeHttpResponse(200, PLAN)
+    sub_resp.headers = {"Paypal-Debug-Id": "dbg-sub-1"}
+    plan_resp.headers = {"paypal-debug-id": "dbg-plan-2"}
+    sdk, subs, _ = make_sdk(sub_resp, plan_resp)
+    view, sub_debug = await sdk.get_subscription_meta("I-ABC123")
+    plan, plan_debug = await sdk.get_plan_meta("P-123456789012")
+    assert (view.status, sub_debug) == ("ACTIVE", "dbg-sub-1")
+    assert (plan.name, plan_debug, len(plan.billing_cycles)) == ("Penwright Pro", "dbg-plan-2", 3)
+    assert [c[0] for c in subs.calls] == ["get_subscription", "get_billing_plan"]
+
+
+@respx.mock
+async def test_cancel_returns_the_debug_id() -> None:
+    sdk, _, _ = make_sdk()
+    respx.post(f"{BASE}/v1/oauth2/token").mock(return_value=httpx.Response(200, json={"access_token": "t"}))
+    respx.post(f"{BASE}/v1/billing/subscriptions/I-1/cancel").mock(
+        return_value=httpx.Response(204, headers={"paypal-debug-id": "dbg-cancel"}))
+    assert await sdk.cancel_subscription("I-1", "SubGuard", request_id="rid-x") == "dbg-cancel"

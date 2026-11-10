@@ -1,5 +1,7 @@
-// Demo-shop checkout (sandbox mode): the real PayPal JS SDK Subscribe button.
-// It renders only after the SubGuard companion's "Continue to PayPal" (event `subguard:continue`).
+// Demo-shop checkout (sandbox mode): the real PayPal JS SDK Subscribe button (D-113).
+// It renders only after the SubGuard companion's "Continue to PayPal" (event `subguard:continue`). Our server
+// creates the subscription (SDK + PayPal-Request-Id; PayPal deprecated client-side `actions.subscription`), and
+// the button opens PayPal's own approval window for it. After approval the server confirms ACTIVE with PayPal.
 (function () {
   "use strict";
   const area = document.querySelector("[data-testid=shop-checkout]");
@@ -39,7 +41,16 @@
   function render(paypal, container, planId, planKey, onDone) {
     return paypal.Buttons({
       style: {shape: "pill", label: "subscribe"},
-      createSubscription: (_data, actions) => actions.subscription.create({plan_id: planId}),
+      createSubscription: async () => {
+        status.textContent = "Opening PayPal…";
+        const res = await fetch("/api/checkout/create", {
+          method: "POST", headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({merchant_id: area.dataset.merchant, plan_key: planKey, user_id: user, js_sdk: true}),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.paypal_id) throw new Error(data.error || "Couldn't start the PayPal subscription");
+        return data.paypal_id;
+      },
       onApprove: async (data) => {
         status.textContent = "Approved. Confirming with PayPal…";
         try {
@@ -59,13 +70,13 @@
     try {
       const paypal = await loadSdk();
       slot.innerHTML = "";
-      await render(paypal, slot, area.dataset.planId, area.dataset.planKey, () => done());
+      await render(paypal, slot, area.dataset.planId, area.dataset.planKey, (sub) => done(sub));
     } catch (err) {
       status.textContent = err.message;
     }
   });
 
-  function done() {
+  function done(sub) {
     slot.innerHTML = "";
     status.innerHTML = "Subscribed. ";
     const link = document.createElement("a");
@@ -73,5 +84,9 @@
     link.textContent = "Open SubGuard";
     link.dataset.testid = "shop-open-subguard";
     status.appendChild(link);
+    const card = document.createElement("div");
+    card.dataset.testid = "shop-paypal-card";
+    area.appendChild(card);
+    window.PayPalCard.mount(card, sub.id, user);  // status re-read live from PayPal, not assumed
   }
 })();

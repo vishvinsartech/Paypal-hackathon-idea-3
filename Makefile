@@ -5,7 +5,7 @@ PYTHON ?= python3
 VENV_PY := $(if $(wildcard .venv/bin/python),.venv/bin/python,python)
 SERVE := -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 
-.PHONY: setup dev dev-sandbox seed sandbox-check reset test lint ui-check zapier-check demo-video-check demo-video
+.PHONY: setup dev dev-sandbox seed sandbox-check sandbox-ui-check reset test lint ui-check zapier-check demo-video-check demo-video
 
 setup:
 	$(PYTHON) scripts/tasks.py setup
@@ -22,6 +22,9 @@ seed:
 
 sandbox-check:
 	$(PYTHON) scripts/tasks.py sandbox-check $(ARGS)
+
+sandbox-ui-check:
+	$(PYTHON) scripts/tasks.py sandbox-ui-check $(ARGS)
 
 reset:
 	$(PYTHON) scripts/tasks.py reset

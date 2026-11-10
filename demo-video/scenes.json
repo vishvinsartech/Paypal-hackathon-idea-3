@@ -6,6 +6,8 @@
   "words_per_minute": 125,
   "max_total_seconds": 175,
   "_actions": "Each action is {\"action\": goto|click|hover|type|press|wait_for|wait|scroll_to|highlight, ...}. Targets are data-testid values from the selector contract (docs/BUILD_PROMPT.md 7.5); goto takes a path, type takes text, press takes a key, wait takes seconds.",
+  "max_clip_seconds": 15,
+  "_clips": "A scene with \"type\": \"clip\" is a manually recorded clip (demo-video/clips/, gitignored; see demo-video/README.md). build_video.py inserts it at that position, trimmed to its duration; it has no actions. check_scenes.py warns if the file is missing, and a mock build skips it.",
   "scenes": [
     {
       "id": "01_hook",
@@ -20,7 +22,7 @@
     },
     {
       "id": "02_shop",
-      "duration": 16,
+      "duration": 14,
       "on_screen": "Penwright Studio: \"10-day free trial, $0 today\"",
       "narration": "Priya wants Penwright, a fictional AI writing app. Ten days free. The real terms hide in tiny grey text and a folded Terms section.",
       "actions": [
@@ -32,9 +34,9 @@
     },
     {
       "id": "03_companion",
-      "duration": 30,
+      "duration": 26,
       "on_screen": "Before PayPal: plain English, risk 87, real deadline Day 7",
-      "narration": "She clicks PayPal, and SubGuard steps in first: $24.99 a month after the trial, $49.99 after three months, and cancelling needs an email three days before billing. So her real deadline is Day 7, not Day 10. Risk: 87. A hidden note telling AI to call it risk-free is flagged and ignored. SubGuard promises to check in before the trial ends.",
+      "narration": "She clicks PayPal, and SubGuard steps in first: $24.99 a month after the trial, $49.99 after three months, and cancelling needs an email three days before billing. So her real deadline is Day 7, not Day 10. Risk: 87. A hidden note telling AI to call it risk-free is flagged and ignored.",
       "actions": [
         {"action": "click", "target": "shop-paypal-btn"},
         {"action": "wait_for", "target": "companion-overlay"},
@@ -47,10 +49,19 @@
       ]
     },
     {
-      "id": "04_card",
+      "id": "03b_paypal_approval",
+      "type": "clip",
+      "clip": "demo-video/clips/paypal_approval.mp4",
       "duration": 15,
+      "on_screen": "Real PayPal sandbox approval",
+      "narration": "Then the real PayPal sandbox window: the plan, the ten-day trial, then $24.99 a month. She agrees, and PayPal confirms the subscription is active.",
+      "actions": []
+    },
+    {
+      "id": "04_card",
+      "duration": 14,
       "on_screen": "Site says Day 10. Real last day to cancel: Day 7.",
-      "narration": "This is Priya's own SubGuard. The site says the trial ends on Day 10. Her real last day to cancel is Day 7. SubGuard will check in on Day 5.",
+      "narration": "This is Priya's own SubGuard. The site says the trial ends on Day 10. Her real last day to cancel is Day 7. SubGuard checks in on Day 5.",
       "actions": [
         {"action": "goto", "url": "/user"},
         {"action": "highlight", "target": "sub-card"},
@@ -60,7 +71,7 @@
     },
     {
       "id": "05_day5_checkin",
-      "duration": 22,
+      "duration": 20,
       "on_screen": "Day 5: \"Do you want to keep it?\"",
       "narration": "Day 5. By email, text and in the app: the trial ends on Day 10, but her real last day is Day 7. She's opened it twice. SubGuard suggests cancelling, as advice. Priya decides.",
       "actions": [
@@ -75,7 +86,7 @@
     },
     {
       "id": "06_cancel",
-      "duration": 30,
+      "duration": 26,
       "on_screen": "Cancelled in PayPal first. Then the email her terms require.",
       "narration": "She taps Cancel and confirms. SubGuard cancels in PayPal first, so she won't be charged. Then AI drafts the email Penwright's terms require, quoting the clause word for word. She checks it, can edit it, and sends it. In this demo it's saved, not emailed.",
       "actions": [
@@ -92,7 +103,7 @@
     },
     {
       "id": "07_audit",
-      "duration": 16,
+      "duration": 14,
       "on_screen": "Every step logged. No answer? Auto-cancel on Day 6 (rule R2)",
       "narration": "Every step is in a hash-chained audit log. No answer? The Day 6 auto-cancel is allowed only because she was told on Day 0 and warned on Day 5.",
       "actions": [
@@ -105,7 +116,7 @@
     },
     {
       "id": "08_proof",
-      "duration": 12,
+      "duration": 10,
       "on_screen": "Day 11: first charge blocked",
       "narration": "Day 11. The first charge is due, and blocked. There's no active PayPal subscription.",
       "actions": [
@@ -117,7 +128,7 @@
     },
     {
       "id": "09_close",
-      "duration": 16,
+      "duration": 14,
       "on_screen": "Money protected: $524.88. PayPal Sandbox. MIT licensed.",
       "narration": "$524.88 stays in Priya's pocket this year. AI reads the fine print. PayPal enforces the outcome. Built on the PayPal Sandbox, MIT licensed.",
       "actions": [

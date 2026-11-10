@@ -87,7 +87,7 @@ class MockPayPal:
             return self._view(sub)
 
     async def approve(self, sub_id: str) -> SubscriptionView:
-        """What the buyer's 'Approve with PayPal (sandbox mock)' click does."""
+        """What the buyer's 'Mock PayPal approval' click does."""
         async with self.store.aedit("mock_paypal") as state:
             sub = self._sub(state, sub_id)
             if sub.status == "APPROVAL_PENDING":
@@ -102,7 +102,7 @@ class MockPayPal:
             return self._view(sub)
 
     async def cancel_subscription(self, sub_id: str, reason: str, *, request_id: str,
-                                  merchant: Merchant | None = None) -> None:
+                                  merchant: Merchant | None = None) -> str | None:
         self._maybe_fail("cancel")
         async with self.store.aedit("mock_paypal") as state:
             sub = self._sub(state, sub_id)
@@ -111,6 +111,14 @@ class MockPayPal:
                                   name="UNPROCESSABLE_ENTITY", issues=["SUBSCRIPTION_STATUS_INVALID"],
                                   debug_id=f"mock-{secrets.token_hex(4)}", transport="mock")
             sub.status, sub.status_change_note, sub.update_time = "CANCELLED", reason, utcnow()
+        return f"mock-{secrets.token_hex(4)}"
+
+    async def get_subscription_meta(self, sub_id: str, *,
+                                    merchant: Merchant | None = None) -> tuple[SubscriptionView, str | None]:
+        return await self.get_subscription(sub_id, merchant=merchant), f"mock-{secrets.token_hex(4)}"
+
+    async def get_plan_meta(self, plan_id: str, *, merchant: Merchant | None = None) -> tuple[PlanView, str | None]:
+        return await self.get_plan(plan_id, merchant=merchant), f"mock-{secrets.token_hex(4)}"
 
     async def get_plan(self, plan_id: str, *, merchant: Merchant | None = None) -> PlanView:
         self._maybe_fail("get_plan")

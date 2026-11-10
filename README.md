@@ -216,13 +216,42 @@ that still match are reused. Options: `make seed ARGS="--demo-subs"` (or `python
 make dev-sandbox                     # = APP_MODE=sandbox python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-The top bar shows **PayPal Sandbox** and the AI provider + model. In the shop, the real PayPal **Subscribe**
-button opens a sandbox approval; log in as your Personal sandbox account.
+The top bar shows **PayPal Sandbox** and the AI provider + model. In the shop, click PayPal: the SubGuard companion
+reviews the fine print first, then **Continue to PayPal** shows the real PayPal **Subscribe** button. SubGuard's
+server creates the subscription on your seeded `penwright-pro` plan, and the button opens **PayPal's own approval
+window**: log in as your Personal sandbox account and agree. The shop then shows **"Subscribed via PayPal ✓"**:
+the PayPal subscription ID, its status (**ACTIVE**, read live from PayPal), the plan name and the billing cycles as
+PayPal returns them (10-day trial $0, 3 x $24.99, then $49.99). The same card is on both dashboards. After Cancel
+it shows **CANCELLED**, again read from PayPal, plus **View in PayPal sandbox**, a link to the buyer's Automatic
+payments page (`PAYPAL_AUTOPAY_URL`).
+
+### What's real and what's simulated
+
+| Real in sandbox mode | Simulated (in every mode) |
+|---|---|
+| The PayPal approval window and the buyer's consent | The **day-by-day timeline**: the Day buttons move SubGuard's sim clock (Day 5 check-in, Day 6 timer, Day 11 charge). PayPal sandbox time doesn't move, so no real charge happens on "Day 11". |
+| Creating and **cancelling** the subscription in PayPal (SDK / MCP, with `PayPal-Request-Id` and PayPal's debug ids in the audit log) | Priya's app usage (scripted opens) and the email/SMS channels (outbox files unless Zapier is set up) |
+| Every status, plan and billing cycle on the "Subscribed via PayPal" card (read live, never assumed) | The cancellation email to the merchant (demo outbox or a Gmail compose link) |
+
+In mock mode none of PayPal is real: the shop's button says **"Mock PayPal approval (run in sandbox mode for the
+real PayPal window)"** and a local state machine plays PayPal.
 
 ### Switch the AI provider
 
 Set `LLM_PROVIDER=anthropic` or `LLM_PROVIDER=openai` in `.env` (with that provider's key and model) and
 restart. Mock mode always uses the recorded answers, whatever `LLM_PROVIDER` says.
+
+### Optional: rehearse the real approval end to end
+
+```bash
+python scripts/tasks.py sandbox-ui-check    # make sandbox-ui-check  (add --headed to watch)
+```
+
+It starts a sandbox server on throwaway data, clicks through the shop, approves in PayPal's real window as the
+sandbox buyer, checks the ACTIVE card on the shop and both dashboards, cancels on Priya's dashboard, checks the
+CANCELLED card, opens "View in PayPal sandbox" as the buyer, and finally cancels anything it created that is
+still ACTIVE. Without an LLM key it runs **PayPal-only**: the companion uses its basic, no-AI review (the real app
+still refuses to start without a key).
 
 ### Optional: verify real cancels end to end
 

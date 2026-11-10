@@ -46,7 +46,7 @@ def test_penwright_checkout_traps(client: TestClient) -> None:
     for testid in ("shop-fineprint", "shop-terms-toggle", "shop-paypal-btn", "fair-trial-badge"):
         assert f'data-testid="{testid}"' in text
     assert "<details" in text and "<details open" not in text  # collapsed accordion
-    assert "Approve with PayPal (sandbox mock)" in text
+    assert "Mock PayPal approval (run in sandbox mode for the real PayPal window)" in text
 
 
 def test_penwright_tos_has_all_clauses_and_hidden_injection(client: TestClient) -> None:

@@ -35,6 +35,17 @@ def test_total_under_the_cap_and_narration_fits() -> None:
         assert words <= s["duration"] * wpm / 60, (s["id"], words)
 
 
+def test_paypal_approval_clip_scene() -> None:
+    """D-114: a manually recorded PayPal approval clip right after the companion, at most 15 s, gitignored."""
+    ids = [sc["id"] for sc in SCENES["scenes"]]
+    clip = next(sc for sc in SCENES["scenes"] if sc["id"] == "03b_paypal_approval")
+    assert ids.index("03b_paypal_approval") == ids.index("03_companion") + 1
+    assert clip["type"] == "clip" and clip["clip"] == "demo-video/clips/paypal_approval.mp4"
+    assert clip["duration"] <= SCENES["max_clip_seconds"] == 15 and clip["actions"] == []
+    gitignore = (ROOT_DIR / ".gitignore").read_text(encoding="utf-8")
+    assert "demo-video/clips/*" in gitignore and "*.mp4" in gitignore
+
+
 def test_scenes_tell_the_simplified_story() -> None:
     text = json.dumps(SCENES)
     assert "$524.88" in text and "Day 7" in text and "Day 11" in text and "email-send" in text
@@ -47,7 +58,8 @@ def test_scenes_tell_the_simplified_story() -> None:
 def test_every_action_is_known_and_every_target_exists(client: TestClient) -> None:
     src = _ui_sources(client)
     for s in SCENES["scenes"]:
-        assert re.fullmatch(r"\d\d_[a-z0-9_]+", s["id"]) and s["on_screen"] and s["actions"]
+        assert re.fullmatch(r"\d\d[a-z]?_[a-z0-9_]+", s["id"]) and s["on_screen"]
+        assert bool(s["actions"]) != (s.get("type") == "clip"), s["id"]  # a clip scene has no actions (D-114)
         for a in s["actions"]:
             assert a["action"] in ACTIONS, (s["id"], a)
             target = a.get("target")

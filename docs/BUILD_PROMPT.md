@@ -348,6 +348,8 @@ Checkout behaviour:
 6. **Your timeline (AG Grid activity list):** her story from the audit log (`GET /api/activity`), filterable: Everything / What you did / SubGuard / PayPal.
 7. Messages to her and her cancellation emails. The page refreshes itself while the demo runs in another tab.
 
+**"Subscribed via PayPal ✓" card (`paypal-subscribed`; D-113):** on the shop after approval and on both dashboards: PayPal subscription ID, status **read live from PayPal** (never assumed), plan name and the billing cycles as PayPal returns them (10-day trial $0, 3 x $24.99, then $49.99), with PayPal's debug id. After a cancel: the same ID, CANCELLED read from PayPal, the cancel call's ids and **View in PayPal sandbox** (`PAYPAL_AUTOPAY_URL`). Every read is audited (`paypal_subscription_verified`). In sandbox mode the shop uses the real PayPal JS SDK Subscribe button (server-side create, PayPal's own approval window); in mock mode the button says "Mock PayPal approval (run in sandbox mode for the real PayPal window)".
+
 **Subscription page (`/subscriptions/{id}`):** findings grid (AG Grid), page vs PayPal check, money impact, evidence iframe, consent snapshot, the cancellation email, and this subscription's audit log (AG Grid).
 
 **Analytics (AG Charts Community, pinned CDN; D-108):** only on Priya's dashboard; data from `GET /api/analytics`; money is computed in code. AG Studio is not used (commercial, Enterprise-only, no CDN build).
@@ -359,7 +361,7 @@ Checkout behaviour:
 **AG Grid notes:** use the Community edition only (no Enterprise features or licence key), loaded from a pinned CDN version. Put all grid setup in `static/grids.js`. Grids: audit log (Live demo), activity list (Priya's dashboard), findings + per-subscription audit (subscription page).
 
 **Selector contract** (`data-testid`, required by the video recorder):
-`brand mode-badge nav-tabs tab-demo tab-user view-shop theme-toggle footer footer-license footer-github dev-menu dev-health dev-docs health-dots kpi-protected demo-bar demo-open-shop sim-plus-1 sim-jump-5 sim-jump-6 sim-jump-11 layer2-controls pipeline demo-start step-read step-outcome decision-dialog decision-keep decision-cancel decision-skip pipeline-done timeline toast-alert alert-timer-set timer-chip alert-trial-check alert-keep alert-cancel alert-done blocked-charge email-ready email-review audit-chain audit-filter audit-log-grid audit-log-export user-dashboard user-protected user-cancelled user-empty sub-card status-penwright risk-score deadline-line next-charge sub-keep sub-cancel view-review user-reminder reminder-usage reminder-advice proof-banner user-email-ready user-analytics chart-cost chart-usage chart-risk user-activity cancellation-notice confirm-card confirm-button email-preview email-to email-subject email-body email-send email-open-gmail email-dismiss email-paypal-done email-sent email-copy shop-index shop-hidden shop-hidden-toggle shop-fineprint shop-terms-toggle shop-paypal-btn companion-overlay companion-risk companion-summary companion-promise companion-continue finding-NOTICE_PERIOD finding-TERMS_MISMATCH finding-PROMPT_INJECTION_ATTEMPT chat-open chat-close chat-input chat-send chat-done`
+`brand mode-badge nav-tabs tab-demo tab-user view-shop theme-toggle footer footer-license footer-github dev-menu dev-health dev-docs health-dots kpi-protected demo-bar demo-open-shop sim-plus-1 sim-jump-5 sim-jump-6 sim-jump-11 layer2-controls pipeline demo-start step-read step-outcome decision-dialog decision-keep decision-cancel decision-skip pipeline-done timeline toast-alert alert-timer-set timer-chip alert-trial-check alert-keep alert-cancel alert-done blocked-charge email-ready email-review audit-chain audit-filter audit-log-grid audit-log-export user-dashboard user-protected user-cancelled user-empty sub-card status-penwright risk-score deadline-line next-charge sub-keep sub-cancel view-review user-reminder reminder-usage reminder-advice proof-banner user-email-ready user-analytics chart-cost chart-usage chart-risk user-activity cancellation-notice confirm-card confirm-button email-preview email-to email-subject email-body email-send email-open-gmail email-dismiss email-paypal-done email-sent email-copy shop-index shop-hidden shop-hidden-toggle shop-fineprint shop-terms-toggle shop-paypal-btn companion-overlay companion-risk companion-summary companion-promise companion-continue finding-NOTICE_PERIOD finding-TERMS_MISMATCH finding-PROMPT_INJECTION_ATTEMPT chat-open chat-close chat-input chat-send chat-done paypal-subscribed paypal-status paypal-sub-id paypal-cycles paypal-autopay-link shop-paypal-card`
 
 (For AG Grid cells, put the `data-testid` inside the cell renderer's HTML, for example the status pill.)
 
@@ -500,16 +502,17 @@ Everything lives in `demo-video/`. The video is generated only when I run `make 
 | # | Duration | Content |
 |---|---|---|
 | 01_hook | 12s | Dashboard; "Free trials are designed to be forgotten." Meet Priya |
-| 02_shop | 16s | Penwright checkout: hover the fine print, open the Terms accordion |
-| 03_companion | 30s | Click PayPal → companion: plain-English summary, risk 87, real deadline Day 7, the step-up confirmed, the injection test flagged, "I'll check with you before your trial runs out." → Continue |
-| 04_card | 15s | Priya's dashboard: the subscription card, "Site says: trial ends Day 10 · Real last day to cancel: Day 7.", risk |
-| 05_day5_checkin | 22s | Control room: jump to Day 5 (toast); Priya's dashboard: the check-in with her usage, "SubGuard suggests: cancel. You decide." |
-| 06_cancel | 30s | Cancel → confirmation card → confirm → email preview ("Cancelled in PayPal. You won't be charged.") → Send → "Email sent (demo)" |
-| 07_audit | 16s | Control room: audit log filtered to R1, then R2 (the Day 6 auto-cancel with no answer is allowed: told Day 0, warned Day 5) |
-| 08_proof | 12s | Jump to Day 11; Priya's dashboard: the proof banner "First charge due today: blocked" |
-| 09_close | 16s | Money protected **$524.88**, the cost chart, tagline, PayPal Sandbox, MIT |
+| 02_shop | 14s | Penwright checkout: hover the fine print, open the Terms accordion |
+| 03_companion | 26s | Click PayPal → companion: plain-English summary, risk 87, real deadline Day 7, the step-up confirmed, the injection test flagged, "I'll check with you before your trial runs out." → Continue |
+| 03b_paypal_approval | 15s | **clip** (`type: clip`, `demo-video/clips/paypal_approval.mp4`, gitignored, recorded by hand in sandbox mode): PayPal's real approval window → "Subscribed via PayPal ✓" ACTIVE. `build_video.py` inserts and trims it; a missing clip is a `check_scenes.py` warning and the mock build skips it (D-114) |
+| 04_card | 14s | Priya's dashboard: the subscription card, "Site says: trial ends Day 10 · Real last day to cancel: Day 7.", risk |
+| 05_day5_checkin | 20s | Control room: jump to Day 5 (toast); Priya's dashboard: the check-in with her usage, "SubGuard suggests: cancel. You decide." |
+| 06_cancel | 26s | Cancel → confirmation card → confirm → email preview ("Cancelled in PayPal. You won't be charged.") → Send → "Email sent (demo)" |
+| 07_audit | 14s | Control room: audit log filtered to R1, then R2 (the Day 6 auto-cancel with no answer is allowed: told Day 0, warned Day 5) |
+| 08_proof | 10s | Jump to Day 11; Priya's dashboard: the proof banner "First charge due today: blocked" |
+| 09_close | 14s | Money protected **$524.88**, the cost chart, tagline, PayPal Sandbox, MIT |
 
-Total: **169 seconds**. Narration: at most 125 words per minute per scene, plain and confident. The chat is not in the video.
+Total: **165 seconds** with the 15 s clip (150 s without), cap 175 s. Narration: at most 125 words per minute per scene, plain and confident. The chat is not in the video.
 
 Scripts:
 - **`check_scenes.py`** (`make demo-video-check`, no video produced):

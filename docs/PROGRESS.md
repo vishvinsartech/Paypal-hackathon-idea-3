@@ -72,6 +72,13 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
 
 ## Notes for next session
 
+### Analytics + Priya's own view + theme (2026-11-10)
+- AG Charts Community 14.2.0 graphs (`static/charts.js`, `GET /api/analytics`): Live demo 2x2 Analytics card,
+  Priya's dashboard cost / usage / risk (D-108). AG Studio not used: commercial + Enterprise-only + npm-only.
+- `/user` rewritten as Priya's own view (second person, the AG Grid subscriptions with Keep / Cancel) (D-110).
+- Light/dark toggle at the top right; CSS tokens, AG Grid theme modes and AG Charts themes all follow it (D-109).
+- Checks: 221 tests, ruff clean, `ui_check.py` covers the charts, the toggle (remembered after reload), the tabs.
+
 ### Judge navigation (2026-11-10)
 - Top-bar tabs (Live demo, Priya's dashboard, Shop, Health, API docs) and the new `/user` page (D-107).
   `tests/test_user_page.py`; `ui_check.py` also clicks through the tabs.

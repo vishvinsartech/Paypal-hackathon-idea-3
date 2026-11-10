@@ -135,6 +135,29 @@
     }
   }
 
-  window.SG = {user, esc, api, toast, onRefresh, refresh, showCard, resultLines, confirmInDialog, proposeCancel, openDrafts};
+  // ---- light / dark theme (D-109): <html data-theme> drives the CSS tokens, AG Grid (data-ag-theme-mode) and
+  // AG Charts (charts.js listens for "sg-theme"). The choice is a per-browser convenience in localStorage.
+  const theme = () => (document.documentElement.dataset.theme === "light" ? "light" : "dark");
+  function paintToggle() {
+    const btn = document.getElementById("theme-toggle");
+    if (!btn) return;
+    const t = theme();
+    btn.querySelector(".theme-label").textContent = t === "light" ? "Light" : "Dark";
+    btn.setAttribute("aria-label", t === "light" ? "Switch to dark theme" : "Switch to light theme");
+  }
+  function setTheme(t) {
+    const root = document.documentElement;
+    root.dataset.theme = t;
+    root.dataset.agThemeMode = t;
+    try { localStorage.setItem("sg-theme", t); } catch (e) { /* storage off: still switches for this page */ }
+    paintToggle();
+    document.dispatchEvent(new CustomEvent("sg-theme", {detail: t}));
+  }
+  const toggleBtn = document.getElementById("theme-toggle");
+  if (toggleBtn) toggleBtn.addEventListener("click", () => setTheme(theme() === "light" ? "dark" : "light"));
+  paintToggle();
+
+  window.SG = {user, esc, api, toast, onRefresh, refresh, showCard, resultLines, confirmInDialog, proposeCancel, openDrafts,
+               theme, setTheme};
   loadHealth();
 })();

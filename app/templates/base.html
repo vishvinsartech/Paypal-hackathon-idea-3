@@ -6,6 +6,10 @@
   <title>{% block title %}SubGuard{% endblock %}</title>
   <link rel="icon" href="/static/shield.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/app.css">
+  <link rel="stylesheet" href="/static/panels.css">
+  <script>/* theme before first paint (D-109): saved choice, else dark */
+  (function () { var t = "dark"; try { t = localStorage.getItem("sg-theme") || "dark"; } catch (e) {}
+    if (t !== "light") t = "dark"; var h = document.documentElement; h.dataset.theme = t; h.dataset.agThemeMode = t; })();</script>
 </head>
 <body data-user="{{ current_user.id if current_user else 'priya' }}" data-sim-day="{{ sim_day }}">
   <a class="skip-link" href="#main">Skip to content</a>
@@ -32,6 +36,11 @@
     </nav>
     <div class="topbar-right">
       <span class="health" id="health" aria-label="Integration health" data-testid="health-dots"></span>
+      <button type="button" class="theme-toggle" id="theme-toggle" data-testid="theme-toggle" aria-label="Switch to light theme">
+        <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g></svg>
+        <span class="theme-label">Dark</span>
+      </button>
     </div>
   </header>
   <main id="main">
@@ -39,8 +48,10 @@
   </main>
   <div class="toasts" aria-live="polite" role="status" id="toasts"></div>
   <script src="{{ ag_grid_url }}"></script>
+  <script src="{{ ag_charts_url }}"></script>
   <script src="/static/app.js"></script>
   <script src="/static/email.js"></script>
+  <script src="/static/charts.js"></script>
   <script src="/static/grids.js"></script>
   {% block scripts %}{% endblock %}
 </body>

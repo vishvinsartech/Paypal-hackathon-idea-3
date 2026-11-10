@@ -1,0 +1,62 @@
+/* SubGuard panels: email preview, page tabs, Priya's dashboard, theme toggle, analytics.
+   Uses the colour tokens from app.css (dark by default, light under :root[data-theme="light"]). */
+/* ---- cancellation email preview (D-104) ---- */
+.email-dialog { max-width: 620px; }
+.email-card { padding: 18px 20px; display: grid; gap: 10px; }
+.email-card h3 { margin: 0; }
+.email-card .field { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.email-card input, .email-card textarea { width: 100%; box-sizing: border-box; background: var(--navy-900, #0b1a33); color: var(--text);
+  border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: 14px/1.45 system-ui, sans-serif; }
+.email-card textarea { resize: vertical; min-height: 180px; }
+.email-card button:disabled { opacity: .5; cursor: not-allowed; }
+.email-ok { margin: 0; padding: 8px 12px; border-radius: 8px; background: rgba(46,196,182,.15); color: var(--teal); font-weight: 600; }
+.email-pre { white-space: pre-wrap; max-height: 280px; overflow: auto; background: var(--navy-900); padding: 10px; border-radius: 8px; }
+.email-ready { border-color: var(--teal); }
+.email-ready p { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 0; }
+
+/* ---- top-bar page tabs ---- */
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-left: 8px; padding-left: 12px; border-left: 1px solid var(--navy-700); }
+.tab { color: var(--muted); text-decoration: none; font-size: .88rem; font-weight: 600; padding: 6px 12px; border-radius: 8px; border: 1px solid transparent; white-space: nowrap; }
+.tab:hover { color: var(--text); background: var(--navy-700); }
+.tab.is-active { color: var(--teal); border-color: var(--teal); background: rgba(46,196,182,.1); }
+.tab:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+@media (max-width: 720px) { .tabs { margin-left: 0; padding-left: 0; border-left: 0; width: 100%; overflow-x: auto; flex-wrap: nowrap; } }
+
+/* ---- user dashboard (/user) ---- */
+.profile { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.avatar { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; font-size: 1.5rem; font-weight: 800; background: var(--teal-dark); color: #fff; }
+.feed { list-style: none; margin: 0; padding: 0; }
+.feed li { display: grid; grid-template-columns: 64px 112px 1fr; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--navy-700); align-items: baseline; }
+.feed .day { color: var(--muted); font-variant-numeric: tabular-nums; font-size: .85rem; }
+.who { font-size: .75rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; text-align: center; background: var(--navy-700); }
+.who-you { background: rgba(245,185,66,.18); color: var(--amber); }
+.who-guard { background: rgba(46,196,182,.15); color: var(--teal); }
+.who-paypal { background: rgba(80,140,255,.18); color: var(--paypal); }
+.who-timer { background: rgba(46,196,182,.25); color: var(--mint); }
+.who-warn { background: rgba(255,90,95,.18); color: var(--red); }
+.feed-filter { display: flex; gap: 6px; flex-wrap: wrap; }
+.feed-filter button[aria-pressed="true"] { border-color: var(--teal); color: var(--teal); }
+@media (max-width: 720px) { .feed li { grid-template-columns: 52px 1fr; } .feed li .txt { grid-column: 1 / -1; } }
+.table-scroll { overflow-x: auto; }
+
+/* ---- theme toggle (top right) ---- */
+.theme-toggle { display: inline-flex; align-items: center; gap: 6px; background: var(--navy-700); color: var(--text); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px 4px 8px; font: 600 .82rem system-ui, sans-serif; cursor: pointer; }
+.theme-toggle:hover { border-color: var(--teal); }
+.theme-toggle svg { width: 16px; height: 16px; }
+.theme-toggle .i-sun { display: none; }
+:root[data-theme="light"] .theme-toggle .i-sun { display: inline; }
+:root[data-theme="light"] .theme-toggle .i-moon { display: none; }
+:root[data-theme="light"] .brand img { filter: none; }
+:root[data-theme="light"] .pipeline { background: linear-gradient(135deg, rgba(11,127,118,.07), transparent 55%), var(--navy-800); }
+:root[data-theme="light"] .demo-bar { background: #fffaf0; }
+body, .card, .topbar, .tab, .btn { transition: background-color .25s, color .25s, border-color .25s; }
+
+/* ---- analytics (AG Charts Community) ---- */
+.charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+.chart-card { margin: 0; display: flex; flex-direction: column; min-width: 0; }
+.chart-card h3 { margin: 0; font-size: .95rem; }
+.chart-card .sub { margin: 2px 0 8px; }
+.charts-2x2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 860px) { .charts-2x2 { grid-template-columns: 1fr; } }
+.chart { height: 260px; min-width: 0; }
+.chart-empty { height: 260px; display: grid; place-items: center; color: var(--muted); font-size: .9rem; text-align: center; border: 1px dashed var(--line); border-radius: 8px; }

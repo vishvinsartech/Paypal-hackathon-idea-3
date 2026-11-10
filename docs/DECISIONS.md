@@ -363,6 +363,32 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   hidden) so it follows a demo running in another tab. R5: `?user=` only shows that user's data. `timer_created`
   audit entries now include `reminder_day`.
 
+## Analytics, Priya's own view, light/dark theme (2026-11-10)
+
+- **D-108 AG Charts Community, not AG Studio.** AG Studio (the AG Grid team's dashboard library, v3.1.0) was
+  requested. It is Commercial-licensed (45-day trial, then a licence), depends on `ag-grid-enterprise` and
+  `ag-charts-enterprise`, and ships for npm bundlers only, with no UMD/CDN build. That breaks three project
+  rules: Community edition only with no licence key, vanilla JS from pinned CDNs, and no build step. So the graphs
+  use **AG Charts Community 14.2.0** (MIT, the chart engine AG Studio is built on), pinned on jsDelivr like AG Grid
+  36.2.0. 14.3.0 was released 2026-11-04, under two weeks ago, so 14.2.0 is pinned. v14 API checked against
+  the docs: `axes` is an object keyed `x`/`y`, and modules are registered with `AllCommunityModule`.
+  `GET /api/analytics` (`core/analytics.py`) supplies the data: cumulative first-year cost from the PayPal
+  billing cycles (Decimal strings; the browser only plots them), the review's risk breakdown, audit-log entries
+  by actor and by day, and trial opens per day with the deadline and first-charge lines. Before any signup the
+  cost chart previews the Penwright plan (`preview: true`). Live demo: a 2x2 Analytics card (cost, risk, activity
+  by day, who acted). Priya's dashboard: cost, usage, risk. Actor colours are fixed and match the timeline badges.
+- **D-109 Light / dark theme.** A toggle at the top right sets `<html data-theme>` and `data-ag-theme-mode`. An
+  inline `<head>` script applies the saved choice before first paint, so there's no flash. The choice is a
+  per-browser convenience in localStorage (try/catch). The default stays **dark**, so the demo video and
+  screenshots don't change with the OS setting. CSS uses the same tokens with light values. AG Grid uses one
+  `themeQuartz` with `"light"` and `"dark"` params. AG Charts re-renders with `ag-default` / `ag-default-dark` on
+  the `sg-theme` event. The shop (fictional merchant) keeps its own look.
+- **D-110 Priya's dashboard is written to her.** `/user` now speaks in the second person ("Hi Priya, here's your
+  SubGuard", "You tapped Cancel", "Cancelled your subscription after you confirmed"). Her subscriptions are the
+  same AG Grid as the live demo (Keep / Cancel with the confirmation card), and the server-rendered table is gone.
+  The live refresh swaps only the `[data-live]` sections that changed, and refreshes the grid and charts through
+  their APIs.
+
 ## Not used in v1 (sponsor tools)
 
 - **Bryntum:** a CSS timeline is enough for a prototype.

@@ -10,7 +10,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.config import ROOT_DIR, Settings
 from app.core import timers as tm
-from app.core.activity import activity_for, usage_by_day
+from app.core.activity import activity_for
 from app.core.savings import money_protected, year_one_cost
 from app.routes.actions import get_services
 from app.routes.deps import get_settings, get_store
@@ -19,13 +19,14 @@ from app.store import JsonStore
 router = APIRouter()
 templates = Jinja2Templates(directory=ROOT_DIR / "app" / "templates")
 AG_GRID_URL = "https://cdn.jsdelivr.net/npm/ag-grid-community@36.2.0/dist/ag-grid-community.min.js"
+AG_CHARTS_URL = "https://cdn.jsdelivr.net/npm/ag-charts-community@14.2.0/dist/umd/ag-charts-community.min.js"  # D-108
 
 
 def _base(request: Request, user: str, settings: Settings, store: JsonStore) -> dict[str, Any]:
     users = store.load("users").items
     current = next((u for u in users if u.id == user), users[0] if users else None)
     return {"settings": settings, "users": users, "current_user": current, "sim_day": store.load("state").sim_day,
-            "ag_grid_url": AG_GRID_URL, "llm": request.app.state.llm}
+            "ag_grid_url": AG_GRID_URL, "ag_charts_url": AG_CHARTS_URL, "llm": request.app.state.llm}
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -65,25 +66,16 @@ def user_dashboard(
     request: Request, user: str = "priya",
     settings: Settings = Depends(get_settings), store: JsonStore = Depends(get_store),
 ) -> HTMLResponse:
-    """Priya's own view: what she signed up for, what she decided, what SubGuard and PayPal did (from the log)."""
+    """Priya's own view, written to her (D-110). The grid and charts load from /api/view/subscriptions and
+    /api/analytics; this renders her profile, KPIs, timeline (from the audit log), messages and emails."""
     svc = get_services(request)
     ctx = _base(request, user, settings, store)
-    subs = [s for s in store.load("subscriptions").items if s.owner_id == user]
-    rows = []
-    for s in subs:
-        review = tm.review_for(svc, s)
-        snap = s.consent_snapshot
-        rows.append({"sub": s, "merchant": svc.merchant(s.merchant_id).name,
-                     "risk": review.risk_score if review else None,
-                     "deadline": review.data.deadlines.real_cancel_deadline_day if review else None,
-                     "agreed": svc.money(snap.price) if snap else "—",
-                     "year_one": svc.money(year_one_cost(snap.billing_cycles)) if snap else "—"})
+    subs = [s for s in store.load("subscriptions").items if s.owner_id == user and s.status != "APPROVAL_PENDING"]
     notices = [n for n in store.load("notices").items if n.subscription_id in {s.id for s in subs}]
     alerts = sorted((a for a in store.load("alerts").items if a.user_id == user), key=lambda a: a.created_at)
-    protected = money_protected(subs, user, settings.pricing.demo_currency)
     activity = activity_for(svc, user)
-    ctx.update(active_tab="user", rows=rows, notices=notices, alerts=alerts, activity=activity,
-               usage=usage_by_day(svc, user), protected=svc.money(protected),
+    ctx.update(active_tab="user", rows=subs, notices=notices, alerts=alerts, activity=activity,
+               protected=svc.money(money_protected(subs, user, settings.pricing.demo_currency)),
                cancelled=sum(1 for s in subs if s.status == "CANCELLED"),
-               decisions=sum(1 for e in activity if e.who == "Priya"))
+               decisions=sum(1 for e in activity if e.who == "You"))
     return templates.TemplateResponse(request, "user.html", ctx)

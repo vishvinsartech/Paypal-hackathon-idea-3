@@ -5,12 +5,19 @@
   const {user, esc, api, onRefresh} = window.SG;
   const AG = window.agGrid;
   if (AG.ModuleRegistry && AG.AllCommunityModule) AG.ModuleRegistry.registerModules([AG.AllCommunityModule]);
-  const theme = AG.themeQuartz.withParams({
-    backgroundColor: "#11213a", foregroundColor: "#e8eef7", headerBackgroundColor: "#1a2e4d",
-    accentColor: "#2ec4b6", borderColor: "#23406b", oddRowBackgroundColor: "#0f1d33",
-    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif", fontSize: 13, browserColorScheme: "dark",
-    rowHoverColor: "rgba(46,196,182,0.08)", valueChangeValueHighlightBackgroundColor: "rgba(46,196,182,0.35)",
-  });
+  // One theme, two modes (D-109): <html data-ag-theme-mode="light|dark"> picks the params (set by the theme toggle).
+  const theme = AG.themeQuartz
+    .withParams({fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif", fontSize: 13})
+    .withParams({
+      backgroundColor: "#ffffff", foregroundColor: "#102036", headerBackgroundColor: "#e7edf5",
+      accentColor: "#0b7f76", borderColor: "#c8d4e3", oddRowBackgroundColor: "#f6f9fc", browserColorScheme: "light",
+      rowHoverColor: "rgba(11,127,118,0.07)", valueChangeValueHighlightBackgroundColor: "rgba(11,127,118,0.25)",
+    }, "light")
+    .withParams({
+      backgroundColor: "#11213a", foregroundColor: "#e8eef7", headerBackgroundColor: "#1a2e4d",
+      accentColor: "#2ec4b6", borderColor: "#23406b", oddRowBackgroundColor: "#0f1d33", browserColorScheme: "dark",
+      rowHoverColor: "rgba(46,196,182,0.08)", valueChangeValueHighlightBackgroundColor: "rgba(46,196,182,0.35)",
+    }, "dark");
   // Motion: rows animate when they move, changed cells flash teal, new audit entries flash (off for reduced motion).
   const motion = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const base = {theme, animateRows: motion, suppressCellFocus: false, domLayout: "autoHeight",
@@ -56,7 +63,8 @@
       ],
     }));
     onRefresh(async () => grid.setGridOption("rowData", (await api(`/api/view/subscriptions?user=${user}`)).rows));
-    document.getElementById("subs-filter").addEventListener("input", (e) => grid.setGridOption("quickFilterText", e.target.value));
+    const filter = document.getElementById("subs-filter");
+    if (filter) filter.addEventListener("input", (e) => grid.setGridOption("quickFilterText", e.target.value));
     subsEl.addEventListener("click", async (ev) => {
       const keep = ev.target.closest("[data-keep]");
       const cancel = ev.target.closest("[data-cancel]");

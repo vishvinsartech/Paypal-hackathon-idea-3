@@ -2,55 +2,61 @@
 {% block title %}SubGuard: {{ current_user.name if current_user else "user" }}'s dashboard{% endblock %}
 {% block content %}
 {% set u = current_user %}
-<div id="live" data-testid="user-dashboard">
-<section class="hero profile">
+<div data-testid="user-dashboard">
+<section class="hero profile" id="live-head" data-live>
   <span class="avatar" aria-hidden="true">{{ (u.name if u else "?")[:1] }}</span>
   <div>
-    <h1>{{ u.name if u else "Unknown user" }}'s dashboard</h1>
-    <p class="muted">{{ u.persona if u else "" }} · {{ u.email if u else "" }} · Day <strong class="js-day">{{ sim_day }}</strong> of the demo</p>
-    <p class="small muted">Alerts by {{ (u.settings.channels if u else []) | join(", ") | replace("in_app", "in-app") }} ·
-      auto-cancel un-agreed price rises: {{ "on" if u and u.settings.auto_cancel_price_rises else "off" }}</p>
+    <h1>Hi {{ u.name if u else "there" }}, here's your SubGuard.</h1>
+    <p class="muted">Everything SubGuard did for you, and every choice you made. Day <strong class="js-day">{{ sim_day }}</strong> of the demo.</p>
+    <p class="small muted">Signed in as {{ u.email if u else "" }} · alerts reach you by {{ (u.settings.channels if u else []) | join(", ") | replace("in_app", "in-app") }}</p>
   </div>
 </section>
 
-<section class="kpis" aria-label="Priya's numbers">
-  <div class="card kpi" data-testid="user-protected"><span class="kpi-label">Money protected</span><span class="kpi-value">{{ protected }}/yr</span></div>
-  <div class="card kpi"><span class="kpi-label">Subscriptions</span><span class="kpi-value">{{ rows | length }}</span></div>
+<section class="kpis" id="live-kpis" data-live aria-label="Your numbers">
+  <div class="card kpi" data-testid="user-protected"><span class="kpi-label">Money SubGuard protected for you</span><span class="kpi-value">{{ protected }}/yr</span></div>
+  <div class="card kpi"><span class="kpi-label">Your subscriptions</span><span class="kpi-value">{{ rows | length }}</span></div>
   <div class="card kpi"><span class="kpi-label">Cancelled in PayPal</span><span class="kpi-value">{{ cancelled }}</span></div>
-  <div class="card kpi"><span class="kpi-label">Her own actions</span><span class="kpi-value">{{ decisions }}</span></div>
+  <div class="card kpi"><span class="kpi-label">Your decisions</span><span class="kpi-value">{{ decisions }}</span></div>
+</section>
+
+{% set drafts = notices | selectattr("status", "equalto", "draft") | list %}
+<section class="card email-ready" id="live-ready" data-live data-testid="user-email-ready" {% if not drafts %}hidden{% endif %}>
+  {% for n in drafts %}<p><strong>Your cancellation email is ready to review and send.</strong>
+    <button class="btn btn-sm" data-email-open="{{ n.id }}">Review email</button></p>{% endfor %}
 </section>
 
 <section class="card" aria-labelledby="subs-h">
-  <h2 id="subs-h">Her subscriptions</h2>
-  {% if rows %}
-  <div class="table-scroll"><table class="table" data-testid="user-subs"><thead><tr>
-    <th>Merchant</th><th>PayPal status</th><th>Signed up</th><th>Real deadline</th><th>Next charge</th>
-    <th>Agreed</th><th>First paid year</th><th>Risk</th><th>Outcome</th><th></th></tr></thead><tbody>
-  {% for r in rows %}{% set s = r.sub %}
-    <tr><td><strong>{{ r.merchant }}</strong><br><span class="muted tiny"><code>{{ s.paypal_id }}</code></span></td>
-      <td><span class="pill pill-{{ s.status | lower }}">{{ s.status }}</span></td>
-      <td>Day {{ s.signup_day }}</td>
-      <td>{% if r.deadline is not none %}Day {{ r.deadline }}{% else %}—{% endif %}</td>
-      <td>{% if s.status == "ACTIVE" and s.next_billing_day is not none %}Day {{ s.next_billing_day }}{% elif s.next_billing_day is not none %}<s>Day {{ s.next_billing_day }}</s> blocked{% else %}—{% endif %}</td>
-      <td>{{ r.agreed }}</td><td class="money">{{ r.year_one }}</td>
-      <td>{% if r.risk is not none %}{{ r.risk }}/100{% else %}—{% endif %}</td>
-      <td>{% if s.cancelled_day is not none %}Cancelled Day {{ s.cancelled_day }} by {{ "Priya" if s.cancelled_by == "user" else s.cancelled_by }}{% elif s.kept_day is not none %}Kept on Day {{ s.kept_day }}{% else %}Watching{% endif %}</td>
-      <td><a class="btn btn-sm btn-ghost" href="/subscriptions/{{ s.id }}?user={{ u.id }}">Details</a></td></tr>
-  {% endfor %}</tbody></table></div>
-  {% else %}
-  <p class="muted">No subscriptions yet. Go to <a href="/?demo=1">Live demo</a> and press <strong>Start demo</strong>, or open the shop.</p>
-  {% endif %}
+  <div class="card-head">
+    <h2 id="subs-h">Your subscriptions</h2>
+    <label class="sr-only" for="subs-filter">Filter your subscriptions</label>
+    <input id="subs-filter" type="search" placeholder="Filter…">
+  </div>
+  <div id="subs-grid" class="grid" data-testid="subs-grid"></div>
+  <p class="muted tiny">Keep or Cancel right here. A cancel always asks you to confirm first.</p>
+</section>
+
+<section class="card" aria-labelledby="ins-h" data-testid="user-analytics">
+  <h2 id="ins-h">Your trial at a glance</h2>
+  <div class="charts">
+    <div class="chart-card"><h3>What this trial would have cost you</h3><p class="muted small sub" data-chart-sub></p>
+      <div class="chart" data-chart="cost" data-testid="chart-cost" role="img" aria-label="Your cumulative first-year cost: if kept versus what you pay"></div></div>
+    <div class="chart-card"><h3>How much you used it</h3><p class="muted small sub" data-chart-sub></p>
+      <div class="chart" data-chart="usage" data-testid="chart-usage" role="img" aria-label="Times you opened the app each day, with the real deadline and first charge"></div></div>
+    <div class="chart-card"><h3>Why SubGuard flagged it</h3><p class="muted small sub" data-chart-sub></p>
+      <div class="chart" data-chart="risk" data-testid="chart-risk" role="img" aria-label="Risk score broken down by cause"></div></div>
+  </div>
 </section>
 
 <section class="card" aria-labelledby="act-h">
   <div class="card-head">
-    <h2 id="act-h">What happened, day by day</h2>
+    <h2 id="act-h">Your timeline</h2>
     <div class="feed-filter" role="group" aria-label="Show">
-      {% for key, label in [("all", "Everything"), ("Priya", "What Priya did"), ("SubGuard", "SubGuard"), ("PayPal", "PayPal")] %}
+      {% for key, label in [("all", "Everything"), ("You", "What you did"), ("SubGuard", "SubGuard"), ("PayPal", "PayPal")] %}
       <button class="btn btn-sm btn-ghost" data-who="{{ key }}" aria-pressed="{{ 'true' if key == 'all' else 'false' }}">{{ label }}</button>
       {% endfor %}
     </div>
   </div>
+  <div id="live-feed" data-live>
   {% if activity %}
   <ol class="feed" data-testid="user-activity">
     {% for a in activity %}
@@ -59,34 +65,34 @@
       <span class="txt">{{ a.text }}{% if a.rule_id %} <span class="chip">{{ a.rule_id }}</span>{% endif %}</span></li>
     {% endfor %}
   </ol>
-  <p class="muted tiny">Built only from the hash-chained audit log. The full log (every PayPal call) is on the Live demo tab.</p>
-  {% else %}<p class="muted">Nothing yet.</p>{% endif %}
+  <p class="muted tiny">Built only from the hash-chained audit log. The full log is on the Live demo tab.</p>
+  {% else %}<p class="muted">Nothing yet. Your story starts when you click PayPal on a trial.</p>{% endif %}
+  </div>
 </section>
 
-<div class="two-col">
+<div class="two-col" id="live-bottom" data-live>
   <section class="card" aria-labelledby="alerts-h">
-    <h2 id="alerts-h">Messages SubGuard sent her</h2>
-    {% for a in alerts %}
+    <h2 id="alerts-h">Messages to you</h2>
+    {% for a in alerts | reverse %}
     <details class="notice"><summary><strong>{{ a.title }}</strong> <span class="muted small">· Day {{ a.sim_day }}{% if a.acknowledged_at %} · handled{% endif %}</span></summary>
       <p>{{ a.body }}</p>
       <p class="muted tiny">Delivered: {% for k, v in a.delivery.items() %}{{ k | replace("in_app", "in-app") }} {{ v }}{% if not loop.last %} · {% endif %}{% endfor %}</p></details>
     {% else %}<p class="muted">None yet.</p>{% endfor %}
   </section>
   <section class="card" aria-labelledby="mail-h">
-    <h2 id="mail-h">Her cancellation emails</h2>
+    <h2 id="mail-h">Your cancellation emails</h2>
     {% for n in notices %}
     <div class="notice" data-testid="user-email">
       <p><strong>{{ n.subject }}</strong> → {{ n.to }}<br>
         <span class="small {{ 'ok' if n.status == 'sent' else 'muted' }}">{% if n.status == "sent" %}{{ "Opened in Gmail (demo)" if n.sent_via == "gmail_compose_link" else "Email sent (demo)" }} · edited: {{ "yes" if n.edited else "no" }}{% else %}Draft, not sent yet{% endif %} · drafted by {{ n.drafted_by }}</span></p>
       <button class="btn btn-sm" data-email-open="{{ n.id }}">{{ "View" if n.status == "sent" else "Review & send" }}</button>
     </div>
-    {% else %}<p class="muted">None yet. One is drafted after a cancel in PayPal.</p>{% endfor %}
-    <h3 class="small">How she used her trials</h3>
-    {% if usage %}<p>{% for day, n in usage %}<span class="chip">Day {{ day }}: opened {{ n }}×</span> {% endfor %}</p>
-    {% else %}<p class="muted small">No usage recorded.</p>{% endif %}
+    {% else %}<p class="muted">None yet. SubGuard drafts one for you after a cancel in PayPal.</p>{% endfor %}
+    <p class="muted tiny">Demo only. Production would send from your own Gmail/Outlook with send-only permission.</p>
   </section>
 </div>
 </div>
+<dialog id="confirm-dialog" class="dialog" aria-labelledby="confirm-title"></dialog>
 {% endblock %}
 {% block scripts %}
 <script>
@@ -101,20 +107,27 @@
     const b = ev.target.closest(".feed-filter button");
     if (b) { who = b.dataset.who; applyFilter(); }
   });
-  // Live: the demo runs in another tab, so refresh this view every 4 s (only when it changed and nothing is open).
-  setInterval(async () => {
+  // Live (D-107/D-110): the demo may run in another tab. Every 4 s swap only the server-rendered [data-live]
+  // sections that changed, and refresh the AG Grid + AG Charts through their APIs (they are never re-created).
+  async function tick() {
     if (document.hidden || document.querySelector("dialog[open]")) return;
     try {
       const html = await (await fetch(location.href, {headers: {Accept: "text/html"}})).text();
-      const fresh = new DOMParser().parseFromString(html, "text/html").getElementById("live");
-      const live = document.getElementById("live");
-      if (!fresh || fresh.innerHTML === live.innerHTML) return;
-      const open = new Set([...live.querySelectorAll("details[open] summary")].map((s) => s.textContent));
-      live.innerHTML = fresh.innerHTML;
-      live.querySelectorAll("details summary").forEach((s) => { if (open.has(s.textContent)) s.parentElement.open = true; });
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      document.querySelectorAll("[data-live]").forEach((el) => {
+        const fresh = doc.getElementById(el.id);
+        if (!fresh || fresh.innerHTML === el.innerHTML) return;
+        const open = new Set([...el.querySelectorAll("details[open] summary")].map((s) => s.textContent));
+        el.innerHTML = fresh.innerHTML;
+        el.hidden = fresh.hidden;
+        el.querySelectorAll("details summary").forEach((s) => { if (open.has(s.textContent)) s.parentElement.open = true; });
+      });
       applyFilter();
+      await window.SG.refresh();
     } catch (e) { /* offline for a moment: try again next tick */ }
-  }, 4000);
+  }
+  window.SG.refresh();
+  setInterval(tick, 4000);
 })();
 </script>
 {% endblock %}

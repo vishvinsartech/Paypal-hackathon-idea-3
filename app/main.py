@@ -27,7 +27,7 @@ from app.integrations.paypal_rest import PayPalRest
 from app.integrations.paypal_sdk import SdkPayPal
 from app.integrations.paypal_types import PayPalError
 from app.llm import build_llm
-from app.routes import actions, api, chat, demo, notices, pages, review, subscriptions, views, webhooks
+from app.routes import actions, analytics, api, chat, demo, notices, pages, review, subscriptions, views, webhooks
 from app.routes.subscriptions import paypal_error_response
 from app.store import JsonStore
 from shop import routes as shop_routes
@@ -118,6 +118,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(review.router)
     app.include_router(actions.router)
     app.include_router(notices.router)
+    app.include_router(analytics.router)
     app.include_router(chat.router)
     app.include_router(views.router)
     app.include_router(webhooks.router)

@@ -87,7 +87,8 @@ Prices and terms are `.env` variables (`app/pricing.py`, DECISIONS D-015). Code 
 - Money is `Decimal` everywhere, stored as strings in JSON. Never float.
 
 ## Code standards
-- Python 3.11+, FastAPI, Pydantic v2, Jinja2, httpx, vanilla JS, AG Grid Community via pinned CDN.
+- Python 3.11+, FastAPI, Pydantic v2, Jinja2, httpx, vanilla JS, AG Grid Community + AG Charts Community via
+  pinned CDN (no Enterprise, no AG Studio: D-108). Light/dark theme via `<html data-theme>` tokens (D-109).
 - Type hints everywhere; no file over ~300 lines; ruff clean; pytest + respx.
 - Tests never call real PayPal/LLM unless marked `@pytest.mark.sandbox`.
 - Structured JSON logging, secrets masked. No stack traces in the UI.

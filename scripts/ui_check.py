@@ -157,15 +157,29 @@ def story(base: str, headed: bool) -> None:
         expect(dash.get_by_test_id("blocked-charge").first).to_contain_text("First charge due today: blocked")
         step("Day 11: blocked charge")
 
+        for chart in ("chart-cost", "chart-risk", "chart-days", "chart-actors"):
+            expect(dash.get_by_test_id(chart).locator("canvas").first).to_be_attached()
+        step("analytics: AG Charts render cost, risk, activity by day, who acted")
+
         dash.get_by_test_id("tab-user").click()
         feed = dash.get_by_test_id("user-activity")
-        expect(feed).to_contain_text("Tapped Cancel.")
+        expect(feed).to_contain_text("You tapped Cancel.")
         expect(feed).to_contain_text("First charge due: blocked.")
         expect(dash.get_by_test_id("user-protected")).to_contain_text("$524.88/yr")
+        expect(dash.get_by_test_id("subs-grid")).to_contain_text("CANCELLED")
+        expect(dash.get_by_test_id("chart-usage").locator("canvas").first).to_be_attached()
         shot(dash, "03b_user_dashboard")
+        dash.get_by_test_id("theme-toggle").click()
+        expect(dash.locator("html")).to_have_attribute("data-theme", "light")
+        expect(dash.locator("html")).to_have_attribute("data-ag-theme-mode", "light")
+        dash.reload()
+        expect(dash.get_by_test_id("theme-toggle")).to_contain_text("Light")  # remembered
+        shot(dash, "03c_user_dashboard_light")
+        dash.get_by_test_id("theme-toggle").click()
+        expect(dash.locator("html")).to_have_attribute("data-theme", "dark")
         dash.get_by_test_id("tab-demo").click()
         expect(dash.get_by_test_id("demo-day")).to_have_text("11")
-        step("tabs: Priya's dashboard shows her story day by day, back to Live demo")
+        step("tabs: Priya's own dashboard (grid, charts, timeline), light/dark toggle, back to Live demo")
 
         expect(dash.get_by_test_id("audit-chain")).to_contain_text("chain verified")
         with dash.expect_download() as dl_info:

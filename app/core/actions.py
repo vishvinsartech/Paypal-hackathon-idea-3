@@ -155,10 +155,8 @@ async def confirm_cancelled(svc: Services, sub: Subscription, result: ItemResult
     await send_alert(svc, user_id=sub.owner_id, key=f"cancelled:{sub.id}", kind="cancelled",
                      level="warning" if by_timer else "info", title="Cancelled in PayPal. You won't be charged.",
                      body=(f"{who} {merchant.name} in PayPal (status {result.status}). "
-                           "Your cancellation email is ready to review and send. "
-                           "Changed your mind? Tap here to restart the trial."),
-                     actions=[action("review_email", "Review email", notice_id=notice.id),
-                              action("restart", "Restart trial", url=f"/shop/{merchant.id}")], subscription_id=sub.id)
+                           "Your cancellation email is ready to review and send."),
+                     actions=[action("review_email", "Review email", notice_id=notice.id)], subscription_id=sub.id)
     return notice.id
 
 

@@ -1,4 +1,5 @@
-// Dashboard panels: KPIs, alerts (+ toasts for new ones), timeline, notices, demo control bar.
+// Live demo (presenter control room, D-112): Money protected, alerts (+ toasts for new ones), timeline, the
+// "email ready" banner and the demo control bar. Priya's product view is /user.
 // Motion: KPIs count up and glow when they change, the day chip bumps, new alerts slide in, the timeline's
 // "today" line slides. CSS turns it all off under prefers-reduced-motion.
 (function () {
@@ -11,7 +12,7 @@
   // Sets `text` on el; if its number changed, counts up/down to it (same prefix, suffix and decimals).
   function setKpi(id, text) {
     const el = document.getElementById(id);
-    if (el.textContent === String(text)) return;
+    if (!el || el.textContent === String(text)) return;
     const m = String(text).match(/^([^\d-]*)(-?[\d,]*\.?\d+)(.*)$/s);
     const from = parseFloat((el.textContent.match(/-?[\d,]*\.?\d+/) || ["0"])[0].replace(/,/g, ""));
     el.closest(".kpi").classList.remove("is-bumped");
@@ -34,14 +35,14 @@
     const k = await api(`/api/kpis?user=${user}`);
     const extra = Object.values(k.other_currencies || {}).map((t) => ` + ${t}/yr`).join("");
     setKpi("kpi-protected", k.money_protected_text + "/yr" + extra);
-    setKpi("kpi-patterns", String(k.dark_patterns_caught));
-    setKpi("kpi-cancelled", String(k.subscriptions_cancelled));
-    setKpi("kpi-watches", String(k.active_watches));
   });
 
   // ---- alerts -------------------------------------------------------------------------------
   const ALERT_TESTID = {timer_set: "alert-timer-set", reminder: "alert-trial-check", cancelled: "alert-done",
                         blocked_charge: "blocked-charge"};
+  // The cancel flow is reminder Cancel -> confirmation card -> email preview, with no extra pop-ups: the preview
+  // already says "Cancelled in PayPal. You won't be charged.", so that alert is listed but not toasted.
+  const QUIET = new Set(["cancelled"]);
   const BTN_TESTID = {keep: "alert-keep", cancel: "alert-cancel"};
 
   function alertHtml(a, isNew) {
@@ -61,7 +62,7 @@
     const isNew = (a) => seenAlerts !== null && !seenAlerts.has(a.id);
     box.innerHTML = alerts.length ? alerts.map((a) => alertHtml(a, isNew(a))).join("") : `<p class="muted">No alerts yet.</p>`;
     if (seenAlerts !== null) {
-      alerts.filter((a) => !seenAlerts.has(a.id)).reverse().forEach((a) =>
+      alerts.filter((a) => !seenAlerts.has(a.id) && !QUIET.has(a.kind)).reverse().forEach((a) =>
         toast(a.body, {title: a.title, level: a.level, testid: "toast-alert"}));
     }
     seenAlerts = new Set(alerts.map((a) => a.id));
@@ -73,7 +74,7 @@
     const action = btn.dataset.action;
     btn.disabled = true;
     let popup = null;
-    if (action === "restart" || action === "open_autopay") popup = window.open("about:blank", "_blank");
+    if (action === "open_autopay") popup = window.open("about:blank", "_blank");
     try {
       const out = await api(`/api/alerts/${btn.dataset.alert}/act`, {method: "POST", body: {user_id: user, action}});
       if (out.confirm) await window.SG.confirmInDialog(out.confirm);
@@ -142,21 +143,13 @@
     lastTodayX = todayX;
   });
 
-  // ---- cancellation emails (drafted after the PayPal cancel; sent only by Priya's click) ----------
-  const SENT_LABEL = {demo_outbox: "Email sent (demo)", gmail_compose_link: "Opened in Gmail (demo)"};
+  // ---- "email ready" banner (the emails themselves are on Priya's dashboard) -----------------------
   onRefresh(async () => {
-    const notices = await api(`/api/notices?user=${user}`);
-    const drafts = notices.filter((n) => n.status === "draft");
+    const drafts = (await api(`/api/notices?user=${user}`)).filter((n) => n.status === "draft");
     const ready = document.getElementById("email-ready");
     ready.hidden = !drafts.length;
     ready.innerHTML = drafts.map((n) => `<p><strong>Your cancellation email is ready to review and send.</strong>
       <button class="btn btn-sm" data-email-open="${esc(n.id)}" data-testid="email-review">Review email</button></p>`).join("");
-    document.getElementById("notices").innerHTML = notices.length ? notices.map((n) => `
-      <details class="notice" data-testid="cancellation-notice"><summary><strong>${esc(n.subject)}</strong> → ${esc(n.to)} ·
-        ${n.status === "sent" ? esc(SENT_LABEL[n.sent_via] || "sent") + ` · edited: ${n.edited ? "yes" : "no"}` : "draft, not sent"}</summary>
-      <pre>${esc(n.body)}</pre><p class="small muted">Drafted by ${esc(n.drafted_by)} · SHA-256: <code data-testid="notice-sha256">${esc(n.sha256)}</code></p>
-      ${n.status === "draft" ? `<button class="btn btn-sm" data-email-open="${esc(n.id)}">Review email</button>` : ""}</details>`).join("")
-      : `<p class="muted">None yet.</p>`;
   });
 
   // ---- demo control bar -------------------------------------------------------------------------

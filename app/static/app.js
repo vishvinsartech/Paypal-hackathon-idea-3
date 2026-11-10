@@ -92,7 +92,9 @@
     const out = await showCard(card, host);
     dlg.close();
     if (out) {
-      resultLines(out).forEach((l) => toast(l.text, {level: l.ok ? "info" : "urgent", testid: "toast-result"}));
+      // Success goes straight to the email preview (no extra pop-up); only problems are toasted.
+      resultLines(out).filter((l) => !l.ok || !(out.results || []).some((r) => r.notice_id))
+        .forEach((l) => toast(l.text, {level: l.ok ? "info" : "urgent", testid: "toast-result"}));
       await refresh();
       await openDrafts(out);
     }

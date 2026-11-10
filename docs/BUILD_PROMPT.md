@@ -322,34 +322,44 @@ Checkout behaviour:
 ### 7.5 UI at `http://127.0.0.1:8000/`
 **Style:** trustworthy fintech. Dark navy, one teal accent, red for risk, system font. WCAG AA: keyboard navigable, visible focus, `aria-live` for toasts/alerts, labelled buttons. Use the AG Grid **Quartz** theme, adjusted to these colours.
 
-**Dashboard (`/`, Priya's; there is no user switcher):**
-1. **Top bar:** a shield logo (SVG you draw), a **mode badge** ("Mock mode" or "PayPal Sandbox"), the LLM provider badge, page tabs (**Live demo** `/`, **Priya's dashboard** `/user`, and **Shop ↗** `/shop`, **Health ↗** `/healthz`, **API docs ↗** `/docs` in new tabs), and health dots from `GET /healthz`.
-1b. **Priya's dashboard (`/user`), written to her ("you"):** her profile and alert channels, KPIs, her subscriptions (the same AG Grid, with Keep / Cancel), charts (cost, usage, risk), a day-by-day timeline of what she did and what SubGuard / PayPal did (built only from the audit log, filterable), messages to her and her cancellation emails. It refreshes itself while the demo runs in another tab.
-2. **Pipeline card with ▶ Start demo** (mock mode): a 7-step animated stepper that runs the story through the normal APIs, pauses at the check-in for Priya's Keep / Cancel / no answer (a Cancel still needs the confirmation card), then runs to the first charge day.
-2b. **Demo control bar** (shown with `?demo=1` or the `D` key): "Day N", **Open Penwright shop**, **+1 day**, **Jump to Day 5 / 6 / 11**, **Toggle Fair Trial**, **Reset**.
-3. **KPI cards:** **Money protected** ($/yr), Dark patterns caught, Subscriptions cancelled, Active watches.
-4. **Timeline** (plain HTML/CSS, one row per subscription): trial window, a red marker at the real deadline, a timer marker, the first charge, the price step-up, and a "today" line.
-5. **Subscriptions grid (AG Grid):** merchant, plan, PayPal status pill (cell renderer), next charge, risk bar (cell renderer), last used, timer, and actions (View review, Keep, Cancel → confirmation). Sortable, with a quick filter.
-6. **Audit log grid (AG Grid):** time, sim day, actor, event, rule, decision, transport, PayPal debug id, result. It has a quick filter, column filters, **CSV export** (AG Grid's built-in `exportDataAsCsv`, plus `/api/audit-log.csv` server-side) and a "chain verified ✓" indicator.
-7. **Alerts panel + toasts:** buttons from the alert (Keep / Cancel / Restart trial / Open PayPal Automatic payments).
-8. **Chat drawer:** streamed replies, tool chips, confirmation cards.
+**Pages (one persona, Priya; there is no user switcher):**
+**Two pages, no duplication (DECISIONS D-112): the Live demo is the presenter's control room; Priya's dashboard is the product.**
 
-**`/subscriptions/{id}`:**
-- The screenshot with evidence boxes highlighted (from bounding boxes)
-- **A findings grid (AG Grid):** type, severity, plain English, verbatim quote, money impact
-- A money-impact table and a "page says vs PayPal plan" comparison
-- The consent snapshot, the stored cancellation notice (if any), and this subscription's audit log entries
+**Both pages:**
+- **Top bar:** shield logo, **mode badge** ("Mock mode" / "PayPal Sandbox"), the AI provider badge, page tabs (**Live demo** `/`, **Priya's dashboard** `/user`, **Shop ↗** in a new tab) and, at the top right, the **dark / light toggle** (D-109).
+- **Footer:** "Fictional merchant · PayPal Sandbox · MIT license · GitHub" plus a small **Developer** menu with the health dots (`GET /healthz`), **Health (JSON)** and **API docs** (`/docs`).
+- **Cancel flow everywhere:** Cancel → confirmation card (R1/R3) → email preview (section 7.6). No extra pop-ups: success goes straight to the preview, only problems are toasted. There is **no Restart trial** button anywhere.
+- **Chat drawer ("Ask SubGuard"):** collapsed by default, suggestions only about Penwright; not in the demo video.
 
-**Restart trial:** links back to the merchant checkout (a PayPal subscription can't be reactivated once cancelled; a new one is created). Show: *"The merchant may not offer a second free trial."*
+**Live demo (`/`), the control room:**
+1. **Demo control bar** (shown with `?demo=1` or the `D` key): "Day N", **Open Penwright shop**, **+1 day**, **Jump to Day 5 / 6 / 11**, **Reset**. The Fair Trial toggle (Layer 2) stays in the code but is hidden (README).
+2. Greeting, then the "Your cancellation email is ready to review and send" banner when a draft is waiting.
+3. **Step tracker with ▶ Start demo** (mock mode): a 7-step animated stepper that runs the story through the normal APIs, pauses at the check-in for Keep / Cancel / no answer (a Cancel still needs the confirmation card), then runs to the first charge day.
+4. **Money protected** (the only KPI).
+5. **Alerts** (with toasts for new ones; the "Cancelled in PayPal" alert is listed but not toasted) and the **Timeline** (trial window, real deadline, timer, charge, today line).
+6. **Audit log (AG Grid):** filter, "chain verified" badge, CSV export.
 
-**Analytics (AG Charts Community, pinned CDN; DECISIONS D-108):** the Live demo has a 2x2 Analytics card (cumulative first-year cost if kept vs what Priya pays, risk breakdown, audit activity by day, who acted); Priya's dashboard shows cost, trial usage and risk. Data from `GET /api/analytics`; money is computed in code. AG Studio is not used (commercial, Enterprise-only, no CDN build).
+**Priya's dashboard (`/user`), written to her ("you"; D-110), the product:**
+1. Greeting; the **Day 11 proof banner** ("First charge due today: blocked. No active PayPal subscription.") once the charge was blocked; the email-ready banner.
+2. **Day 5 check-in** while it's open: the reminder text, her **usage summary** ("Opened twice in 5 days (last on Day 4)."), the advice labelled as advice (**"SubGuard suggests: cancel. You decide."**, D-111) and **Keep / Cancel**.
+3. **Money protected** and **Cancelled in PayPal** (the only KPIs).
+4. **Subscription card** per subscription: PayPal status pill, risk score, the prominent line **"Site says: trial ends Day 10 · Real last day to cancel: Day 7."**, next charge, safety timer, Keep / Cancel (Cancel needs confirmation) and **View fine-print review**. Before signup: **"No subscriptions yet. Try the Penwright shop."**
+5. **Charts (AG Charts, D-108; only on this page):** what this trial would have cost you, how much you used it (with the deadline and first-charge lines), why SubGuard flagged it.
+6. **Your timeline (AG Grid activity list):** her story from the audit log (`GET /api/activity`), filterable: Everything / What you did / SubGuard / PayPal.
+7. Messages to her and her cancellation emails. The page refreshes itself while the demo runs in another tab.
+
+**Subscription page (`/subscriptions/{id}`):** findings grid (AG Grid), page vs PayPal check, money impact, evidence iframe, consent snapshot, the cancellation email, and this subscription's audit log (AG Grid).
+
+**Analytics (AG Charts Community, pinned CDN; D-108):** only on Priya's dashboard; data from `GET /api/analytics`; money is computed in code. AG Studio is not used (commercial, Enterprise-only, no CDN build).
 
 **Theme:** a light/dark toggle at the top right (`theme-toggle`), default dark, applied before first paint; AG Grid and AG Charts follow it (D-109).
 
-**AG Grid notes:** use the Community edition only (no Enterprise features or licence key), loaded from a pinned CDN version. Put all grid setup in `static/grids.js`. Grids load data from the JSON APIs and refresh after every action (or on SSE events). Before writing grid code, check the current AG Grid docs for that version's API (`createGrid`, theming API) and record the version in DECISIONS.
+**Visual style:** dark navy background, white and grey text, teal for safe and done, red and amber for risk; a light theme with the same tokens. Readable sizes, visible keyboard focus, labelled buttons. No real brand logos.
+
+**AG Grid notes:** use the Community edition only (no Enterprise features or licence key), loaded from a pinned CDN version. Put all grid setup in `static/grids.js`. Grids: audit log (Live demo), activity list (Priya's dashboard), findings + per-subscription audit (subscription page).
 
 **Selector contract** (`data-testid`, required by the video recorder):
-`brand mode-badge nav-tabs tab-demo tab-user view-shop tab-health tab-docs theme-toggle user-dashboard user-activity analytics chart-cost chart-risk chart-days chart-actors chart-usage kpi-protected demo-open-shop shop-index shop-fineprint shop-terms-toggle shop-paypal-btn companion-overlay companion-risk companion-summary companion-promise companion-continue alert-timer-set timer-chip risk-score finding-NOTICE_PERIOD finding-TERMS_MISMATCH finding-PROMPT_INJECTION_ATTEMPT timeline sim-plus-1 sim-jump-5 sim-jump-6 sim-jump-11 toast-alert alert-trial-check alert-keep alert-cancel alert-done status-penwright blocked-charge cancellation-notice email-preview email-to email-subject email-body email-send email-open-gmail email-dismiss email-paypal-done email-sent email-ready subs-grid demo-start pipeline step-read step-outcome decision-dialog decision-keep decision-cancel decision-skip pipeline-done audit-filter audit-log-grid audit-log-export chat-open chat-close chat-input chat-send confirm-card confirm-button chat-done`
+`brand mode-badge nav-tabs tab-demo tab-user view-shop theme-toggle footer footer-license footer-github dev-menu dev-health dev-docs health-dots kpi-protected demo-bar demo-open-shop sim-plus-1 sim-jump-5 sim-jump-6 sim-jump-11 layer2-controls pipeline demo-start step-read step-outcome decision-dialog decision-keep decision-cancel decision-skip pipeline-done timeline toast-alert alert-timer-set timer-chip alert-trial-check alert-keep alert-cancel alert-done blocked-charge email-ready email-review audit-chain audit-filter audit-log-grid audit-log-export user-dashboard user-protected user-cancelled user-empty sub-card status-penwright risk-score deadline-line next-charge sub-keep sub-cancel view-review user-reminder reminder-usage reminder-advice proof-banner user-email-ready user-analytics chart-cost chart-usage chart-risk user-activity cancellation-notice confirm-card confirm-button email-preview email-to email-subject email-body email-send email-open-gmail email-dismiss email-paypal-done email-sent email-copy shop-index shop-hidden shop-hidden-toggle shop-fineprint shop-terms-toggle shop-paypal-btn companion-overlay companion-risk companion-summary companion-promise companion-continue finding-NOTICE_PERIOD finding-TERMS_MISMATCH finding-PROMPT_INJECTION_ATTEMPT chat-open chat-close chat-input chat-send chat-done`
 
 (For AG Grid cells, put the `data-testid` inside the cell renderer's HTML, for example the status pill.)
 
@@ -377,7 +387,7 @@ Checkout behaviour:
 
 **Timers, deadlines, the clock**
 10. The user taps **Keep** at the same time as the timer fires → both go through the store lock; whichever writes first wins, and the other re-reads and sees the new state. Test it with concurrent calls.
-11. The user taps Keep after the timer has fired → explain that it's cancelled and offer **Restart trial**.
+11. The user taps Keep after the timer has fired → explain that it's already cancelled, so they won't be charged (no Restart trial button; D-112).
 12. Warning delivery failed on all channels → **don't auto-cancel** (rule R2); show an in-app banner and re-try the warning; if the deadline passes, send an urgent alert only.
 13. A trial/notice too short to warn 24 hours ahead → no auto-timer; manual decision at signup.
 14. Jumping several days at once → process each day in order; no duplicate alerts.
@@ -492,15 +502,14 @@ Everything lives in `demo-video/`. The video is generated only when I run `make 
 | 01_hook | 12s | Dashboard; "Free trials are designed to be forgotten." Meet Priya |
 | 02_shop | 16s | Penwright checkout: hover the fine print, open the Terms accordion |
 | 03_companion | 30s | Click PayPal → companion: plain-English summary, risk 87, real deadline Day 7, the step-up confirmed, the injection test flagged, "I'll check with you before your trial runs out." → Continue |
-| 04_timer | 12s | Dashboard: the timer alert and chip (check-in Day 5, cancel Day 6) on the timeline |
-| 05_day5_checkin | 18s | Jump to Day 5: toast + "Do you want to keep it?" alert with Keep / Cancel (also email + SMS) |
-| 06_chat | 16s | Chat "Should I keep Penwright?" → opened twice, $524.88 for the first paid year, Day 7 |
-| 07_cancel | 30s | Cancel → confirmation card → confirm → "Cancelled in PayPal. You won't be charged." → email preview → Send → "Email sent (demo)", audit log filtered to R1 |
-| 08_no_answer | 12s | Audit log filtered to R2: with no answer, the Day 6 auto-cancel is allowed (told Day 0, warned Day 5) |
-| 09_proof | 10s | Day 11, blocked charge |
-| 10_close | 16s | Money protected **$524.88**, tagline, PayPal Sandbox, MIT |
+| 04_card | 15s | Priya's dashboard: the subscription card, "Site says: trial ends Day 10 · Real last day to cancel: Day 7.", risk |
+| 05_day5_checkin | 22s | Control room: jump to Day 5 (toast); Priya's dashboard: the check-in with her usage, "SubGuard suggests: cancel. You decide." |
+| 06_cancel | 30s | Cancel → confirmation card → confirm → email preview ("Cancelled in PayPal. You won't be charged.") → Send → "Email sent (demo)" |
+| 07_audit | 16s | Control room: audit log filtered to R1, then R2 (the Day 6 auto-cancel with no answer is allowed: told Day 0, warned Day 5) |
+| 08_proof | 12s | Jump to Day 11; Priya's dashboard: the proof banner "First charge due today: blocked" |
+| 09_close | 16s | Money protected **$524.88**, the cost chart, tagline, PayPal Sandbox, MIT |
 
-Total: **172 seconds**. Narration: at most 125 words per minute per scene, plain and confident.
+Total: **169 seconds**. Narration: at most 125 words per minute per scene, plain and confident. The chat is not in the video.
 
 Scripts:
 - **`check_scenes.py`** (`make demo-video-check`, no video produced):

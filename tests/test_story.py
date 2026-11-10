@@ -59,7 +59,7 @@ def assert_done(c: TestClient, sub_id: str, by: str) -> None:
     (done,) = alerts(c, kind="cancelled")
     assert done["title"] == "Cancelled in PayPal. You won't be charged."
     assert "Your cancellation email is ready to review and send." in done["body"]
-    assert [a["action"] for a in done["actions"]] == ["review_email", "restart"]
+    assert [a["action"] for a in done["actions"]] == ["review_email"]  # no Restart trial button
     assert done["actions"][0]["notice_id"] == notice["id"]
 
 

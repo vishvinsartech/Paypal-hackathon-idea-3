@@ -72,6 +72,14 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
 
 ## Notes for next session
 
+### Focus UI: presenter view vs Priya's view (2026-11-10)
+- Live demo = control room (Money protected only, alerts, timeline, audit log; Layer 2 toggle hidden). Priya's
+  dashboard = product (subscription card, Day 10 vs Day 7 line, Day 5 check-in with usage + advice, Day 11 proof,
+  charts, AG Grid activity list, empty state). Footer + Developer menu; no Restart trial; no extra pop-ups in the
+  cancel flow; shop "Show what's hidden" (D-111, D-112).
+- Video: 9 scenes, 169 s, chat removed. Checks: full pytest + ruff clean; `ui_check.py` drives both pages side by
+  side with no console errors.
+
 ### Analytics + Priya's own view + theme (2026-11-10)
 - AG Charts Community 14.2.0 graphs (`static/charts.js`, `GET /api/analytics`): Live demo 2x2 Analytics card,
   Priya's dashboard cost / usage / risk (D-108). AG Studio not used: commercial + Enterprise-only + npm-only.

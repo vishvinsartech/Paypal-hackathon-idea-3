@@ -1,4 +1,5 @@
-// All AG Grid setup (Community 36.2.0 from a pinned CDN, D-060): subscriptions, audit log, findings.
+// All AG Grid setup (Community 36.2.0 from a pinned CDN, D-060): audit log (Live demo), Priya's activity list,
+// findings + per-subscription audit (subscription page). Subscriptions are cards on Priya's dashboard (D-112).
 (function () {
   "use strict";
   if (!window.agGrid || !window.SG) return;
@@ -24,60 +25,30 @@
                 defaultColDef: {sortable: true, filter: true, resizable: true, flex: 1, minWidth: 90}};
   const html = (s) => { const d = document.createElement("span"); d.innerHTML = s; return d; };
 
-  // ---- cell renderers -----------------------------------------------------------------------
-  function statusPill(p) {
-    const r = p.data;
-    const id = `status-${r.merchant_id}`;
-    return html(`<span class="pill pill-${esc(String(p.value).toLowerCase())}" data-testid="${esc(id)}">${esc(p.value)}</span>`);
-  }
-  function riskBar(p) {
-    if (p.value == null) return html(`<span class="muted">—</span>`);
-    const lvl = p.value >= 60 ? "high" : p.value >= 30 ? "mid" : "low";
-    return html(`<span class="risk-cell risk-${lvl}" data-testid="risk-score" aria-label="Risk ${p.value} out of 100"><span class="risk"><span class="risk-fill" style="width:${p.value}%"></span></span><span class="risk-num">${p.value}</span></span>`);
-  }
-  function actions(p) {
-    const r = p.data;
-    const parts = [`<a class="btn btn-ghost btn-sm" href="/subscriptions/${encodeURIComponent(r.id)}?user=${user}" data-testid="view-review-${esc(r.merchant_id)}">View</a>`];
-    if (r.status === "ACTIVE") {
-      parts.push(`<button class="btn btn-ghost btn-sm" data-keep="${esc(r.id)}">Keep</button>`);
-      parts.push(`<button class="btn btn-danger btn-sm" data-cancel="${esc(r.id)}" data-testid="grid-cancel-${esc(r.merchant_id)}">Cancel</button>`);
-    }
-    return html(parts.join(" "));
-  }
-
-  // ---- subscriptions grid -------------------------------------------------------------------
-  const subsEl = document.getElementById("subs-grid");
-  if (subsEl) {
-    const grid = AG.createGrid(subsEl, Object.assign({}, base, {
-      rowData: [], getRowId: (p) => p.data.id,
-      defaultColDef: Object.assign({}, base.defaultColDef, {enableCellChangeFlash: motion}),
+  // ---- Priya's activity list (/user): her timeline from the audit log, filterable by who acted ---------------
+  const actEl = document.getElementById("activity-grid");
+  if (actEl) {
+    let who = "all";
+    const whoCell = (p) => html(`<span class="who who-${esc(p.data.kind)}">${esc(p.value)}</span>`);
+    const grid = AG.createGrid(actEl, Object.assign({}, base, {
+      rowData: [], getRowId: (p) => String(p.data.seq), animateRows: false,  // wrapped rows: no slide on filter
+      defaultColDef: {sortable: true, resizable: true, filter: false},
+      isExternalFilterPresent: () => who !== "all",
+      doesExternalFilterPass: (n) => (n.data.who === "Safety timer" ? "SubGuard" : n.data.who) === who,
+      overlayNoRowsTemplate: "Nothing yet. Your story starts when you click PayPal on a trial.",
       columnDefs: [
-        {field: "merchant", headerName: "Merchant"},
-        {field: "plan", headerName: "Plan"},
-        {field: "status", headerName: "PayPal status", cellRenderer: statusPill},
-        {field: "next_charge_text", headerName: "Next charge"},
-        {field: "risk", headerName: "Risk", cellRenderer: riskBar, minWidth: 130},
-        {field: "last_used_day", headerName: "Last used", valueFormatter: (p) => p.value == null ? "never" : "Day " + p.value},
-        {field: "timer_text", headerName: "Timer", valueFormatter: (p) => p.value || "—", minWidth: 200},
-        {headerName: "Actions", cellRenderer: actions, sortable: false, filter: false, minWidth: 210},
+        {field: "day", headerName: "Day", width: 100, valueFormatter: (p) => "Day " + p.value},  // API order = log order
+        {field: "who", headerName: "Who", width: 140, cellRenderer: whoCell},
+        {field: "text", headerName: "What happened", flex: 1, minWidth: 260, wrapText: true, autoHeight: true},
+        {field: "rule_id", headerName: "Rule", width: 90, valueFormatter: (p) => p.value || ""},
       ],
     }));
-    onRefresh(async () => grid.setGridOption("rowData", (await api(`/api/view/subscriptions?user=${user}`)).rows));
-    const filter = document.getElementById("subs-filter");
-    if (filter) filter.addEventListener("input", (e) => grid.setGridOption("quickFilterText", e.target.value));
-    subsEl.addEventListener("click", async (ev) => {
-      const keep = ev.target.closest("[data-keep]");
-      const cancel = ev.target.closest("[data-cancel]");
-      if (keep) {
-        try {
-          const out = await api(`/api/subscriptions/${keep.dataset.keep}/keep`, {method: "POST", body: {user_id: user}});
-          window.SG.toast(out.message);
-        } catch (err) { window.SG.toast(err.message, {level: "urgent"}); }
-        window.SG.refresh();
-      } else if (cancel) {
-        window.SG.proposeCancel([cancel.dataset.cancel], "Cancelled from the dashboard");
-      }
-    });
+    onRefresh(async () => grid.setGridOption("rowData", await api(`/api/activity?user=${user}`)));
+    document.querySelectorAll(".feed-filter button").forEach((b) => b.addEventListener("click", () => {
+      who = b.dataset.who;
+      document.querySelectorAll(".feed-filter button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      grid.onFilterChanged();
+    }));
   }
 
   // ---- audit log grid -----------------------------------------------------------------------

@@ -1,7 +1,7 @@
 """Safety timers (spec 2, rule R2): created + shown at signup, a "keep or cancel?" check-in, fired by the clock.
 
 Keep vs fire race (corner case 10): both claim the timer under the store lock; whoever writes first wins and
-the other sees the new state (Keep after firing -> "already cancelled, restart?", corner case 11).
+the other sees the new state (Keep after firing -> "already cancelled, you won't be charged", corner case 11).
 """
 
 from __future__ import annotations
@@ -106,12 +106,9 @@ async def keep(svc: Services, user_id: str, sub_id: str) -> KeepResult:
                 fired.append(t.id)
     sub = svc.sub(sub_id)
     if not kept and (fired or (sub and sub.status == "CANCELLED")):
-        merchant = svc.merchant(sub.merchant_id) if sub else None
         svc.store.audit.append(actor="user", event="keep_too_late", user_id=user_id, subscription_id=sub_id,
                                reason="Timer already fired; subscription is cancelled")
-        return KeepResult(status="too_late",
-                          message="It's already cancelled, so you won't be charged. Want it back? Restart the trial.",
-                          actions=[action("restart", "Restart trial", url=f"/shop/{merchant.id if merchant else ''}")])
+        return KeepResult(status="too_late", message="It's already cancelled, so you won't be charged.")
     svc.store.audit.append(actor="user", event="timer_kept" if kept else "keep_subscription", user_id=user_id,
                            subscription_id=sub_id, details={"timers": kept})
     return KeepResult(status="kept", message="Kept. I won't cancel it or ask again.")

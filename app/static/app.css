@@ -85,7 +85,7 @@ select, input[type=search], .chat-form input { background: var(--navy-700); colo
 .btn-sm { padding: 3px 9px; font-size: .8rem; }
 
 /* ---- layout ---- */
-main { max-width: 1280px; margin: 0 auto; padding: 20px 20px 90px; }
+main { max-width: 1280px; margin: 0 auto; padding: 20px 20px 16px; }
 .hero h1 { margin: 0 0 4px; }
 .lead { font-size: 1.1rem; margin: 0 0 4px; }
 .card { background: var(--navy-800); border: 1px solid var(--navy-700); border-radius: var(--radius); padding: 16px 20px; margin: 16px 0; }
@@ -125,7 +125,7 @@ main { max-width: 1280px; margin: 0 auto; padding: 20px 20px 90px; }
 .risk-mid .risk-fill { background: var(--amber); }
 .risk-low .risk-fill { background: var(--teal); }
 .risk-num { font-weight: 800; font-variant-numeric: tabular-nums; }
-.risk-big { font-weight: 800; padding: 3px 12px; border-radius: 999px; margin: 0 8px; }
+.risk-big { font-weight: 800; padding: 3px 12px; border-radius: 999px; margin: 0 8px; color: #fff; }
 .risk-big.risk-high { background: var(--red-dark); }
 .risk-big.risk-mid { background: #8a5a00; }
 .risk-big.risk-low { background: var(--teal-dark); }

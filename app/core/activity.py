@@ -47,7 +47,7 @@ def _cancel(e: AuditEntry) -> tuple[Who, str, str]:
 
 
 ACTIONS = {"keep": "you tapped Keep", "cancel": "you tapped Cancel",
-           "review_email": "you opened your cancellation email", "restart": "you chose to restart the trial",
+           "review_email": "you opened your cancellation email",
            "ack": "you dismissed an alert", "open_autopay": "you opened PayPal"}
 
 # The page is Priya's own view (D-110), so it speaks to her: "You" did X, SubGuard did Y for you.

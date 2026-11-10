@@ -1,0 +1,19 @@
+{# Chat drawer, collapsed by default (D-112). Suggestions are about Penwright only. Not part of the demo video. #}
+<button class="chat-fab btn" id="chat-open" data-testid="chat-open" aria-controls="chat" aria-expanded="false">Ask SubGuard</button>
+<aside class="chat" id="chat" aria-label="Chat with SubGuard" hidden>
+  <header class="chat-head">
+    <strong>SubGuard chat</strong>
+    <span class="badge badge-llm" data-testid="chat-provider">{{ llm.name }} · {{ llm.model }}</span>
+    <button class="btn btn-ghost btn-sm" id="chat-close" aria-label="Close chat" data-testid="chat-close">✕</button>
+  </header>
+  <div class="chat-log" id="chat-log" aria-live="polite"></div>
+  <div class="chat-suggest" id="chat-suggest">
+    <button class="btn btn-ghost btn-sm">Should I keep Penwright?</button>
+    <button class="btn btn-ghost btn-sm">Cancel Penwright</button>
+  </div>
+  <form class="chat-form" id="chat-form">
+    <label class="sr-only" for="chat-input">Message</label>
+    <input id="chat-input" data-testid="chat-input" autocomplete="off" placeholder="Ask about Penwright…">
+    <button class="btn" data-testid="chat-send">Send</button>
+  </form>
+</aside>

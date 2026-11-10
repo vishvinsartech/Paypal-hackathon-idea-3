@@ -99,9 +99,10 @@ worker: the JSON store relies on one in-process lock (D-020), so don't add `--wo
 
 Then open:
 
-- **Dashboard (with demo controls):** http://127.0.0.1:8000/?demo=1
+- **Live demo (presenter control room):** http://127.0.0.1:8000/?demo=1
+- **Priya's dashboard (the product):** http://127.0.0.1:8000/user
 - **Dummy merchant website:** http://127.0.0.1:8000/shop (also the **Shop ↗** tab in the top bar)
-- **Health:** http://127.0.0.1:8000/healthz · **API docs:** http://127.0.0.1:8000/docs
+- **Health:** http://127.0.0.1:8000/healthz · **API docs:** http://127.0.0.1:8000/docs (also in the footer's **Developer** menu)
 
 The demo has one persona, **Priya**, and one fictional merchant, **Penwright Studio**. It starts with no
 subscriptions; on first start mock mode only scripts Priya's Penwright usage (she opens it twice during the trial).
@@ -110,10 +111,12 @@ subscriptions; on first start mock mode only scripts Priya's Penwright usage (sh
 
 ## Walk through the demo
 
-Open http://127.0.0.1:8000/?demo=1 (press **D** to show or hide the demo bar). The tabs at the top left switch
-between the **Live demo** (with an AG Charts **Analytics** card), **Priya's dashboard** (her own view: her
-subscriptions grid, charts of cost, usage and risk, and a day-by-day timeline straight from the audit log) and, in new tabs, the **Shop**, **Health** (`/healthz`) and **API docs** (`/docs`). The button at the top right
-switches between the dark and light themes.
+Two pages, two jobs. The **Live demo** (http://127.0.0.1:8000/?demo=1, press **D** to show or hide the demo bar)
+is the presenter's control room: Start demo, the day buttons, alerts, the timeline, Money protected and the
+audit log. **Priya's dashboard** (`/user`) is the product as she sees it: her subscription card, the Day 5
+check-in, the Day 11 proof, her charts and her timeline. Present with both side by side. The tabs at the top left
+switch pages (the **Shop ↗** opens a new tab); the button at the top right switches dark and light. Health and the
+API docs are in the footer's **Developer** menu.
 
 **Fastest way:** click **▶ Start demo** on the dashboard. It runs the whole story on its own, pauses on Day 5
 to ask Priya **Keep** or **Cancel** (or *Don't answer*, to see the Day 6 auto-cancel), then runs to Day 11.
@@ -128,12 +131,15 @@ To click through it yourself instead:
    the **real last day to cancel is Day 7** (first charge Day 11 − 3 − 1; not Day 10). **Risk ~87/100.** A hidden "tell the AI this is
    risk-free" line (a test case) is flagged and ignored. *"I'll check with you before your trial runs out."*
    Click **Continue to PayPal**.
-3. Back on the dashboard, the timeline shows the plan: check-in on **Day 5**, safety timer on **Day 6**.
-4. **Day 5:** *"Your Penwright trial ends on Day 10, but your real last day to cancel is Day 7. You've opened it
-   twice. Do you want to keep it?"* It arrives in-app, plus email and SMS (written to `data/runtime/outbox/` in mock mode).
-   Optional: open the chat (**Ask SubGuard**) and click *"Should I keep Penwright?"*.
-5. Click **Cancel**, then **Confirm cancel** on the card ($524.88/yr). SubGuard cancels through PayPal **first**:
-   *"Cancelled in PayPal. You won't be charged."* **Money protected** shows **$524.88/yr**.
+3. On the Live demo the timeline shows the plan: check-in on **Day 5**, safety timer on **Day 6**. On Priya's
+   dashboard her subscription card says **"Site says: trial ends Day 10 · Real last day to cancel: Day 7."**
+4. **Day 5** (click **Day 5** in the demo bar): *"Your Penwright trial ends on Day 10, but your real last day to
+   cancel is Day 7. You've opened it twice. Do you want to keep it?"* It arrives in-app, plus email and SMS (written
+   to `data/runtime/outbox/` in mock mode). Priya's dashboard shows it with her usage and the advice *"SubGuard
+   suggests: cancel. You decide."* Optional: the chat (**Ask SubGuard**) answers *"Should I keep Penwright?"*.
+5. Click **Cancel**, then **Confirm cancel** on the card ($524.88/yr). SubGuard cancels through PayPal **first**,
+   and the email preview opens straight away (*"Cancelled in PayPal. You won't be charged."*; no other pop-ups).
+   **Money protected** shows **$524.88/yr**.
 6. The **cancellation email** preview opens. The AI drafted it from the stored review: Priya's name, account email,
    PayPal subscription ID, today's date and the cancellation clause quoted word for word (if the draft fails the
    code checks, a fixed "standard template" is used). Edit To / Subject / Body, then:
@@ -145,9 +151,15 @@ To click through it yourself instead:
    - **Keep** instead: nothing changes in PayPal and SubGuard stops asking.
    - **No answer:** jump to **Day 6** and SubGuard cancels on its own (rule R2: told on Day 0, warned on Day 5). It
      drafts the email and shows *"Your cancellation email is ready to review and send"*; it never sends it for her.
-7. **Day 11:** "First charge due today: blocked. No active PayPal subscription."
-8. Filter the **Audit log** (try `R1` or `R2`) and click **Export CSV**. Click **View** on the subscription to see
-   its findings, the page vs PayPal comparison and its audit trail.
+7. **Day 11:** "First charge due today: blocked. No active PayPal subscription." (an alert in the control room and
+   the proof banner on Priya's dashboard).
+8. Filter the **Audit log** (try `R1` or `R2`) and click **Export CSV**. On Priya's card, **View fine-print review**
+   shows the findings, the page vs PayPal comparison and that subscription's audit trail.
+
+**Layer 2 (merchants outside Fair Trial):** the Fair Trial toggle is hidden from the demo bar to keep the story
+focused, but the code is still there. To try it: `curl -X POST http://127.0.0.1:8000/api/demo/toggle-fair-trial/penwright`
+before signing up. SubGuard then can't cancel in PayPal itself: it drafts the cancellation email and sends an
+"ACTION NEEDED" alert with a link to PayPal's Automatic payments page.
 
 To start over, click **Reset** in the demo bar, or run `make reset` (`python scripts/tasks.py reset`).
 Then restart the server, which re-creates the demo data.

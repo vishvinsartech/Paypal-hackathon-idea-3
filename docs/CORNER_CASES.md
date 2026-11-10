@@ -23,7 +23,7 @@ Cases 35 and 36 belonged to the price-rise flow, which was removed when the stor
 | # | Case | Code | Tests |
 |---|---|---|---|
 | 10 | Keep at the same moment the timer fires | `core/timers.py` `_claim` under the store lock | `test_policy::test_keep_vs_timer_race_is_consistent` |
-| 11 | Keep after the timer fired: explain + Restart trial | `timers.keep` | `test_story::test_no_answer_auto_cancels_on_day6` (`too_late`) |
+| 11 | Keep after the timer fired: explain it's already cancelled (no Restart trial, D-112) | `timers.keep` | `test_story::test_no_answer_auto_cancels_on_day6` (`too_late`) |
 | 12 | Warning failed on every channel: no auto-cancel, retry, urgent alert at the deadline | `notify.warning_basis`, `policy._timer_decision`, `timers.fire` | `test_policy::test_failed_warnings_block_auto_cancel` |
 | 13 | Trial/notice too short to warn 24 h ahead: manual decision | `risk.compute_deadlines`, `timers.create_trial_timer` | `test_policy::test_short_trial_needs_a_manual_decision`, `test_auditor::test_short_trial_gets_no_auto_timer` |
 | 14 | Jumping several days: each day in order, no duplicate alerts | `clock.advance`, alert idempotency keys | `test_story::test_jump_is_idempotent` |

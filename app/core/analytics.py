@@ -1,9 +1,9 @@
-"""Numbers behind the AG Charts graphs (D-108). Money comes from PayPal billing cycles in code (Decimal, sent as
-strings; the browser only plots them). Activity comes from the audit log, usage from usage.json."""
+"""Numbers behind the AG Charts graphs on Priya's dashboard (D-108). Money comes from PayPal billing cycles in code
+(Decimal, sent as strings; the browser only plots them). Risk from the stored review, usage from usage.json."""
 
 from __future__ import annotations
 
-from collections import Counter, defaultdict
+from collections import Counter
 from collections.abc import Sequence
 from decimal import Decimal
 from typing import Any
@@ -14,7 +14,6 @@ from app.core.services import Services
 from app.models import BillingCycleDef, Subscription
 from app.pricing import SYMBOLS
 
-ACTORS = ("user", "agent", "policy", "timer", "merchant_sim", "system")
 RISK_LABELS = {"money_factor": "Money at stake", "library_bonus": "Known dark pattern"}
 
 
@@ -83,19 +82,6 @@ def risk_breakdown(svc: Services, subs: list[Subscription]) -> dict[str, Any] | 
     return {"merchant": svc.merchant(r.merchant_id).name, "score": r.risk_score, "parts": parts}
 
 
-def activity(svc: Services, user_id: str, subs: list[Subscription]) -> dict[str, Any]:
-    mine = {s.id for s in subs}
-    entries = [e for e in svc.store.audit.entries() if e.user_id == user_id or e.subscription_id in mine]
-    by_actor = Counter(e.actor for e in entries)
-    per_day: dict[int, Counter[str]] = defaultdict(Counter)
-    for e in entries:
-        per_day[e.sim_day][e.actor] += 1
-    days = range(0, max([svc.day, *per_day]) + 1) if per_day else range(0)
-    return {"by_actor": [{"actor": a, "count": by_actor[a]} for a in ACTORS if by_actor[a]],
-            "by_day": [{"day": f"Day {d}", **{a: per_day[d][a] for a in ACTORS}} for d in days],
-            "total": len(entries)}
-
-
 def usage(svc: Services, user_id: str, subs: list[Subscription]) -> dict[str, Any]:
     opens = Counter(u.day for u in svc.store.load("usage").items if u.user_id == user_id and u.kind == "open")
     first = next((s for s in subs if s.next_billing_day is not None), None)
@@ -112,4 +98,4 @@ def analytics(svc: Services, user_id: str) -> dict[str, Any]:
     subs = [s for s in svc.store.load("subscriptions").items
             if s.owner_id == user_id and s.status != "APPROVAL_PENDING"]
     return {"today": svc.day, "cost": cost_curve(svc, subs), "risk": risk_breakdown(svc, subs),
-            "activity": activity(svc, user_id, subs), "usage": usage(svc, user_id, subs)}
+            "usage": usage(svc, user_id, subs)}

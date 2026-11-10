@@ -89,10 +89,6 @@ async def act(alert_id: str, body: ActIn, svc: Services = Depends(get_services))
         if isinstance(card, Decision):
             return blocked(card)
         return {"confirm": card.model_dump(mode="json")}  # the UI's tap then calls /api/agent/confirm
-    elif body.action == "restart":
-        sub = svc.sub(sid)
-        out = {"url": f"/shop/{sub.merchant_id if sub else ''}",
-               "note": "The merchant may not offer a second free trial."}
     elif body.action == "review_email":
         offered = next((a for a in alert.actions if a["action"] == "review_email"), {})
         out = {"notice_id": offered.get("notice_id")}  # the UI opens the email preview

@@ -47,6 +47,7 @@ class Settings(BaseSettings, PricingFields):
     paypal_sandbox_buyer_password: str = ""
     paypal_webhook_id: str = ""
     paypal_autopay_url: str = "https://www.sandbox.paypal.com/myaccount/autopay/"
+    repo_url: str = "https://github.com/vishvinsartech/Paypal-hackathon-idea-3"  # footer "GitHub" + "MIT license" links
 
     zapier_catch_hook_url: str = ""
     demo_seed: bool = True  # mock mode: script Priya's Penwright usage on first start / reset

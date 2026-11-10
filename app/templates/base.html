@@ -31,11 +31,8 @@
       <a class="tab{% if active_tab == 'user' %} is-active{% endif %}" href="/user?user={{ uid }}"
          {% if active_tab == 'user' %}aria-current="page"{% endif %} data-testid="tab-user">{{ current_user.name if current_user else "User" }}'s dashboard</a>
       <a class="tab" href="/shop" target="_blank" rel="noopener" data-testid="view-shop" title="The fictional merchant site (opens a new tab)">Shop&nbsp;↗</a>
-      <a class="tab" href="/healthz" target="_blank" rel="noopener" data-testid="tab-health" title="Mode and integration status as JSON (opens a new tab)">Health&nbsp;↗</a>
-      <a class="tab" href="/docs" target="_blank" rel="noopener" data-testid="tab-docs" title="Every API endpoint, try-it-out (opens a new tab)">API docs&nbsp;↗</a>
     </nav>
     <div class="topbar-right">
-      <span class="health" id="health" aria-label="Integration health" data-testid="health-dots"></span>
       <button type="button" class="theme-toggle" id="theme-toggle" data-testid="theme-toggle" aria-label="Switch to light theme">
         <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
         <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g></svg>
@@ -46,12 +43,24 @@
   <main id="main">
     {% block content %}{% endblock %}
   </main>
+  <footer class="site-footer" data-testid="footer">
+    <span>Fictional merchant</span><span aria-hidden="true">·</span>
+    <span>PayPal Sandbox</span><span aria-hidden="true">·</span>
+    <a href="{{ settings.repo_url }}/blob/main/LICENSE" target="_blank" rel="noopener" data-testid="footer-license">MIT license</a><span aria-hidden="true">·</span>
+    <a href="{{ settings.repo_url }}" target="_blank" rel="noopener" data-testid="footer-github">GitHub</a>
+    <details class="dev-menu" data-testid="dev-menu">
+      <summary>Developer</summary>
+      <div class="dev-body">
+        <span class="health" id="health" aria-label="Integration health" data-testid="health-dots"></span>
+        <a href="/healthz" target="_blank" rel="noopener" data-testid="dev-health">Health (JSON)</a>
+        <a href="/docs" target="_blank" rel="noopener" data-testid="dev-docs">API docs</a>
+      </div>
+    </details>
+  </footer>
   <div class="toasts" aria-live="polite" role="status" id="toasts"></div>
   <script src="{{ ag_grid_url }}"></script>
-  <script src="{{ ag_charts_url }}"></script>
   <script src="/static/app.js"></script>
   <script src="/static/email.js"></script>
-  <script src="/static/charts.js"></script>
   <script src="/static/grids.js"></script>
   {% block scripts %}{% endblock %}
 </body>

@@ -47,46 +47,37 @@
       ]
     },
     {
-      "id": "04_timer",
-      "duration": 12,
-      "on_screen": "Check-in Day 5. Safety timer Day 6.",
-      "narration": "She approves with PayPal. SubGuard shows its plan: ask her on Day 5, and cancel on Day 6 only if she doesn't answer.",
+      "id": "04_card",
+      "duration": 15,
+      "on_screen": "Site says Day 10. Real last day to cancel: Day 7.",
+      "narration": "This is Priya's own SubGuard. The site says the trial ends on Day 10. Her real last day to cancel is Day 7. SubGuard will check in on Day 5.",
       "actions": [
-        {"action": "goto", "url": "/?demo=1"},
-        {"action": "highlight", "target": "alert-timer-set"},
-        {"action": "highlight", "target": "timer-chip"},
-        {"action": "highlight", "target": "timeline"}
+        {"action": "goto", "url": "/user"},
+        {"action": "highlight", "target": "sub-card"},
+        {"action": "highlight", "target": "deadline-line"},
+        {"action": "highlight", "target": "risk-score"}
       ]
     },
     {
       "id": "05_day5_checkin",
-      "duration": 18,
+      "duration": 22,
       "on_screen": "Day 5: \"Do you want to keep it?\"",
-      "narration": "Day 5. By email, text and in the app: your trial ends on Day 10, but your real last day to cancel is Day 7. You've opened it twice. Keep it, or cancel?",
+      "narration": "Day 5. By email, text and in the app: the trial ends on Day 10, but her real last day is Day 7. She's opened it twice. SubGuard suggests cancelling, as advice. Priya decides.",
       "actions": [
+        {"action": "goto", "url": "/?demo=1"},
         {"action": "click", "target": "sim-jump-5"},
         {"action": "wait_for", "target": "toast-alert"},
-        {"action": "highlight", "target": "alert-trial-check"}
+        {"action": "goto", "url": "/user"},
+        {"action": "highlight", "target": "user-reminder"},
+        {"action": "highlight", "target": "reminder-usage"},
+        {"action": "highlight", "target": "reminder-advice"}
       ]
     },
     {
-      "id": "06_chat",
-      "duration": 16,
-      "on_screen": "\"Should I keep Penwright?\"",
-      "narration": "Priya asks the chat. Should I keep Penwright? SubGuard answers with real numbers from code: the first paid year costs $524.88, and the decision stays hers.",
-      "actions": [
-        {"action": "click", "target": "chat-open"},
-        {"action": "type", "target": "chat-input", "text": "Should I keep Penwright?"},
-        {"action": "click", "target": "chat-send"},
-        {"action": "wait", "seconds": 4},
-        {"action": "click", "target": "chat-close"}
-      ]
-    },
-    {
-      "id": "07_cancel",
+      "id": "06_cancel",
       "duration": 30,
       "on_screen": "Cancelled in PayPal first. Then the email her terms require.",
-      "narration": "She taps Cancel and confirms. SubGuard cancels in PayPal first, so she won't be charged. Then AI drafts the email Penwright's terms require, quoting the clause word for word. She checks it, can edit it, and sends it. In this demo it's saved, not emailed. Every step is in the audit log.",
+      "narration": "She taps Cancel and confirms. SubGuard cancels in PayPal first, so she won't be charged. Then AI drafts the email Penwright's terms require, quoting the clause word for word. She checks it, can edit it, and sends it. In this demo it's saved, not emailed.",
       "actions": [
         {"action": "click", "target": "alert-cancel"},
         {"action": "wait_for", "target": "confirm-card"},
@@ -96,39 +87,42 @@
         {"action": "highlight", "target": "email-body"},
         {"action": "click", "target": "email-send"},
         {"action": "wait_for", "target": "email-sent"},
-        {"action": "click", "target": "email-dismiss"},
-        {"action": "type", "target": "audit-filter", "text": "R1"},
-        {"action": "highlight", "target": "audit-log-grid"}
+        {"action": "click", "target": "email-dismiss"}
       ]
     },
     {
-      "id": "08_no_answer",
-      "duration": 12,
-      "on_screen": "No answer? Auto-cancel on Day 6 (rule R2)",
-      "narration": "No answer? SubGuard cancels on Day 6, because she was told on Day 0 and warned on Day 5. The email still waits for her.",
+      "id": "07_audit",
+      "duration": 16,
+      "on_screen": "Every step logged. No answer? Auto-cancel on Day 6 (rule R2)",
+      "narration": "Every step is in a hash-chained audit log. No answer? The Day 6 auto-cancel is allowed only because she was told on Day 0 and warned on Day 5.",
       "actions": [
-        {"action": "type", "target": "audit-filter", "text": "R2"},
-        {"action": "highlight", "target": "audit-log-grid"}
+        {"action": "goto", "url": "/?demo=1"},
+        {"action": "scroll_to", "target": "audit-log-grid"},
+        {"action": "type", "target": "audit-filter", "text": "R1"},
+        {"action": "highlight", "target": "audit-log-grid"},
+        {"action": "type", "target": "audit-filter", "text": "R2"}
       ]
     },
     {
-      "id": "09_proof",
-      "duration": 10,
+      "id": "08_proof",
+      "duration": 12,
       "on_screen": "Day 11: first charge blocked",
       "narration": "Day 11. The first charge is due, and blocked. There's no active PayPal subscription.",
       "actions": [
         {"action": "scroll_to", "target": "brand"},
         {"action": "click", "target": "sim-jump-11"},
-        {"action": "highlight", "target": "blocked-charge"}
+        {"action": "goto", "url": "/user"},
+        {"action": "highlight", "target": "proof-banner"}
       ]
     },
     {
-      "id": "10_close",
+      "id": "09_close",
       "duration": 16,
       "on_screen": "Money protected: $524.88. PayPal Sandbox. MIT licensed.",
       "narration": "$524.88 stays in Priya's pocket this year. AI reads the fine print. PayPal enforces the outcome. Built on the PayPal Sandbox, MIT licensed.",
       "actions": [
-        {"action": "highlight", "target": "kpi-protected"},
+        {"action": "highlight", "target": "user-protected"},
+        {"action": "highlight", "target": "chart-cost"},
         {"action": "wait", "seconds": 3}
       ]
     }

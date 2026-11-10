@@ -1,5 +1,5 @@
-// Analytics graphs with AG Charts Community 14.2.0 (pinned CDN, MIT; D-108). Every element with
-// data-chart="cost|risk|actors|days|usage" gets a chart fed by GET /api/analytics. Numbers come from code (money
+// Priya's charts with AG Charts Community 14.2.0 (pinned CDN, MIT; D-108), on her dashboard only. Every element with
+// data-chart="cost|risk|usage" gets a chart fed by GET /api/analytics. Numbers come from code (money
 // is computed server-side from the PayPal plan; this file only plots it). Charts follow the light/dark toggle.
 (function () {
   "use strict";
@@ -10,7 +10,6 @@
   if (!els.length) return;
   if (lib.ModuleRegistry && lib.AllCommunityModule) lib.ModuleRegistry.registerModules([lib.AllCommunityModule]);
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const ACTOR = {user: "Priya", agent: "AI agent", policy: "Policy", timer: "Safety timer", merchant_sim: "Merchant", system: "System"};
   const COLORS = {
     dark: {teal: "#2ec4b6", amber: "#f5b942", blue: "#6f9cff", red: "#ff5a5f", mint: "#9ff3ea", grey: "#8fa3bf"},
     light: {teal: "#0b7f76", amber: "#b77900", blue: "#2f5fd0", red: "#c8323a", mint: "#3aa79c", grey: "#6b7a90"},
@@ -19,8 +18,6 @@
   let last = null;
   let lastJson = "";
 
-  // One colour per actor everywhere (matches the timeline badges): you = amber, SubGuard parts = teal/blue/red.
-  const ACTOR_COLOR = {user: "amber", agent: "blue", policy: "red", timer: "teal", merchant_sim: "mint", system: "grey"};
   const mode = () => window.SG.theme();
   const C = () => COLORS[mode()];
   const num = (s) => Number(s);
@@ -61,27 +58,6 @@
         legend: {enabled: false},
       };
     },
-    actors(a) {
-      const total = a.activity.total;
-      const c = C(), rows = a.activity.by_actor;
-      return {
-        data: rows.map((r) => ({actor: ACTOR[r.actor] || r.actor, count: r.count})),
-        series: [{type: "donut", angleKey: "count", calloutLabelKey: "actor", sectorLabelKey: "count",
-                  fills: rows.map((r) => c[ACTOR_COLOR[r.actor]]), strokes: rows.map(() => "transparent"),
-                  calloutLabel: {minAngle: 8}, sectorLabel: {color: "#ffffff"},
-                  innerRadiusRatio: 0.62, innerLabels: [{text: String(total), fontSize: 26, fontWeight: "bold"}, {text: "log entries"}]}],
-        legend: {enabled: false},
-      };
-    },
-    days(a) {
-      const used = Object.keys(ACTOR).filter((k) => a.activity.by_day.some((d) => d[k]));
-      return {
-        data: a.activity.by_day,
-        series: used.map((k) => ({type: "bar", xKey: "day", yKey: k, yName: ACTOR[k], stacked: true, fill: C()[ACTOR_COLOR[k]]})),
-        axes: {x: {type: "category"}, y: {type: "number", title: {text: "Audit log entries"}}},
-        legend: {position: "bottom"},
-      };
-    },
     usage(a) {
       const c = C(), u = a.usage;
       const lines = [];
@@ -97,8 +73,6 @@
   };
   const EMPTY = {
     risk: (a) => !a.risk && "No fine-print review yet. Open the shop and click PayPal.",
-    actors: (a) => !a.activity.total && "Nothing in the audit log for Priya yet.",
-    days: (a) => !a.activity.total && "Nothing in the audit log for Priya yet.",
     usage: (a) => !a.usage.rows.length && "No trial yet.",
     cost: (a) => !a.cost.rows.length && "No plan to chart.",
   };
@@ -128,8 +102,7 @@
       : `If kept: ${a.cost.if_kept_text} · you pay: ${a.cost.you_pay_text} · protected: ${a.cost.protected_text}`;
     if (kind === "risk") return a.risk ? `${a.risk.merchant}: risk ${a.risk.score}/100, by what caused it` : "";
     if (kind === "usage") return `Opened ${a.usage.total} time${a.usage.total === 1 ? "" : "s"} during the trial`;
-    if (kind === "days") return `Day 0 to Day ${a.today}: who did what`;
-    return `${a.activity.total} hash-chained entries`;
+    return "";
   }
 
   async function load(force) {

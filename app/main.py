@@ -27,7 +27,20 @@ from app.integrations.paypal_rest import PayPalRest
 from app.integrations.paypal_sdk import SdkPayPal
 from app.integrations.paypal_types import PayPalError
 from app.llm import build_llm
-from app.routes import actions, analytics, api, chat, demo, notices, pages, review, subscriptions, views, webhooks
+from app.routes import (
+    actions,
+    analytics,
+    api,
+    chat,
+    demo,
+    notices,
+    pages,
+    review,
+    subscriptions,
+    user_page,
+    views,
+    webhooks,
+)
 from app.routes.subscriptions import paypal_error_response
 from app.store import JsonStore
 from shop import routes as shop_routes
@@ -112,6 +125,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.mount("/static", StaticFiles(directory=ROOT_DIR / "app" / "static"), name="static")
     app.mount("/shop/static", StaticFiles(directory=ROOT_DIR / "shop" / "static"), name="shop_static")
     app.include_router(pages.router)
+    app.include_router(user_page.router)
     app.include_router(api.router)
     app.include_router(demo.router)
     app.include_router(subscriptions.router)

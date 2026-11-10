@@ -389,6 +389,28 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   The live refresh swaps only the `[data-live]` sections that changed, and refreshes the grid and charts through
   their APIs.
 
+## Focus UI: presenter view vs Priya's view (2026-11-10)
+
+- **D-111 Check-in advice is a code rule, labelled as advice.** Priya's Day 5 check-in shows her usage ("Opened
+  twice in 5 days (last on Day 4).") and *"SubGuard suggests: cancel. You decide."* The suggestion comes from code,
+  not the LLM: fewer than 3 opens during the trial means "cancel", otherwise "keep". The reason quotes the same code
+  numbers the chat uses (opens and the first paid year's cost from the PayPal plan), so nothing is invented (R7).
+  It never acts: Keep / Cancel stay her taps, and Cancel still needs the confirmation card.
+- **D-112 Live demo = control room, Priya's dashboard = product.** No duplication between them. Live demo: demo bar,
+  greeting, the email-ready banner, step tracker, **Money protected** only, alerts, timeline and the audit log grid.
+  The analytics card, the subscriptions grid, the emails list and the other KPIs are removed. The Fair Trial toggle
+  (Layer 2) stays in the markup but hidden (`layer2-controls`; README explains how to use it). Priya's dashboard: a
+  subscription card (status, risk, "Site says … · Real last day to cancel …", next charge, timer, Keep / Cancel,
+  View fine-print review) replaces the one-row grid, an empty state before signup, the Day 5 check-in, the Day 11
+  proof banner, two KPIs (Money protected, Cancelled in PayPal), the AG Charts (only here) and the activity list as
+  an AG Grid (`GET /api/activity`, external filter). On both pages the health dots, Health and API docs move into
+  the footer's Developer menu, and the footer gets "Fictional merchant · PayPal Sandbox · MIT license · GitHub"
+  (`REPO_URL`). Restart trial is gone everywhere: the cancelled alert has only "Review email", and Keep after
+  the timer fired just says it's already cancelled. The cancel flow has no extra pop-ups: success toasts are
+  skipped when the email preview opens, the "cancelled" alert isn't toasted, and "Email sent" shows in the preview
+  only. The chat is a shared partial on both pages, collapsed, with Penwright-only suggestions, and is out of the
+  video. Video: 9 scenes, 169 s, switching between the two pages (`goto`).
+
 ## Not used in v1 (sponsor tools)
 
 - **Bryntum:** a CSS timeline is enough for a prototype.

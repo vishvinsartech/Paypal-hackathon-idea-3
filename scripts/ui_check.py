@@ -2,8 +2,9 @@
 
 Starts its own mock server on a free port with a throwaway DATA_DIR (unless --base-url is given), then:
 shop -> companion (risk ~87, summary, "I'll check with you...", Continue) -> timer shown -> Day 5 check-in toast ->
-chat "Should I keep Penwright?" -> Cancel -> confirm card $524.88/yr -> CANCELLED -> email preview (edit, empty To
-disables Send, Gmail link) -> KPI $524.88 -> Day 11 blocked charge -> audit-log CSV export -> subscription page.
+Priya's dashboard (card, Day 10 vs Day 7, usage + advice, chat) -> Cancel -> confirm card $524.88/yr -> email preview
+(edit, empty To disables Send, Gmail link; no toasts) -> Day 11 blocked charge + proof banner -> charts, activity grid,
+theme toggle -> audit-log CSV export -> subscription page.
 Fails on any console error or page error.
 
 Usage: python scripts/ui_check.py [--base-url http://127.0.0.1:8000] [--headed] [--shots DIR]
@@ -105,41 +106,62 @@ def story(base: str, headed: bool) -> None:
         promise = "I'll check with you before your trial runs out."
         expect(dash.get_by_test_id("alert-timer-set")).to_contain_text(promise)
         expect(dash.get_by_test_id("timer-chip")).to_contain_text("Check-in Day 5")
-        step("Day 0: timer shown (check-in Day 5, cancel Day 6)")
+        for gone in ("subs-grid", "chart-cost", "kpi-patterns", "kpi-cancelled", "kpi-watches"):
+            expect(dash.get_by_test_id(gone)).to_have_count(0)
+        expect(dash.get_by_test_id("layer2-controls")).to_be_hidden()
+        expect(dash.locator(".topbar").get_by_test_id("health-dots")).to_have_count(0)
+        dash.get_by_test_id("dev-menu").locator("summary").click()
+        expect(dash.get_by_test_id("dev-docs")).to_be_visible()
+        step("Live demo = control room: timer shown, Money protected only, dev links in the footer menu")
 
+        me = watch(ctx.new_page())  # Priya's dashboard in its own window, like a presenter would
+        me.goto(f"{base}/user")
+        card = me.get_by_test_id("sub-card")
+        expect(card.get_by_test_id("status-penwright")).to_have_text("ACTIVE")
+        expect(card.get_by_test_id("deadline-line")).to_have_text(
+            "Site says: trial ends Day 10 · Real last day to cancel: Day 7.")
+        expect(card.get_by_test_id("risk-score")).to_contain_text("/100")
+        expect(card.get_by_test_id("view-review")).to_have_text("View fine-print review")
+        step("Priya's dashboard: subscription card with the Day 10 vs Day 7 line, risk, Keep / Cancel")
+
+        dash.bring_to_front()
         dash.get_by_test_id("sim-jump-5").click()
         toast = dash.get_by_test_id("toast-alert").filter(has_text="Your Penwright trial ends on Day 10")
         expect(toast).to_be_visible()
         check = dash.get_by_test_id("alert-trial-check")
         expect(check).to_contain_text("Your Penwright trial ends on Day 10, but your real last day to cancel is Day 7. "
                                       "You've opened it twice. Do you want to keep it?")
-        expect(check.get_by_test_id("alert-keep")).to_be_visible()
-        step("Day 5: keep-or-cancel check-in (toast + alert with Keep / Cancel)")
+        step("Day 5 (control room): toast + check-in alert")
 
-        dash.get_by_test_id("chat-open").click()
-        dash.get_by_test_id("chat-input").fill("Should I keep Penwright?")
-        dash.get_by_test_id("chat-send").click()
-        expect(dash.locator("#chat-log")).to_contain_text("the first paid year costs $524.88")
-        shot(dash, "02_chat")
-        dash.locator("#chat-close").click()
-        step("chat: 'Should I keep Penwright?' answered with $524.88 and Day 7")
+        me.bring_to_front()
+        me.reload()
+        reminder = me.get_by_test_id("user-reminder")
+        expect(reminder.get_by_test_id("reminder-usage")).to_contain_text("Opened twice in 5 days (last on Day 4).")
+        expect(reminder.get_by_test_id("reminder-advice")).to_contain_text("SubGuard suggests: cancel. You decide.")
+        me.get_by_test_id("chat-open").click()
+        me.get_by_test_id("chat-input").fill("Should I keep Penwright?")
+        me.get_by_test_id("chat-send").click()
+        expect(me.locator("#chat-log")).to_contain_text("the first paid year costs $524.88")
+        shot(me, "02_checkin_and_chat")
+        me.locator("#chat-close").click()
+        step("Day 5 (Priya): usage summary, advice labelled 'You decide', chat answers with $524.88")
 
-        check.get_by_test_id("alert-cancel").click()
-        card = dash.get_by_test_id("confirm-card")
-        expect(card).to_contain_text("$524.88/yr")
-        card.get_by_test_id("confirm-button").click()
-        email = dash.get_by_test_id("email-preview")
+        reminder.get_by_test_id("alert-cancel").click()
+        confirm = me.get_by_test_id("confirm-card")
+        expect(confirm).to_contain_text("$524.88/yr")
+        confirm.get_by_test_id("confirm-button").click()
+        email = me.get_by_test_id("email-preview")
         expect(email.get_by_test_id("email-paypal-done")).to_have_text("Cancelled in PayPal. You won't be charged.")
-        expect(dash.get_by_test_id("status-penwright")).to_have_text("CANCELLED")  # PayPal first, then the email
+        expect(me.get_by_test_id("toast-result")).to_have_count(0)  # no extra pop-ups in the cancel flow
         body = email.get_by_test_id("email-body")
         expect(body).to_have_value(re.compile("at least 3 days before the next billing date"))
-        shot(dash, "03_email_preview")
+        shot(me, "03_email_preview")
         email.get_by_test_id("email-to").fill("")
         expect(email.get_by_test_id("email-send")).to_be_disabled()
         email.get_by_test_id("email-to").fill("cancel@penwright.example")
         body.fill(body.input_value() + "\nEdited by Priya.")
-        dash.context.route("https://mail.google.com/**", lambda route: route.fulfill(body="Gmail stub"))
-        with dash.context.expect_page() as gmail_info:
+        ctx.route("https://mail.google.com/**", lambda route: route.fulfill(body="Gmail stub"))
+        with ctx.expect_page() as gmail_info:
             email.get_by_test_id("email-open-gmail").click()
         gmail = gmail_info.value
         gmail.wait_for_load_state()
@@ -147,40 +169,47 @@ def story(base: str, headed: bool) -> None:
         gmail.close()
         expect(email.get_by_test_id("email-sent")).to_have_text("Opened in Gmail (demo)")
         email.get_by_test_id("email-dismiss").click()
-        expect(dash.get_by_test_id("alert-done")).to_contain_text("Cancelled in PayPal. You won't be charged.")
-        expect(dash.get_by_test_id("cancellation-notice").first).to_contain_text("edited: yes")
-        expect(dash.locator("#kpi-protected")).to_have_text("$524.88/yr")
-        shot(dash, "03_cancelled")
-        step("Cancel -> confirm card -> CANCELLED in PayPal -> email preview edited -> Gmail link -> $524.88/yr")
+        expect(me.get_by_test_id("toast-result")).to_have_count(0)
+        expect(card.get_by_test_id("status-penwright")).to_have_text("CANCELLED")
+        expect(me.get_by_test_id("sub-cancel")).to_have_count(0)
+        expect(me.get_by_test_id("cancellation-notice").first).to_contain_text("edited: yes")
+        expect(me.get_by_test_id("user-protected")).to_contain_text("$524.88/yr")
+        expect(me.get_by_text("Restart trial")).to_have_count(0)
+        shot(me, "03_cancelled")
+        step("Cancel: reminder -> confirmation card -> email preview (no toasts) -> CANCELLED, $524.88/yr")
 
+        dash.bring_to_front()
+        expect(dash.locator("#kpi-protected")).to_have_text("$524.88/yr", timeout=12000)
+        expect(dash.get_by_test_id("alert-done")).to_contain_text("Cancelled in PayPal. You won't be charged.")
+        expect(dash.get_by_text("Restart trial")).to_have_count(0)
         dash.get_by_test_id("sim-jump-11").click()
         expect(dash.get_by_test_id("blocked-charge").first).to_contain_text("First charge due today: blocked")
-        step("Day 11: blocked charge")
+        step("Day 11 (control room): blocked charge, Money protected $524.88/yr")
 
-        for chart in ("chart-cost", "chart-risk", "chart-days", "chart-actors"):
-            expect(dash.get_by_test_id(chart).locator("canvas").first).to_be_attached()
-        step("analytics: AG Charts render cost, risk, activity by day, who acted")
-
-        dash.get_by_test_id("tab-user").click()
-        feed = dash.get_by_test_id("user-activity")
+        me.bring_to_front()
+        me.reload()
+        expect(me.get_by_test_id("proof-banner")).to_have_text(
+            "First charge due today: blocked. No active PayPal subscription.")
+        for chart in ("chart-cost", "chart-usage", "chart-risk"):
+            expect(me.get_by_test_id(chart).locator("canvas").first).to_be_attached()
+        feed = me.get_by_test_id("user-activity")
         expect(feed).to_contain_text("You tapped Cancel.")
         expect(feed).to_contain_text("First charge due: blocked.")
-        expect(dash.get_by_test_id("user-protected")).to_contain_text("$524.88/yr")
-        expect(dash.get_by_test_id("subs-grid")).to_contain_text("CANCELLED")
-        expect(dash.get_by_test_id("chart-usage").locator("canvas").first).to_be_attached()
-        shot(dash, "03b_user_dashboard")
-        dash.get_by_test_id("theme-toggle").click()
-        expect(dash.locator("html")).to_have_attribute("data-theme", "light")
-        expect(dash.locator("html")).to_have_attribute("data-ag-theme-mode", "light")
-        dash.reload()
-        expect(dash.get_by_test_id("theme-toggle")).to_contain_text("Light")  # remembered
-        shot(dash, "03c_user_dashboard_light")
-        dash.get_by_test_id("theme-toggle").click()
-        expect(dash.locator("html")).to_have_attribute("data-theme", "dark")
-        dash.get_by_test_id("tab-demo").click()
-        expect(dash.get_by_test_id("demo-day")).to_have_text("11")
-        step("tabs: Priya's own dashboard (grid, charts, timeline), light/dark toggle, back to Live demo")
+        me.get_by_role("button", name="What you did").click()
+        expect(feed).not_to_contain_text("First charge due: blocked.")
+        me.get_by_role("button", name="Everything").click()
+        shot(me, "03b_user_dashboard")
+        me.get_by_test_id("theme-toggle").click()
+        expect(me.locator("html")).to_have_attribute("data-theme", "light")
+        expect(me.locator("html")).to_have_attribute("data-ag-theme-mode", "light")
+        me.reload()
+        expect(me.get_by_test_id("theme-toggle")).to_contain_text("Light")  # remembered
+        shot(me, "03c_user_dashboard_light")
+        me.get_by_test_id("theme-toggle").click()
+        expect(me.locator("html")).to_have_attribute("data-theme", "dark")
+        step("Day 11 (Priya): proof banner, AG Charts, AG Grid activity list + filter, light/dark toggle")
 
+        dash.bring_to_front()
         expect(dash.get_by_test_id("audit-chain")).to_contain_text("chain verified")
         with dash.expect_download() as dl_info:
             dash.get_by_test_id("audit-log-export").click()

@@ -1,27 +1,34 @@
 {% extends "shop_base.html" %}
-{% block title %}Demo shop: fictional merchants{% endblock %}
+{% block title %}Demo shop: Penwright Studio{% endblock %}
 {% block content %}
 <section data-testid="shop-index">
   <h1>Demo shop</h1>
-  <p>The fictional merchant used in the SubGuard demo. It isn't a real company.</p>
+  <p>The one fictional merchant used in the SubGuard demo. It isn't a real company.</p>
   <ul class="merchant-list">
-    {% for mch in merchants %}
+    {% for mch in merchants if mch.id == "penwright" %}
     <li data-testid="shop-merchant-{{ mch.id }}">
       <a href="/shop/{{ mch.id }}"><strong>{{ mch.name }}</strong></a>: {{ mch.tagline }}
     </li>
     {% endfor %}
   </ul>
-
-  <h2>What's on this site</h2>
+  <h2>Pages</h2>
   <ul>
-    <li><strong>Checkout page:</strong> <a href="/shop/penwright">Penwright</a>.</li>
-    <li><strong>Terms page:</strong> <a href="/shop/penwright/terms">Penwright Terms of Service</a>.</li>
-    <li><strong>Fake app page:</strong> <a href="/shop/penwright/app">Penwright</a>.
+    <li><strong>Checkout:</strong> <a href="/shop/penwright">Start the Penwright free trial</a>.</li>
+    <li><strong>Terms:</strong> <a href="/shop/penwright/terms">Penwright Terms of Service</a>.</li>
+    <li><strong>Pretend app:</strong> <a href="/shop/penwright/app">Open Penwright</a>.
       Opening it records a usage event for the current demo day.</li>
-    <li><strong>The tricks Penwright hides:</strong> auto-conversion to {{ p.money(p.penwright_intro_price) }}/month after the trial,
-      a later step-up to {{ p.money(p.penwright_step_up_price) }}/month, {{ p.penwright_notice_days }} days' written notice to cancel
-      (so the real deadline is Day {{ p.penwright_first_charge_day - p.penwright_notice_days - 1 }}), the trial ending early after {{ p.penwright_export_limit }} exports, no cancel button,
-      and a hidden instruction aimed at AI assistants.</li>
   </ul>
+  <details class="hidden-tricks" data-testid="shop-hidden">
+    <summary data-testid="shop-hidden-toggle">Show what's hidden</summary>
+    <p>The tricks Penwright hides:</p>
+    <ul>
+      <li>Auto-conversion to {{ p.money(p.penwright_intro_price) }}/month after the {{ p.penwright_trial_days }}-day trial (first charge Day {{ p.penwright_first_charge_day }}).</li>
+      <li>A later step-up to {{ p.money(p.penwright_step_up_price) }}/month after {{ p.penwright_intro_months }} paid months.</li>
+      <li>{{ p.penwright_notice_days }} days' written notice to cancel, so the real deadline is Day {{ p.penwright_first_charge_day - p.penwright_notice_days - 1 }}.</li>
+      <li>The trial ends early after {{ p.penwright_export_limit }} exports.</li>
+      <li>No cancel button: email, or a weekday-only phone line.</li>
+      <li>A hidden instruction aimed at AI assistants (a test case SubGuard must flag and ignore).</li>
+    </ul>
+  </details>
 </section>
 {% endblock %}

@@ -7,17 +7,13 @@
   <span class="avatar" aria-hidden="true">{{ (u.name if u else "?")[:1] }}</span>
   <div>
     <h1>Hi {{ u.name if u else "there" }}, here's your SubGuard.</h1>
-    <p class="muted">Everything SubGuard did for you, and every choice you made. Day <strong class="js-day">{{ sim_day }}</strong> of the demo.</p>
-    <p class="small muted">Signed in as {{ u.email if u else "" }} · alerts reach you by {{ (u.settings.channels if u else []) | join(", ") | replace("in_app", "in-app") }}</p>
+    <p class="muted">Day <strong class="js-day">{{ sim_day }}</strong> of the demo · {{ u.email if u else "" }}</p>
   </div>
 </section>
 
-<section class="kpis" id="live-kpis" data-live aria-label="Your numbers">
-  <div class="card kpi" data-testid="user-protected"><span class="kpi-label">Money SubGuard protected for you</span><span class="kpi-value">{{ protected }}/yr</span></div>
-  <div class="card kpi"><span class="kpi-label">Your subscriptions</span><span class="kpi-value">{{ rows | length }}</span></div>
-  <div class="card kpi"><span class="kpi-label">Cancelled in PayPal</span><span class="kpi-value">{{ cancelled }}</span></div>
-  <div class="card kpi"><span class="kpi-label">Your decisions</span><span class="kpi-value">{{ decisions }}</span></div>
-</section>
+<div id="live-proof" data-live>
+{% if proof %}<section class="card proof-banner" data-testid="proof-banner" role="status"><strong>{{ proof }}</strong></section>{% endif %}
+</div>
 
 {% set drafts = notices | selectattr("status", "equalto", "draft") | list %}
 <section class="card email-ready" id="live-ready" data-live data-testid="user-email-ready" {% if not drafts %}hidden{% endif %}>
@@ -25,14 +21,60 @@
     <button class="btn btn-sm" data-email-open="{{ n.id }}">Review email</button></p>{% endfor %}
 </section>
 
-<section class="card" aria-labelledby="subs-h">
-  <div class="card-head">
-    <h2 id="subs-h">Your subscriptions</h2>
-    <label class="sr-only" for="subs-filter">Filter your subscriptions</label>
-    <input id="subs-filter" type="search" placeholder="Filter…">
+<div id="live-checkin" data-live>
+{% if check_in %}{% set a = check_in.alert %}
+<section class="card check-in" data-testid="user-reminder" aria-labelledby="checkin-h">
+  <p class="eyebrow">Day {{ a.sim_day }} check-in · sent by email, SMS and in-app</p>
+  <h2 id="checkin-h">{{ a.title }}</h2>
+  <p class="check-body">{{ a.body }}</p>
+  <p class="usage" data-testid="reminder-usage"><span class="chip">Your usage</span> {{ check_in.usage }}</p>
+  <p class="advice" data-testid="reminder-advice"><span class="chip chip-advice">Advice</span>
+    <strong>SubGuard suggests: {{ check_in.suggest }}. You decide.</strong> <span class="muted">{{ check_in.reason }}</span></p>
+  <div class="row">
+    <button class="btn btn-ghost" data-alert="{{ a.id }}" data-action="keep" data-testid="alert-keep">Keep</button>
+    <button class="btn btn-danger" data-alert="{{ a.id }}" data-action="cancel" data-testid="alert-cancel">Cancel</button>
   </div>
-  <div id="subs-grid" class="grid" data-testid="subs-grid"></div>
-  <p class="muted tiny">Keep or Cancel right here. A cancel always asks you to confirm first.</p>
+</section>
+{% endif %}
+</div>
+
+<section class="kpis kpis-two" id="live-kpis" data-live aria-label="Your numbers">
+  <div class="card kpi" data-testid="user-protected"><span class="kpi-label">Money protected</span><span class="kpi-value">{{ protected }}/yr</span></div>
+  <div class="card kpi" data-testid="user-cancelled"><span class="kpi-label">Cancelled in PayPal</span><span class="kpi-value">{{ cancelled }}</span></div>
+</section>
+
+<section class="card" aria-labelledby="subs-h">
+  <h2 id="subs-h">Your subscriptions</h2>
+  <div id="live-subs" data-live>
+  {% for c in cards %}
+  <article class="sub-card" data-testid="sub-card">
+    <header class="sub-card-head">
+      <div><strong class="sub-name">{{ c.merchant }}</strong> <span class="muted">{{ c.plan }} · {{ c.price_text }}</span></div>
+      <div class="row">
+        <span class="pill pill-{{ c.status | lower }}" data-testid="status-{{ c.merchant_id }}">{{ c.status }}</span>
+        {% if c.risk is not none %}<span class="risk-big risk-{{ c.risk_level }}" data-testid="risk-score">Risk {{ c.risk }}/100</span>{% endif %}
+      </div>
+    </header>
+    {% if c.trial_end_day is not none and c.deadline_day is not none %}
+    <p class="deadline-line" data-testid="deadline-line">Site says: trial ends Day {{ c.trial_end_day }} · <strong>Real last day to cancel: Day {{ c.deadline_day }}.</strong></p>
+    {% endif %}
+    <dl class="sub-facts">
+      <div><dt>Next charge</dt><dd data-testid="next-charge">{{ c.next_charge_text }}</dd></div>
+      <div><dt>Safety timer</dt><dd>{{ c.timer_text or "—" }}</dd></div>
+      <div><dt>Status</dt><dd>{% if c.cancelled_day is not none %}Cancelled in PayPal on Day {{ c.cancelled_day }} {{ "by you" if c.cancelled_by == "user" else "by your safety timer" }}{% elif c.kept_day is not none %}You kept it on Day {{ c.kept_day }}{% else %}Watching for you{% endif %}</dd></div>
+    </dl>
+    <div class="row">
+      {% if c.can_decide %}
+      <button class="btn btn-ghost" data-sub-keep="{{ c.id }}" data-testid="sub-keep">Keep</button>
+      <button class="btn btn-danger" data-sub-cancel="{{ c.id }}" data-testid="sub-cancel">Cancel</button>
+      {% endif %}
+      <a class="btn btn-ghost" href="/subscriptions/{{ c.id }}?user={{ u.id }}" data-testid="view-review">View fine-print review</a>
+    </div>
+  </article>
+  {% else %}
+  <p class="empty" data-testid="user-empty">No subscriptions yet. <a href="/shop/penwright?user={{ u.id if u else 'priya' }}" target="_blank" rel="noopener">Try the Penwright shop.</a></p>
+  {% endfor %}
+  </div>
 </section>
 
 <section class="card" aria-labelledby="ins-h" data-testid="user-analytics">
@@ -56,18 +98,8 @@
       {% endfor %}
     </div>
   </div>
-  <div id="live-feed" data-live>
-  {% if activity %}
-  <ol class="feed" data-testid="user-activity">
-    {% for a in activity %}
-    <li data-who="{{ 'SubGuard' if a.who == 'Safety timer' else a.who }}"><span class="day">Day {{ a.day }}</span>
-      <span class="who who-{{ a.kind }}">{{ a.who }}</span>
-      <span class="txt">{{ a.text }}{% if a.rule_id %} <span class="chip">{{ a.rule_id }}</span>{% endif %}</span></li>
-    {% endfor %}
-  </ol>
-  <p class="muted tiny">Built only from the hash-chained audit log. The full log is on the Live demo tab.</p>
-  {% else %}<p class="muted">Nothing yet. Your story starts when you click PayPal on a trial.</p>{% endif %}
-  </div>
+  <div id="activity-grid" class="grid" data-testid="user-activity"></div>
+  <p class="muted tiny">Built only from the hash-chained audit log.</p>
 </section>
 
 <div class="two-col" id="live-bottom" data-live>
@@ -82,7 +114,7 @@
   <section class="card" aria-labelledby="mail-h">
     <h2 id="mail-h">Your cancellation emails</h2>
     {% for n in notices %}
-    <div class="notice" data-testid="user-email">
+    <div class="notice" data-testid="cancellation-notice">
       <p><strong>{{ n.subject }}</strong> → {{ n.to }}<br>
         <span class="small {{ 'ok' if n.status == 'sent' else 'muted' }}">{% if n.status == "sent" %}{{ "Opened in Gmail (demo)" if n.sent_via == "gmail_compose_link" else "Email sent (demo)" }} · edited: {{ "yes" if n.edited else "no" }}{% else %}Draft, not sent yet{% endif %} · drafted by {{ n.drafted_by }}</span></p>
       <button class="btn btn-sm" data-email-open="{{ n.id }}">{{ "View" if n.status == "sent" else "Review & send" }}</button>
@@ -92,42 +124,12 @@
   </section>
 </div>
 </div>
+{% include "_chat.html" %}
 <dialog id="confirm-dialog" class="dialog" aria-labelledby="confirm-title"></dialog>
 {% endblock %}
 {% block scripts %}
-<script>
-(function () {
-  "use strict";
-  let who = "all";
-  function applyFilter() {
-    document.querySelectorAll(".feed-filter button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.who === who)));
-    document.querySelectorAll(".feed li").forEach((li) => { li.hidden = who !== "all" && li.dataset.who !== who; });
-  }
-  document.addEventListener("click", (ev) => {
-    const b = ev.target.closest(".feed-filter button");
-    if (b) { who = b.dataset.who; applyFilter(); }
-  });
-  // Live (D-107/D-110): the demo may run in another tab. Every 4 s swap only the server-rendered [data-live]
-  // sections that changed, and refresh the AG Grid + AG Charts through their APIs (they are never re-created).
-  async function tick() {
-    if (document.hidden || document.querySelector("dialog[open]")) return;
-    try {
-      const html = await (await fetch(location.href, {headers: {Accept: "text/html"}})).text();
-      const doc = new DOMParser().parseFromString(html, "text/html");
-      document.querySelectorAll("[data-live]").forEach((el) => {
-        const fresh = doc.getElementById(el.id);
-        if (!fresh || fresh.innerHTML === el.innerHTML) return;
-        const open = new Set([...el.querySelectorAll("details[open] summary")].map((s) => s.textContent));
-        el.innerHTML = fresh.innerHTML;
-        el.hidden = fresh.hidden;
-        el.querySelectorAll("details summary").forEach((s) => { if (open.has(s.textContent)) s.parentElement.open = true; });
-      });
-      applyFilter();
-      await window.SG.refresh();
-    } catch (e) { /* offline for a moment: try again next tick */ }
-  }
-  window.SG.refresh();
-  setInterval(tick, 4000);
-})();
-</script>
+<script src="{{ ag_charts_url }}"></script>
+<script src="/static/charts.js"></script>
+<script src="/static/chat.js"></script>
+<script src="/static/user.js"></script>
 {% endblock %}

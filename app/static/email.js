@@ -63,7 +63,6 @@
       if (res.too_long) { $("email-too-long").hidden = false; return; }
       dropEdit(n.id);
       sentView(res.notice, justCancelled);
-      if (kind === "send") toast(res.already_sent ? "Already sent (demo)." : "Email sent (demo).", {testid: "toast-email"});
       refresh();
     }
     $("email-send").addEventListener("click", () => {

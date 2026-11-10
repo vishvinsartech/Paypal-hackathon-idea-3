@@ -32,6 +32,7 @@ def test_shop_pages_have_banner(client: TestClient, path: str) -> None:
 def test_shop_index_lists_merchants(client: TestClient) -> None:
     text = client.get("/shop").text
     assert 'data-testid="shop-index"' in text
+    assert re.search(r'<details[^>]*data-testid="shop-hidden"', text) and "Show what's hidden" in text
     assert "Penwright Studio" in text
     for gone in ("Framewise", "Lumen", "add-on"):  # one merchant in the simplified story (D-090)
         assert gone not in text
@@ -108,8 +109,11 @@ def test_static_assets(client: TestClient) -> None:
 
 
 DASHBOARD_TESTIDS = ("brand", "mode-badge", "view-shop", "kpi-protected", "demo-open-shop", "timeline", "sim-plus-1",
-                     "sim-jump-5", "sim-jump-6", "sim-jump-11", "subs-grid", "audit-log-grid", "audit-log-export",
-                     "chat-open", "chat-input", "chat-send", "email-ready")
+                     "sim-jump-5", "sim-jump-6", "sim-jump-11", "audit-log-grid", "audit-log-export", "pipeline",
+                     "demo-start", "chat-open", "chat-input", "chat-send", "email-ready", "footer", "dev-menu")
+# Presenter view vs Priya's view (D-112): these live on /user (or nowhere) now, not on the Live demo.
+NOT_ON_LIVE_DEMO = ("subs-grid", "analytics", "chart-cost", "chart-risk", "kpi-patterns", "kpi-cancelled",
+                    "kpi-watches", 'id="notices"', "ag-charts-community")
 
 
 def test_dashboard_selector_contract(client: TestClient) -> None:
@@ -121,15 +125,18 @@ def test_dashboard_selector_contract(client: TestClient) -> None:
     assert "hidden" not in bar.search(text).group(0)  # type: ignore[union-attr]
     assert "hidden" in bar.search(client.get("/").text).group(0)  # type: ignore[union-attr]  # hidden without ?demo=1
     assert re.search(r'src="https://cdn\.jsdelivr\.net/npm/ag-grid-community@\d+\.\d+\.\d+/', text)  # pinned
-    for gone in ("sim-jump-15", "sim-jump-21", "sim-jump-27", "sim-price-rise", "user-switch"):
+    for gone in ("sim-jump-15", "sim-jump-21", "sim-jump-27", "sim-price-rise", "user-switch", *NOT_ON_LIVE_DEMO):
         assert gone not in text, gone
+    layer2 = re.search(r'<span[^>]*data-testid="layer2-controls"[^>]*>', text)  # kept in the code, hidden (D-112)
+    assert layer2 and "hidden" in layer2.group(0) and 'id="toggle-fair-trial"' in text
     js = "".join(client.get(f"/static/{f}").text for f in ("app.js", "dashboard.js", "grids.js", "chat.js", "email.js"))
     for testid in ("toast-alert", "alert-trial-check", "alert-done", "alert-keep", "alert-cancel",
-                   "blocked-charge", "timer-chip", "risk-score", "cancellation-notice", "confirm-card",
+                   "blocked-charge", "timer-chip", "confirm-card",
                    "email-preview", "email-to", "email-subject",
                    "email-body", "email-send", "email-open-gmail", "email-dismiss", "email-sent", "email-copy",
-                   "confirm-button", "chat-done", "status-"):
+                   "confirm-button", "chat-done"):
         assert testid in js, testid
+    assert "Restart trial" not in text + js and "restart" not in js
 
 
 def test_view_subscriptions(demo_client: TestClient) -> None:

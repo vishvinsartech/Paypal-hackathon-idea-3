@@ -18,9 +18,11 @@ ACTIONS = {"goto", "click", "hover", "type", "press", "wait_for", "wait", "scrol
 
 def _ui_sources(client: TestClient) -> str:
     """Rendered pages (static test ids) + the scripts that render the rest."""
-    pages = [client.get(u).text for u in ("/?demo=1", "/shop", "/shop/penwright", "/shop/penwright/terms")]
+    pages = [client.get(u).text for u in ("/?demo=1", "/user", "/shop", "/shop/penwright", "/shop/penwright/terms")]
     scripts = [f.read_text(encoding="utf-8") for f in (ROOT_DIR / "app" / "static").glob("*.js")]
-    return "\n".join(pages + scripts)
+    # Priya's card, check-in and proof banner render only later in the story, so their template source counts too.
+    templates = [f.read_text(encoding="utf-8") for f in (ROOT_DIR / "app" / "templates").glob("*.html")]
+    return "\n".join(pages + scripts + templates)
 
 
 def test_total_under_the_cap_and_narration_fits() -> None:
@@ -36,6 +38,8 @@ def test_total_under_the_cap_and_narration_fits() -> None:
 def test_scenes_tell_the_simplified_story() -> None:
     text = json.dumps(SCENES)
     assert "$524.88" in text and "Day 7" in text and "Day 11" in text and "email-send" in text
+    for gone in ("chat-open", "chat-send", "subs-grid", "kpi-patterns"):  # chat is not in the video (D-112)
+        assert gone not in text, gone
     for gone in ("Framewise", "Lumen", "John", "add-on", "872.76", "$19", "yearly"):
         assert gone not in text, gone
 

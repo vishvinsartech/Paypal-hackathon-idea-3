@@ -10,8 +10,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.config import ROOT_DIR, Settings
 from app.core import timers as tm
-from app.core.activity import activity_for
-from app.core.savings import money_protected, year_one_cost
+from app.core.savings import year_one_cost
 from app.routes.actions import get_services
 from app.routes.deps import get_settings, get_store
 from app.store import JsonStore
@@ -59,23 +58,3 @@ def subscription_page(
                evidence=sorted({c.evidence_testid for c in review.data.clauses if c.evidence_testid})
                if review else [])
     return templates.TemplateResponse(request, "subscription.html", ctx)
-
-
-@router.get("/user", response_class=HTMLResponse)
-def user_dashboard(
-    request: Request, user: str = "priya",
-    settings: Settings = Depends(get_settings), store: JsonStore = Depends(get_store),
-) -> HTMLResponse:
-    """Priya's own view, written to her (D-110). The grid and charts load from /api/view/subscriptions and
-    /api/analytics; this renders her profile, KPIs, timeline (from the audit log), messages and emails."""
-    svc = get_services(request)
-    ctx = _base(request, user, settings, store)
-    subs = [s for s in store.load("subscriptions").items if s.owner_id == user and s.status != "APPROVAL_PENDING"]
-    notices = [n for n in store.load("notices").items if n.subscription_id in {s.id for s in subs}]
-    alerts = sorted((a for a in store.load("alerts").items if a.user_id == user), key=lambda a: a.created_at)
-    activity = activity_for(svc, user)
-    ctx.update(active_tab="user", rows=subs, notices=notices, alerts=alerts, activity=activity,
-               protected=svc.money(money_protected(subs, user, settings.pricing.demo_currency)),
-               cancelled=sum(1 for s in subs if s.status == "CANCELLED"),
-               decisions=sum(1 for e in activity if e.who == "You"))
-    return templates.TemplateResponse(request, "user.html", ctx)

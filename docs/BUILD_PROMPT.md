@@ -253,7 +253,7 @@ One tiny website served by the same FastAPI app under **`/shop`**, styled differ
 
 **Viewing it:**
 - `/shop` is a plain index page listing the fictional merchant (Penwright Studio) with a one-line description and a link to its page, plus a short "What's on this site" list: checkout pages, terms page, the fake app page, and which tricks Penwright hides.
-- The SubGuard dashboard top bar has a **"View dummy website"** link (`data-testid="view-shop"`) that opens `/shop` in a new tab. The README mentions it too.
+- The SubGuard top bar has a **"Shop ↗"** tab (`data-testid="view-shop"`) that opens `/shop` in a new tab. The README mentions it too.
 
 Pages (keep them minimal: a heading, a short description, the price box, the checkout area):
 - `/shop/penwright`: a big *"Start your 10-day free trial — $0 today"*, the 9px grey fine print (with `color:#9a9a9a` on white, so contrast is below 3:1), a collapsed "Terms" accordion, and a link to the ToS. Below them sit the PayPal button area and the Fair Trial badge (only if `fair_trial_member`).
@@ -323,7 +323,8 @@ Checkout behaviour:
 **Style:** trustworthy fintech. Dark navy, one teal accent, red for risk, system font. WCAG AA: keyboard navigable, visible focus, `aria-live` for toasts/alerts, labelled buttons. Use the AG Grid **Quartz** theme, adjusted to these colours.
 
 **Dashboard (`/`, Priya's; there is no user switcher):**
-1. **Top bar:** a shield logo (SVG you draw), a **mode badge** ("Mock mode" or "PayPal Sandbox"), the LLM provider badge, **View dummy website**, and health dots from `GET /healthz`.
+1. **Top bar:** a shield logo (SVG you draw), a **mode badge** ("Mock mode" or "PayPal Sandbox"), the LLM provider badge, page tabs (**Live demo** `/`, **Priya's dashboard** `/user`, and **Shop ↗** `/shop`, **Health ↗** `/healthz`, **API docs ↗** `/docs` in new tabs), and health dots from `GET /healthz`.
+1b. **Priya's dashboard (`/user`):** her profile and alert channels, KPIs, her subscriptions (status, deadline, agreed price, outcome), a day-by-day feed of what she did and what SubGuard / PayPal did (built only from the audit log, filterable), the messages she received, her cancellation emails and her trial usage. It refreshes itself while the demo runs in another tab.
 2. **Pipeline card with ▶ Start demo** (mock mode): a 7-step animated stepper that runs the story through the normal APIs, pauses at the check-in for Priya's Keep / Cancel / no answer (a Cancel still needs the confirmation card), then runs to the first charge day.
 2b. **Demo control bar** (shown with `?demo=1` or the `D` key): "Day N", **Open Penwright shop**, **+1 day**, **Jump to Day 5 / 6 / 11**, **Toggle Fair Trial**, **Reset**.
 3. **KPI cards:** **Money protected** ($/yr), Dark patterns caught, Subscriptions cancelled, Active watches.
@@ -344,7 +345,7 @@ Checkout behaviour:
 **AG Grid notes:** use the Community edition only (no Enterprise features or licence key), loaded from a pinned CDN version. Put all grid setup in `static/grids.js`. Grids load data from the JSON APIs and refresh after every action (or on SSE events). Before writing grid code, check the current AG Grid docs for that version's API (`createGrid`, theming API) and record the version in DECISIONS.
 
 **Selector contract** (`data-testid`, required by the video recorder):
-`brand mode-badge view-shop kpi-protected demo-open-shop shop-index shop-fineprint shop-terms-toggle shop-paypal-btn companion-overlay companion-risk companion-summary companion-promise companion-continue alert-timer-set timer-chip risk-score finding-NOTICE_PERIOD finding-TERMS_MISMATCH finding-PROMPT_INJECTION_ATTEMPT timeline sim-plus-1 sim-jump-5 sim-jump-6 sim-jump-11 toast-alert alert-trial-check alert-keep alert-cancel alert-done status-penwright blocked-charge cancellation-notice email-preview email-to email-subject email-body email-send email-open-gmail email-dismiss email-paypal-done email-sent email-ready subs-grid demo-start pipeline step-read step-outcome decision-dialog decision-keep decision-cancel decision-skip pipeline-done audit-filter audit-log-grid audit-log-export chat-open chat-close chat-input chat-send confirm-card confirm-button chat-done`
+`brand mode-badge nav-tabs tab-demo tab-user view-shop tab-health tab-docs user-dashboard user-activity kpi-protected demo-open-shop shop-index shop-fineprint shop-terms-toggle shop-paypal-btn companion-overlay companion-risk companion-summary companion-promise companion-continue alert-timer-set timer-chip risk-score finding-NOTICE_PERIOD finding-TERMS_MISMATCH finding-PROMPT_INJECTION_ATTEMPT timeline sim-plus-1 sim-jump-5 sim-jump-6 sim-jump-11 toast-alert alert-trial-check alert-keep alert-cancel alert-done status-penwright blocked-charge cancellation-notice email-preview email-to email-subject email-body email-send email-open-gmail email-dismiss email-paypal-done email-sent email-ready subs-grid demo-start pipeline step-read step-outcome decision-dialog decision-keep decision-cancel decision-skip pipeline-done audit-filter audit-log-grid audit-log-export chat-open chat-close chat-input chat-send confirm-card confirm-button chat-done`
 
 (For AG Grid cells, put the `data-testid` inside the cell renderer's HTML, for example the status pill.)
 
@@ -464,7 +465,7 @@ Important: the **PayPal sandbox itself** (business + personal test accounts and 
 ## 12. Milestones (in order; commit after each)
 
 1. **Preflight.** Run `claude mcp list`; check Python ≥ 3.11, Node ≥ 18 and `npx`; install the APIMatic PayPal context plugin; write `docs/PAYPAL_TOOLS.md` (PayPal MCP tool names) and `docs/PAYPAL_SDK_NOTES.md` (from the context plugin). Create `docs/DECISIONS.md`.
-2. **Scaffold + JSON store + audit log + dummy shop.** Config, both modes, `store.py`, `audit_log.py`, `healthz`, `/shop` index and pages, a placeholder dashboard with the "View dummy website" link. *Check:* `make setup && make dev` serves `/`, `/shop` and `/shop/penwright`; the store and audit log tests pass (atomic write, corrupt-file recovery, hash chain).
+2. **Scaffold + JSON store + audit log + dummy shop.** Config, both modes, `store.py`, `audit_log.py`, `healthz`, `/shop` index and pages, a placeholder dashboard with the Shop link. *Check:* `make setup && make dev` serves `/`, `/shop` and `/shop/penwright`; the store and audit log tests pass (atomic write, corrupt-file recovery, hash chain).
 3. **PayPal layer (mock + SDK + MCP) + seed.** *Check:* gateway tests pass in mock mode; in sandbox mode `make seed` creates the plans, a cancel shows `CANCELLED` both via the SDK and via the PayPal MCP server.
 4. **LLM providers + fine-print review + companion overlay.** *Check:* the Penwright preflight returns ≥ 7 findings including `NOTICE_PERIOD`, `TERMS_MISMATCH` and `PROMPT_INJECTION_ATTEMPT`; risk 87 ± 5; deadline day 7; every quote is verbatim. The provider contract tests pass for Anthropic, OpenAI and mock.
 5. **Policy, timers, escalation, clock.** *Check:* the story (Day 0 → Day 5 check-in → Cancel / Keep / no answer and Day 6 auto-cancel → Day 11) produces the right alerts, actions and audit log entries (correct actors and rule ids); `test_policy.py` covers R1–R7.
@@ -517,7 +518,7 @@ Scripts:
 
 - **`README.md`:**
   - Title, tagline, what SubGuard does in 8 short points
-  - **Quick start (mock mode, no keys):** `cp .env.example .env && make setup && make dev` → open `http://127.0.0.1:8000/?demo=1`, and **View dummy website** at `http://127.0.0.1:8000/shop`
+  - **Quick start (mock mode, no keys):** `cp .env.example .env && make setup && make dev` → open `http://127.0.0.1:8000/?demo=1`, and the **Shop ↗** tab at `http://127.0.0.1:8000/shop`
   - **Sandbox mode setup:** create sandbox business + personal accounts and a REST app; fill `.env`; choose `LLM_PROVIDER` and set its key/model; `scripts/paypal_token.sh`; `make seed`; `make dev-sandbox`; the optional Zapier hook
   - Hosted demo URL (Render)
   - How PayPal is used (an API-by-API table: Subscriptions API via the APIMatic-generated SDK, the JS SDK Subscribe button, the PayPal MCP server, webhooks + poller)

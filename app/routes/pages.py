@@ -10,7 +10,8 @@ from fastapi.templating import Jinja2Templates
 
 from app.config import ROOT_DIR, Settings
 from app.core import timers as tm
-from app.core.savings import year_one_cost
+from app.core.activity import activity_for, usage_by_day
+from app.core.savings import money_protected, year_one_cost
 from app.routes.actions import get_services
 from app.routes.deps import get_settings, get_store
 from app.store import JsonStore
@@ -33,7 +34,7 @@ def dashboard(
     settings: Settings = Depends(get_settings), store: JsonStore = Depends(get_store),
 ) -> HTMLResponse:
     ctx = _base(request, user, settings, store)
-    ctx.update(demo=bool(demo), merchants=store.load("merchants").items)
+    ctx.update(demo=bool(demo), merchants=store.load("merchants").items, active_tab="demo")
     return templates.TemplateResponse(request, "dashboard.html", ctx)
 
 
@@ -57,3 +58,32 @@ def subscription_page(
                evidence=sorted({c.evidence_testid for c in review.data.clauses if c.evidence_testid})
                if review else [])
     return templates.TemplateResponse(request, "subscription.html", ctx)
+
+
+@router.get("/user", response_class=HTMLResponse)
+def user_dashboard(
+    request: Request, user: str = "priya",
+    settings: Settings = Depends(get_settings), store: JsonStore = Depends(get_store),
+) -> HTMLResponse:
+    """Priya's own view: what she signed up for, what she decided, what SubGuard and PayPal did (from the log)."""
+    svc = get_services(request)
+    ctx = _base(request, user, settings, store)
+    subs = [s for s in store.load("subscriptions").items if s.owner_id == user]
+    rows = []
+    for s in subs:
+        review = tm.review_for(svc, s)
+        snap = s.consent_snapshot
+        rows.append({"sub": s, "merchant": svc.merchant(s.merchant_id).name,
+                     "risk": review.risk_score if review else None,
+                     "deadline": review.data.deadlines.real_cancel_deadline_day if review else None,
+                     "agreed": svc.money(snap.price) if snap else "—",
+                     "year_one": svc.money(year_one_cost(snap.billing_cycles)) if snap else "—"})
+    notices = [n for n in store.load("notices").items if n.subscription_id in {s.id for s in subs}]
+    alerts = sorted((a for a in store.load("alerts").items if a.user_id == user), key=lambda a: a.created_at)
+    protected = money_protected(subs, user, settings.pricing.demo_currency)
+    activity = activity_for(svc, user)
+    ctx.update(active_tab="user", rows=rows, notices=notices, alerts=alerts, activity=activity,
+               usage=usage_by_day(svc, user), protected=svc.money(protected),
+               cancelled=sum(1 for s in subs if s.status == "CANCELLED"),
+               decisions=sum(1 for e in activity if e.who == "Priya"))
+    return templates.TemplateResponse(request, "user.html", ctx)

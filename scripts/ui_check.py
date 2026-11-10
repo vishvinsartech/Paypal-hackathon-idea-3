@@ -157,6 +157,16 @@ def story(base: str, headed: bool) -> None:
         expect(dash.get_by_test_id("blocked-charge").first).to_contain_text("First charge due today: blocked")
         step("Day 11: blocked charge")
 
+        dash.get_by_test_id("tab-user").click()
+        feed = dash.get_by_test_id("user-activity")
+        expect(feed).to_contain_text("Tapped Cancel.")
+        expect(feed).to_contain_text("First charge due: blocked.")
+        expect(dash.get_by_test_id("user-protected")).to_contain_text("$524.88/yr")
+        shot(dash, "03b_user_dashboard")
+        dash.get_by_test_id("tab-demo").click()
+        expect(dash.get_by_test_id("demo-day")).to_have_text("11")
+        step("tabs: Priya's dashboard shows her story day by day, back to Live demo")
+
         expect(dash.get_by_test_id("audit-chain")).to_contain_text("chain verified")
         with dash.expect_download() as dl_info:
             dash.get_by_test_id("audit-log-export").click()

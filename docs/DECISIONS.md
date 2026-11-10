@@ -352,6 +352,17 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
 - **D-106 Video.** `07_cancel` grows to 30 s (confirm -> email preview -> Send); `03_companion` 32 -> 30 s and
   `06_chat` 20 -> 16 s, so the total stays 172 s (cap 175).
 
+## Judge navigation (2026-11-10)
+
+- **D-107 Page tabs + Priya's dashboard.** The top bar gets tabs next to the mode/AI badges: **Live demo** (`/`,
+  with the demo bar), **Priya's dashboard** (`/user`), and **Shop ↗**, **Health ↗**, **API docs ↗**, which open in
+  new tabs so the live demo window stays put. The Shop tab replaces the "View dummy website" button and keeps its
+  `view-shop` test id. `/user` is server-rendered from the store; its day-by-day feed (`core/activity.py`) maps
+  audit events to plain English and skips low-level ones (PayPal HTTP calls, tokens, LLM calls), so every line is
+  backed by a logged event (R7). It re-fetches itself every 4 s (skipped while a dialog is open or the tab is
+  hidden) so it follows a demo running in another tab. R5: `?user=` only shows that user's data. `timer_created`
+  audit entries now include `reminder_day`.
+
 ## Not used in v1 (sponsor tools)
 
 - **Bryntum:** a CSS timeline is enough for a prototype.

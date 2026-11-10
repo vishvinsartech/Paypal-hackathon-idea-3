@@ -100,7 +100,7 @@ worker: the JSON store relies on one in-process lock (D-020), so don't add `--wo
 Then open:
 
 - **Dashboard (with demo controls):** http://127.0.0.1:8000/?demo=1
-- **Dummy merchant website:** http://127.0.0.1:8000/shop (also the **View dummy website** button in the top bar)
+- **Dummy merchant website:** http://127.0.0.1:8000/shop (also the **Shop ↗** tab in the top bar)
 - **Health:** http://127.0.0.1:8000/healthz · **API docs:** http://127.0.0.1:8000/docs
 
 The demo has one persona, **Priya**, and one fictional merchant, **Penwright Studio**. It starts with no
@@ -110,7 +110,9 @@ subscriptions; on first start mock mode only scripts Priya's Penwright usage (sh
 
 ## Walk through the demo
 
-Open http://127.0.0.1:8000/?demo=1 (press **D** to show or hide the demo bar).
+Open http://127.0.0.1:8000/?demo=1 (press **D** to show or hide the demo bar). The tabs at the top left switch
+between the **Live demo**, **Priya's dashboard** (what she did and what SubGuard and PayPal did for her, day by
+day, straight from the audit log) and, in new tabs, the **Shop**, **Health** (`/healthz`) and **API docs** (`/docs`).
 
 **Fastest way:** click **▶ Start demo** on the dashboard. It runs the whole story on its own, pauses on Day 5
 to ask Priya **Keep** or **Cancel** (or *Don't answer*, to see the Day 6 auto-cancel), then runs to Day 11.

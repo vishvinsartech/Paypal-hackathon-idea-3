@@ -20,10 +20,19 @@
     <span class="badge badge-llm" data-testid="llm-badge" title="LLM provider">
       AI: {{ settings.active_llm_provider }}{% if settings.is_sandbox %} · {{ settings.llm_model }}{% endif %}
     </span>
-    <nav class="topbar-right" aria-label="Account">
-      <a class="btn btn-ghost" href="/shop" target="_blank" rel="noopener" data-testid="view-shop">View dummy website</a>
-      <span class="health" id="health" aria-label="Integration health" data-testid="health-dots"></span>
+    {% set uid = current_user.id if current_user else 'priya' %}
+    <nav class="tabs" aria-label="Pages" data-testid="nav-tabs">
+      <a class="tab{% if active_tab == 'demo' %} is-active{% endif %}" href="/?user={{ uid }}&amp;demo=1"
+         {% if active_tab == 'demo' %}aria-current="page"{% endif %} data-testid="tab-demo">Live demo</a>
+      <a class="tab{% if active_tab == 'user' %} is-active{% endif %}" href="/user?user={{ uid }}"
+         {% if active_tab == 'user' %}aria-current="page"{% endif %} data-testid="tab-user">{{ current_user.name if current_user else "User" }}'s dashboard</a>
+      <a class="tab" href="/shop" target="_blank" rel="noopener" data-testid="view-shop" title="The fictional merchant site (opens a new tab)">Shop&nbsp;↗</a>
+      <a class="tab" href="/healthz" target="_blank" rel="noopener" data-testid="tab-health" title="Mode and integration status as JSON (opens a new tab)">Health&nbsp;↗</a>
+      <a class="tab" href="/docs" target="_blank" rel="noopener" data-testid="tab-docs" title="Every API endpoint, try-it-out (opens a new tab)">API docs&nbsp;↗</a>
     </nav>
+    <div class="topbar-right">
+      <span class="health" id="health" aria-label="Integration health" data-testid="health-dots"></span>
+    </div>
   </header>
   <main id="main">
     {% block content %}{% endblock %}

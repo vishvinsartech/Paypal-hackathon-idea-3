@@ -73,7 +73,8 @@ async def create_trial_timer(svc: Services, sub: Subscription) -> Timer | None:
         timers.items.append(timer)
     svc.store.audit.append(actor="system", event="timer_created", user_id=sub.owner_id, subscription_id=sub.id,
                            rule_id="R2", details={"timer_id": timer.id, "kind": "trial", "fire_day": timer.fire_day,
-                                                  "deadline_day": timer.deadline_day, "layer2": timer.layer2,
+                                                  "deadline_day": timer.deadline_day,
+                                                  "reminder_day": timer.reminder_day, "layer2": timer.layer2,
                                                   "shown_to_user": timer.shown_to_user})
     return timer
 

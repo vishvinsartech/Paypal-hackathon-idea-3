@@ -72,6 +72,10 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
 
 ## Notes for next session
 
+### Judge navigation (2026-11-10)
+- Top-bar tabs (Live demo, Priya's dashboard, Shop, Health, API docs) and the new `/user` page (D-107).
+  `tests/test_user_page.py`; `ui_check.py` also clicks through the tabs.
+
 ### 10-day trial + cancellation email (2026-11-10)
 - Trial 10 days, first charge Day 11, notice 3 days; deadline Day 7, timer Day 6, check-in Day 5; proof Day 11
   (`sim-jump-11`). KPI $524.88, risk 87 (D-103).

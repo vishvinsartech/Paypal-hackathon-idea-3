@@ -15,5 +15,6 @@ ignore = ["B008"]  # FastAPI Depends() in defaults
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+addopts = "-m 'not sandbox'"  # opt in with: pytest -m sandbox
 asyncio_default_fixture_loop_scope = "function"
 markers = ["sandbox: hits real PayPal sandbox / LLM APIs; skipped without credentials"]

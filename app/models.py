@@ -34,6 +34,7 @@ class State(BaseModel):
     pricing_fingerprint: str | None = None  # which .env prices this runtime data was built with
     demo_seeded: bool = False  # Priya's Framewise + John's Lumen created (mock mode, DEMO_SEED)
     reminders: list[Reminder] = Field(default_factory=list)
+    webhook_event_ids: list[str] = Field(default_factory=list)  # last 500 PayPal webhook ids (dedupe)
 
 
 # ---- users.json -------------------------------------------------------------

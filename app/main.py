@@ -27,7 +27,7 @@ from app.integrations.paypal_rest import PayPalRest
 from app.integrations.paypal_sdk import SdkPayPal
 from app.integrations.paypal_types import PayPalError
 from app.llm import build_llm
-from app.routes import actions, api, chat, demo, pages, review, subscriptions, views
+from app.routes import actions, api, chat, demo, pages, review, subscriptions, views, webhooks
 from app.routes.subscriptions import paypal_error_response
 from app.store import JsonStore
 from shop import routes as shop_routes
@@ -91,6 +91,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.gateway = gateway
     app.state.llm = build_llm(settings)
     app.state.capture = build_capture(settings, app)
+    if isinstance(gateway.sdk, SdkPayPal):
+        rest = gateway.sdk.rest
+
+        async def verify_webhook(headers: dict[str, str], event: dict[str, object]) -> bool:
+            return await rest.verify_webhook_signature(headers, event, settings.paypal_webhook_id)
+
+        app.state.verify_webhook = verify_webhook
     app.state.services = Services(settings, store, gateway, Notifier(settings, settings.runtime_dir / "outbox"))
     app.state.auditor = Auditor(app.state.llm, store, settings.seed_dir / "dark_patterns.json",
                                 settings.llm_timeout_seconds)
@@ -109,6 +116,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(actions.router)
     app.include_router(chat.router)
     app.include_router(views.router)
+    app.include_router(webhooks.router)
     app.include_router(shop_routes.router)
     return app
 

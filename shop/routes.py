@@ -39,21 +39,39 @@ def penwright_terms(request: Request, settings: Settings = Depends(get_settings)
     return _render(request, "penwright_tos.html", settings, merchant=_merchant(store, "penwright"))
 
 
+async def _record(store: JsonStore, user: str, merchant_id: str, kind: str) -> tuple[int, int, int]:
+    """Append one usage event for today; returns (day, opens, exports) for this user + merchant."""
+    day = store.load("state").sim_day
+    subs = store.load("subscriptions").items
+    sub = next((s for s in subs if s.owner_id == user and s.merchant_id == merchant_id
+                and s.addon_of is None and s.status == "ACTIVE"), None)
+    async with store.aedit("usage") as usage:
+        usage.items.append(UsageEvent(user_id=user, merchant_id=merchant_id, kind=kind,  # type: ignore[arg-type]
+                                      subscription_id=sub.id if sub else None, day=day, at=utcnow()))
+        mine = [e for e in usage.items if e.user_id == user and e.merchant_id == merchant_id]
+    return day, sum(1 for e in mine if e.kind == "open"), sum(1 for e in mine if e.kind == "export")
+
+
 @router.get("/{merchant_id}/app", response_class=HTMLResponse)
 async def app_open(request: Request, merchant_id: str, user: str = "priya",
                    settings: Settings = Depends(get_settings),
                    store: JsonStore = Depends(get_store)) -> HTMLResponse:
     """Opening the fake app records a usage event for the current sim day."""
     merchant = _merchant(store, merchant_id)
-    day = store.load("state").sim_day
-    subs = store.load("subscriptions").items
-    sub = next((s for s in subs if s.owner_id == user and s.merchant_id == merchant_id
-                and s.addon_of is None and s.status == "ACTIVE"), None)
-    async with store.aedit("usage") as usage:
-        usage.items.append(UsageEvent(user_id=user, merchant_id=merchant_id,
-                                      subscription_id=sub.id if sub else None, day=day, at=utcnow()))
-        opens = sum(1 for e in usage.items if e.user_id == user and e.merchant_id == merchant_id)
-    return _render(request, "app_open.html", settings, merchant=merchant, day=day, user=user, opens=opens)
+    day, opens, exported = await _record(store, user, merchant_id, "open")
+    return _render(request, "app_open.html", settings, merchant=merchant, day=day, user=user, opens=opens,
+                   exports=exported)
+
+
+@router.post("/{merchant_id}/app/export", response_class=HTMLResponse)
+async def app_export(request: Request, merchant_id: str, user: str = "priya",
+                     settings: Settings = Depends(get_settings),
+                     store: JsonStore = Depends(get_store)) -> HTMLResponse:
+    """'Export a document' in the fake app: an export usage event (Penwright's early-trial-end trap, corner case 27)."""
+    merchant = _merchant(store, merchant_id)
+    day, opens, exported = await _record(store, user, merchant_id, "export")
+    return _render(request, "app_open.html", settings, merchant=merchant, day=day, user=user, opens=opens,
+                   exports=exported)
 
 
 @router.get("/{merchant_id}", response_class=HTMLResponse)

@@ -1,12 +1,14 @@
 """One `tick(day)` = everything SubGuard does on a sim day (Story A and Story B, spec 2 / 7.4).
 
-Order: sync PayPal statuses -> price watch -> timer warnings -> timer firing -> Layer 2 urgent checks ->
-billing-day events (blocked-charge proof) -> renewal reminders for idle honest subscriptions.
+Order: sync PayPal statuses -> price watch -> early trial end (exports) -> timer warnings -> timer firing ->
+Layer 2 urgent checks -> billing-day events (blocked-charge proof) -> renewal reminders for idle honest
+subscriptions -> reminders the chat scheduled.
 Every alert has an idempotency key, so re-running a day never double-sends.
 """
 
 from __future__ import annotations
 
+import re
 import secrets
 from decimal import Decimal
 
@@ -14,7 +16,7 @@ from app.core import timers as tm
 from app.core.alerts import action, send_alert
 from app.core.savings import year_one_cost
 from app.core.services import Services
-from app.core.usage import last_open_day
+from app.core.usage import exports, last_open_day
 from app.integrations.notify import warning_basis
 from app.integrations.paypal_gateway import Ctx
 from app.integrations.paypal_types import DAYS_PER_UNIT, PayPalError, cycle_days
@@ -26,6 +28,28 @@ IDLE_DAYS = 14
 UNIT_WORD = {"DAY": "day", "WEEK": "week", "MONTH": "month", "YEAR": "year"}
 
 
+async def apply_status(svc: Services, sub_id: str, status: str, source: str) -> bool:
+    """Record a PayPal-side status change once. The poller and webhooks both call this, so the same change seen
+    twice is a no-op (corner case 6: dedupe by status transition). Returns True if something changed."""
+    async with svc.store.aedit("subscriptions") as subs:
+        s = next((x for x in subs.items if x.id == sub_id), None)
+        if s is None or not status or s.status == status:
+            return False
+        before, s.status, s.last_synced_at = s.status, status, utcnow()  # type: ignore[assignment]
+        if status == "CANCELLED" and s.cancelled_by is None:
+            s.cancelled_by, s.cancelled_day = "external", svc.day
+        owner = s.owner_id
+    async with svc.store.aedit("timers") as timers:  # corner case 5: suspended/expired/cancelled -> no timer
+        for t in timers.items:
+            if t.subscription_id == sub_id and t.status == "PENDING" and status != "ACTIVE":
+                t.status, t.note = "CANCELLED", f"PayPal status changed to {status}"
+    svc.store.audit.append(actor="system", event="status_sync", user_id=owner, subscription_id=sub_id,
+                           status_before=before, status_after=status,
+                           transport=svc.gw.full.transport,  # type: ignore[arg-type]
+                           details={"source": source})
+    return True
+
+
 async def sync_statuses(svc: Services) -> None:
     """The poller's job (also run each tick): PayPal-side changes, e.g. merchant suspends (corner case 5)."""
     for sub in [s for s in svc.store.load("subscriptions").items if s.status in ("ACTIVE", "SUSPENDED")]:
@@ -34,19 +58,35 @@ async def sync_statuses(svc: Services) -> None:
                                                                      subscription_id=sub.id))
         except PayPalError:
             continue
-        if not view.status or view.status == sub.status:
+        await apply_status(svc, sub.id, view.status or "", "poller")
+
+
+async def early_trial_end(svc: Services, day: int) -> None:
+    """Corner case 27: the terms end the trial early after N exports. Too many exports -> warn that the trial may
+    already have converted, and move the timer's deadline to today (the auto-timer can't warn 24 h ahead now)."""
+    for timer in [t for t in svc.store.load("timers").items if t.status == "PENDING" and t.kind == "trial"]:
+        sub = svc.sub(timer.subscription_id)
+        review = tm.review_for(svc, sub) if sub else None
+        clause = next((c for c in review.data.clauses if c.type == "EARLY_TRIAL_TERMINATION"), None) if review else None
+        limit = re.search(r"more than (\d+)", clause.quote) if clause else None
+        if sub is None or limit is None:
             continue
-        async with svc.store.aedit("subscriptions") as subs:
-            s = next(x for x in subs.items if x.id == sub.id)
-            before, s.status, s.last_synced_at = s.status, view.status, utcnow()  # type: ignore[assignment]
-            if view.status == "CANCELLED" and s.cancelled_by is None:
-                s.cancelled_by, s.cancelled_day = "external", svc.day
-        async with svc.store.aedit("timers") as timers:
-            for t in timers.items:
-                if t.subscription_id == sub.id and t.status == "PENDING" and view.status != "ACTIVE":
-                    t.status, t.note = "CANCELLED", f"PayPal status changed to {view.status}"
-        svc.store.audit.append(actor="system", event="status_sync", user_id=sub.owner_id, subscription_id=sub.id,
-                               status_before=before, status_after=view.status, transport=svc.gw.full.transport)  # type: ignore[arg-type]
+        done = exports(svc.store, sub.owner_id, sub.merchant_id, sub.signup_day, day)
+        if done <= int(limit.group(1)):
+            continue
+        name = svc.merchant(sub.merchant_id).name
+        _, created = await send_alert(
+            svc, user_id=sub.owner_id, key=f"early-end:{sub.id}", kind="early_trial_end", level="urgent",
+            title=f"{name}: your trial may have ended early",
+            body=(f"You've exported {done} documents. {name}'s terms end the trial after more than "
+                  f"{limit.group(1)}, so it may already be a paid subscription. Decide today: cancel or keep?"),
+            actions=[action("cancel", "Cancel now"), action("keep", "Keep")], subscription_id=sub.id)
+        if created:
+            async with svc.store.aedit("timers") as timers:
+                t = next(x for x in timers.items if x.id == timer.id)
+                t.deadline_day, t.note = day, f"trial may have ended early ({done} exports)"
+            svc.store.audit.append(actor="system", event="early_trial_end_risk", user_id=sub.owner_id,
+                                   subscription_id=sub.id, details={"exports": done, "limit": int(limit.group(1))})
 
 
 async def watch_prices(svc: Services) -> None:
@@ -186,6 +226,7 @@ async def scheduled_reminders(svc: Services, day: int) -> None:
 async def tick(svc: Services, day: int) -> None:
     await sync_statuses(svc)
     await watch_prices(svc)
+    await early_trial_end(svc, day)
     await run_timers(svc, day)
     await layer2_urgent(svc, day)
     await billing_day(svc, day)

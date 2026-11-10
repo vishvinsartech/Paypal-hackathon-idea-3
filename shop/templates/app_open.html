@@ -7,7 +7,11 @@
   <h1 class="headline">Welcome back to {{ merchant.name }}</h1>
   <p>This is a pretend app screen. Opening it recorded a usage event for <strong>{{ user }}</strong>
      on demo day <strong data-testid="app-day">{{ day }}</strong>.</p>
-  <p class="muted">Times opened so far: <span data-testid="app-opens">{{ opens }}</span></p>
+  <p class="muted">Times opened so far: <span data-testid="app-opens">{{ opens }}</span> ·
+     documents exported: <span data-testid="app-exports">{{ exports }}</span></p>
+  <form method="post" action="/shop/{{ merchant.id }}/app/export?user={{ user }}">
+    <button class="btn" data-testid="app-export">Export a document</button>
+  </form>
   <p><a href="/shop/{{ merchant.id }}">Back to {{ merchant.name }}</a></p>
 </section>
 {% endblock %}

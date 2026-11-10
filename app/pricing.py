@@ -44,12 +44,13 @@ class Pricing(PricingFields):
     def penwright_first_charge_day(self) -> int:
         return self.penwright_trial_days + 1
 
-    def money(self, amount: Decimal | int | str) -> str:
-        """Short display: $20 for whole amounts, $24.99 otherwise."""
+    def money(self, amount: Decimal | int | str, currency: str | None = None) -> str:
+        """Short display: $20 for whole amounts, $24.99 otherwise. `currency` = the plan's (default: demo)."""
         amount = Decimal(str(amount))
+        cur = currency or self.demo_currency
         text = f"{amount:,.0f}" if amount == amount.to_integral_value() else f"{amount:,.2f}"
-        symbol = SYMBOLS.get(self.demo_currency)
-        return f"{symbol}{text}" if symbol else f"{text} {self.demo_currency}"
+        symbol = SYMBOLS.get(cur)
+        return f"{symbol}{text}" if symbol else f"{text} {cur}"
 
     def fingerprint(self) -> str:
         return hashlib.sha256(self.model_dump_json().encode()).hexdigest()[:16]

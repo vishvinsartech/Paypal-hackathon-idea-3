@@ -7,7 +7,8 @@
   // ---- KPIs + sim day -----------------------------------------------------------------------
   onRefresh(async () => {
     const k = await api(`/api/kpis?user=${user}`);
-    document.getElementById("kpi-protected").textContent = k.money_protected_text + "/yr";
+    const extra = Object.values(k.other_currencies || {}).map((t) => ` + ${t}/yr`).join("");
+    document.getElementById("kpi-protected").textContent = k.money_protected_text + "/yr" + extra;
     document.getElementById("kpi-patterns").textContent = k.dark_patterns_caught;
     document.getElementById("kpi-cancelled").textContent = k.subscriptions_cancelled;
     document.getElementById("kpi-watches").textContent = k.active_watches;

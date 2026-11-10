@@ -215,6 +215,27 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   a free port with a throwaway `DATA_DIR`, drives Story A through the real UI with Playwright, and fails on any
   console error. It needs the CDN, so it isn't part of `pytest`.
 
+## Tests and hardening (milestone 7)
+
+- **D-070 Unapproved subscriptions are never stored** (corner case 1). Register answers 202 and stores nothing
+  until PayPal says ACTIVE, so there is no "pending" list for us to expire after 3 hours; PayPal expires its own
+  `APPROVAL_PENDING` subscriptions. Recorded as a doc note in `docs/CORNER_CASES.md`.
+- **D-071 One status-change path.** `escalation.apply_status` is used by both the poller (each tick) and
+  `/webhooks/paypal`. It does nothing when the status is unchanged, so webhook + poller (or two webhooks) for the
+  same change log one `status_sync`. Webhook event ids are also deduped (last 500 kept in `state.json`). In
+  sandbox mode an unverified signature -> 400 + `webhook_rejected` audit entry.
+- **D-072 Currency guard.** `Pricing.money(amount, currency)` formats in the plan's currency. The Money protected
+  KPI sums only the demo currency; other currencies are returned as `other_currencies` and shown next to it,
+  labelled. The demo is all USD.
+- **D-073 Early trial end (exports).** The fake app page has an "Export a document" button
+  (`POST /shop/<merchant>/app/export`, a usage event of kind `export`). Each tick, a PENDING trial timer whose
+  review has an `EARLY_TRIAL_TERMINATION` clause compares exports since signup with the clause's number ("more
+  than N"). Over the limit -> one urgent alert (Cancel now / Keep) and the timer's `deadline_day` moves to today.
+  The timer still fires on its day, because R2 forbids firing without a warning 24 sim-hours earlier.
+- **D-074 Sandbox smoke test is opt-in.** `tests/test_sandbox_smoke.py` is marked `sandbox`, and `pyproject.toml`
+  sets `addopts = -m 'not sandbox'`, so plain `pytest` never calls PayPal. `python -m pytest -m sandbox` runs it
+  (read-only: OAuth + the seeded plans' billing cycles); it skips without credentials or seeded plan ids.
+
 ## Not used in v1 (sponsor tools)
 
 - **Bryntum:** a CSS timeline is enough for a prototype.

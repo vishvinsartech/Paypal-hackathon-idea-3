@@ -37,10 +37,20 @@ def paid_prices(cycles: Sequence[BillingCycleDef]) -> list[Decimal]:
     return out
 
 
-def money_protected(subs: Sequence[Subscription], user_id: str) -> Decimal:
-    """"Money protected" KPI: year-one cost avoided by cancels SubGuard made (user-confirmed or timer)."""
-    return sum((s.protected_year_usd for s in subs if s.owner_id == user_id and s.protected_year_usd is not None
-                and s.cancelled_by in ("user", "timer")), start=Decimal("0.00"))
+def protected_by_currency(subs: Sequence[Subscription], user_id: str) -> dict[str, Decimal]:
+    """Year-one cost avoided by cancels SubGuard made (user-confirmed or timer), per currency.
+    Corner case 8: amounts in different currencies are never added together."""
+    out: dict[str, Decimal] = {}
+    for s in subs:
+        if s.owner_id == user_id and s.protected_year_usd is not None and s.cancelled_by in ("user", "timer"):
+            cur = s.consent_snapshot.currency if s.consent_snapshot else "USD"
+            out[cur] = out.get(cur, Decimal("0.00")) + s.protected_year_usd
+    return out
+
+
+def money_protected(subs: Sequence[Subscription], user_id: str, currency: str = "USD") -> Decimal:
+    """"Money protected" KPI in one currency (the demo currency); other currencies are reported separately."""
+    return protected_by_currency(subs, user_id).get(currency, Decimal("0.00"))
 
 
 def compare_billing(monthly: Sequence[BillingCycleDef], yearly: Sequence[BillingCycleDef]) -> dict[str, Decimal]:

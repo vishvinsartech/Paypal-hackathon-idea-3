@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from app.core import timers as tm
 from app.core.actions import cancel_confirmed, propose_cancel
 from app.core.policy import Decision
-from app.core.savings import money_protected
+from app.core.savings import money_protected, protected_by_currency
 from app.core.services import Services
 from app.integrations.paypal_gateway import Ctx
 from app.models import Alert, Notice, Timer
@@ -181,8 +181,11 @@ def kpis(user: str = "priya", svc: Services = Depends(get_services)) -> dict[str
     ids = {s.id for s in subs}
     reviews = [r for r in svc.store.load("reviews").items if r.subscription_id in ids]
     caught = sum(1 for r in reviews for c in r.data.clauses if c.type not in DARK_TYPES_EXCLUDED)
-    protected = money_protected(subs, user)
-    return {"money_protected": str(protected), "money_protected_text": svc.money(protected),
+    cur = svc.settings.pricing.demo_currency
+    protected = money_protected(subs, user, cur)
+    others = {c: v for c, v in protected_by_currency(subs, user).items() if c != cur}
+    return {"money_protected": str(protected), "money_protected_text": svc.money(protected), "currency": cur,
+            "other_currencies": {c: svc.settings.pricing.money(v, c) for c, v in others.items()},
             "dark_patterns_caught": caught,
             "subscriptions_cancelled": sum(1 for s in subs if s.cancelled_by in ("user", "timer")),
             "active_watches": sum(1 for s in subs if s.status == "ACTIVE")}

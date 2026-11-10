@@ -37,3 +37,4 @@ a { color: #6b3fa0; }
 
 /* SubGuard companion note (simulated browser extension; not part of the merchant's page). */
 .companion-note { font: 13px/1.4 system-ui, sans-serif; color: #1d4f45; background: #e6f7f3; border-radius: 6px; padding: 4px 8px; display: inline-block; }
+.btn { padding: 8px 14px; border-radius: 6px; border: 1px solid #333; background: #fff; font: inherit; cursor: pointer; }

@@ -73,8 +73,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         store.audit.append(
             actor="system", event="startup", reason=f"SubGuard started in {settings.app_mode} mode",
             details={"mode": settings.app_mode, "llm_provider": settings.active_llm_provider,
-                     "llm_model": settings.llm_model},
+                     "llm_model": settings.llm_model, "notify": app.state.services.notifier.target},
         )
+        if settings.is_sandbox and not settings.zapier_catch_hook_url:
+            log.warning("ZAPIER_CATCH_HOOK_URL is not set: email/SMS alerts go to data/runtime/outbox/ instead")
         await seed_demo(app.state.services, demo.review_fn(app))
         log.info(f"SubGuard running in {settings.app_mode} mode at http://{settings.app_host}:{settings.app_port}/")
         yield

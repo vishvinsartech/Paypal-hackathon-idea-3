@@ -1,7 +1,7 @@
 """Cross-platform task runner mirroring the Makefile (works on Windows without `make`).
 
 Usage: python scripts/tasks.py <task> [args]
-Tasks: setup dev dev-sandbox seed sandbox-check reset test lint ui-check demo-video-check demo-video
+Tasks: setup dev dev-sandbox seed sandbox-check reset test lint ui-check zapier-check demo-video-check demo-video
 Extra args go to `seed` / `sandbox-check` (e.g. `seed --demo-subs`).
 """
 
@@ -64,6 +64,7 @@ TASKS = {
     "test": lambda: run(py(), "-m", "pytest", "-q"),
     "lint": lambda: run(py(), "-m", "ruff", "check", "."),
     "ui-check": lambda: run(py(), "scripts/ui_check.py", *sys.argv[2:]),
+    "zapier-check": lambda: run(py(), "scripts/zapier_check.py", *sys.argv[2:]),
     "demo-video-check": lambda: not_yet("demo-video-check", 9),
     "demo-video": lambda: not_yet("demo-video", 9),
 }

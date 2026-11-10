@@ -236,6 +236,21 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   sets `addopts = -m 'not sandbox'`, so plain `pytest` never calls PayPal. `python -m pytest -m sandbox` runs it
   (read-only: OAuth + the seeded plans' billing cycles); it skips without credentials or seeded plan ids.
 
+## Sponsor wiring (milestone 8)
+
+- **D-080 Render: mock mode, no browser download.** The hosted demo runs `APP_MODE=mock`, where reviews use the
+  static HTML capture (D-040), so the build is just `pip install -r requirements.txt`; no `playwright install`
+  (it's slow and large on the free plan). Python is pinned to 3.12.10 with `PYTHON_VERSION`, and a clean copy was
+  tested locally on 3.12.10 (build command, start command, Story A in the browser). One worker (D-020). JSON files
+  live on Render's temporary disk: each restart or deploy re-seeds the demo, and the README says so. Secrets are
+  `sync: false` entries only. The blueprint deploys branch `main`.
+- **D-081 Zapier routes fictional recipients to the owner.** The demo people and merchants have `*.example` emails
+  and `+1555` numbers, so the Zap sends to the owner's own inbox and phone and keeps the demo recipient in the
+  text (`docs/ZAPIER_SETUP.md`). "Accepted" = the Catch Hook returned 2xx; delivery itself is in Zap History.
+- **D-082 Zapier only in sandbox mode.** Mock mode always writes `data/runtime/outbox/`, even when a hook URL is
+  set, so the hosted mock demo never sends real messages. In sandbox mode without a hook, startup logs a warning,
+  and the startup audit entry records `notify: outbox|zapier`.
+
 ## Not used in v1 (sponsor tools)
 
 - **Bryntum:** a CSS timeline is enough for a prototype.

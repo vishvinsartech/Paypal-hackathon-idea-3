@@ -1,0 +1,35 @@
+# Render Blueprint: the hosted SubGuard demo (mock mode, no keys needed). DECISIONS D-080.
+# Render dashboard -> New -> Blueprint -> pick this repo. Data lives on Render's temporary disk:
+# every restart or deploy starts a fresh demo (the demo seed runs at startup), which is fine for mock mode.
+services:
+  - type: web
+    name: subguard-demo
+    runtime: python
+    plan: free
+    branch: main
+    autoDeploy: true
+    # Mock mode reviews pages with the static HTML capture, so no Playwright browser download is needed.
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    # JSON storage needs exactly one worker (one process-wide lock, D-020).
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: APP_MODE
+        value: mock
+      - key: DEMO_SEED
+        value: "true"
+      - key: LLM_PROVIDER
+        value: anthropic
+      # Secrets: never in git. Only needed if you switch the hosted copy to sandbox mode.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: ZAPIER_CATCH_HOOK_URL
+        sync: false

@@ -1,7 +1,7 @@
 # SubGuard. Every target delegates to scripts/tasks.py, which also works on Windows without make.
 PYTHON ?= python3
 
-.PHONY: setup dev dev-sandbox seed sandbox-check reset test lint ui-check demo-video-check demo-video
+.PHONY: setup dev dev-sandbox seed sandbox-check reset test lint ui-check zapier-check demo-video-check demo-video
 
 setup:
 	$(PYTHON) scripts/tasks.py setup
@@ -29,6 +29,9 @@ lint:
 
 ui-check:
 	$(PYTHON) scripts/tasks.py ui-check $(ARGS)
+
+zapier-check:
+	$(PYTHON) scripts/tasks.py zapier-check $(ARGS)
 
 demo-video-check:
 	$(PYTHON) scripts/tasks.py demo-video-check

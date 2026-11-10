@@ -49,6 +49,14 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
     real sandbox: OAuth + seeded plan prices passed; the settings check skipped (no `ANTHROPIC_API_KEY` in `.env`).
 - [ ] **8. Sponsor wiring.** Zapier (real hook in sandbox + outbox in mock), `render.yaml` + deploy.
   - *Check:* Zapier delivery works (or outbox in mock); the Render URL is in the README.
+  - **In progress, blocked on the user** (2026-11-10, commit `310e5d6`). Done: `render.yaml` (mock mode, Python 3.12.10,
+    1 worker, `/healthz`, secrets `sync: false`); a clean copy (git files only, no `.env`) built with the exact
+    build command on a fresh 3.12.10 venv and passed `/healthz` + `ui-check` Story A with the exact start command.
+    Mock outbox verified by `tests/test_deploy.py`. Zapier: `scripts/zapier_check.py` + `docs/ZAPIER_SETUP.md`.
+    **Missing to tick it:** (1) `ZAPIER_CATCH_HOOK_URL` in `.env`, then `python scripts/tasks.py zapier-check`
+    must print `accepted`; (2) a Render deploy: the GitHub repo isn't publicly reachable and `RENDER_API_KEY` is
+    empty, and the code must be pushed to the branch in `render.yaml` (`main`; work is on `prototype-v1`).
+    Then put the URL in README "Hosted demo".
 - [ ] **9. Demo-video tooling, code only** (section 13). Don't record or render a video.
   - *Check:* `make demo-video-check` passes.
 - [ ] **10. Docs + submission files**, then a final review against section 15.

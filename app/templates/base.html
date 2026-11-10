@@ -7,7 +7,7 @@
   <link rel="icon" href="/static/shield.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/app.css">
 </head>
-<body>
+<body data-user="{{ current_user.id if current_user else 'priya' }}" data-sim-day="{{ sim_day }}">
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="topbar" role="banner">
     <a class="brand" href="/?user={{ current_user.id if current_user else 'priya' }}" data-testid="brand">
@@ -34,7 +34,10 @@
   <main id="main">
     {% block content %}{% endblock %}
   </main>
-  <div class="toasts" aria-live="polite" id="toasts"></div>
+  <div class="toasts" aria-live="polite" role="status" id="toasts"></div>
+  <script src="{{ ag_grid_url }}"></script>
   <script src="/static/app.js"></script>
+  <script src="/static/grids.js"></script>
+  {% block scripts %}{% endblock %}
 </body>
 </html>

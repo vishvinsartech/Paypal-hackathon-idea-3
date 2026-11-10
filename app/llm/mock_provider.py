@@ -2,7 +2,7 @@
 
 Review fixtures use `{{token}}` placeholders filled from the .env pricing, so quotes stay verbatim substrings
 of the shop pages whatever the demo prices are. Chat fixtures are scripted turns for the demo prompts
-(milestone 6); anything else gets the polite "mock mode" answer.
+(see mock_chat.py); anything else gets the polite "mock mode" answer.
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ from typing import Any
 
 from app.integrations.capture import PageCapture
 from app.llm.base import ChatMessage, ChatTurn, LLMError, TextCallback, parse_review_json
+from app.llm.mock_chat import scripted_turn
 from app.llm.tools_schema import ToolSpec
 from app.pricing import Pricing
 from app.review_types import ReviewResult
@@ -67,12 +68,10 @@ class MockProvider:
 
     async def chat_step(self, messages: list[ChatMessage], tools: list[ToolSpec], *,
                         on_text: TextCallback | None = None) -> ChatTurn:
-        text = MOCK_CHAT_FALLBACK
         user = next((m.content.lower() for m in reversed(messages) if m.role == "user"), "")
-        for script in self._chat_fixtures():
-            if any(k in user for k in script.get("match", [])):
-                text = script.get("text", text)
-                break
-        if on_text:
-            on_text(text)
-        return ChatTurn(text=text, usage={"input_tokens": 0, "output_tokens": 0})
+        script = next((s for s in self._chat_fixtures() if any(k in user for k in s.get("match", []))), None)
+        turn = scripted_turn(script, messages) if script else ChatTurn(text=MOCK_CHAT_FALLBACK)
+        turn.usage = {"input_tokens": 0, "output_tokens": 0}
+        if turn.text and on_text:
+            on_text(turn.text)
+        return turn

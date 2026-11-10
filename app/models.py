@@ -15,6 +15,17 @@ TimerStatus = Literal["PENDING", "KEPT", "FIRED", "FAILED", "CANCELLED"]
 
 
 # ---- state.json -------------------------------------------------------------
+class Reminder(BaseModel):
+    """A reminder the chat agent scheduled (schedule_reminder); sent as an in-app alert on `day`."""
+
+    id: str
+    user_id: str
+    subscription_id: str
+    day: int
+    note: str = ""
+    sent: bool = False
+
+
 class State(BaseModel):
     sim_day: int = 0
     app_mode: str = "mock"
@@ -22,6 +33,7 @@ class State(BaseModel):
     last_tick_at: datetime | None = None
     pricing_fingerprint: str | None = None  # which .env prices this runtime data was built with
     demo_seeded: bool = False  # Priya's Framewise + John's Lumen created (mock mode, DEMO_SEED)
+    reminders: list[Reminder] = Field(default_factory=list)
 
 
 # ---- users.json -------------------------------------------------------------

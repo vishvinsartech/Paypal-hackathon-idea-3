@@ -1,32 +1,102 @@
 {% extends "base.html" %}
 {% block title %}SubGuard: dashboard{% endblock %}
 {% block content %}
+<section class="demo-bar card" id="demo-bar" data-testid="demo-bar" aria-label="Demo controls" {% if not demo %}hidden{% endif %}>
+  <strong class="day-chip">Day <span data-testid="demo-day" class="js-day">{{ sim_day }}</span></strong>
+  <a class="btn" href="/shop/penwright?user={{ current_user.id }}" target="_blank" rel="noopener" data-testid="demo-open-shop">Open Penwright shop</a>
+  <button class="btn btn-ghost" data-advance="1" data-testid="sim-plus-1">+1 day</button>
+  <span class="demo-group" role="group" aria-label="Jump to day">
+    {% for d in [5, 6, 15, 21, 27] %}<button class="btn btn-ghost" data-jump="{{ d }}" data-testid="sim-jump-{{ d }}">Day {{ d }}</button>{% endfor %}
+  </span>
+  <button class="btn btn-ghost" id="price-rise" data-testid="sim-price-rise">Framewise price rise</button>
+  <span class="demo-group">
+    <label class="sr-only" for="fair-trial-merchant">Merchant</label>
+    <select id="fair-trial-merchant">{% for m in merchants %}<option value="{{ m.id }}">{{ m.name }}</option>{% endfor %}</select>
+    <button class="btn btn-ghost" id="toggle-fair-trial" data-testid="sim-toggle-fair-trial">Toggle Fair Trial</button>
+  </span>
+  <button class="btn btn-danger" id="demo-reset" data-testid="sim-reset">Reset</button>
+  <span class="muted small">Press <kbd>D</kbd> to hide</span>
+</section>
+
 <section class="hero">
   <h1>Hi {{ current_user.name if current_user else "there" }}.</h1>
   <p class="lead">AI reads the fine print. PayPal enforces the outcome.</p>
-  <p class="muted">Day <strong data-testid="sim-day">{{ sim_day }}</strong> of the demo ·
+  <p class="muted">Day <strong data-testid="sim-day" class="js-day">{{ sim_day }}</strong> of the demo ·
     {{ "PayPal Sandbox" if settings.is_sandbox else "Mock mode (no keys needed)" }}</p>
 </section>
 
 <section class="kpis" aria-label="Key numbers">
-  <div class="card kpi" data-testid="kpi-protected"><span class="kpi-label">Money protected</span><span class="kpi-value">$0.00/yr</span></div>
-  <div class="card kpi"><span class="kpi-label">Dark patterns caught</span><span class="kpi-value">0</span></div>
-  <div class="card kpi"><span class="kpi-label">Subscriptions cancelled</span><span class="kpi-value">0</span></div>
-  <div class="card kpi"><span class="kpi-label">Active watches</span><span class="kpi-value">0</span></div>
+  <div class="card kpi" data-testid="kpi-protected"><span class="kpi-label">Money protected</span><span class="kpi-value" id="kpi-protected">$0/yr</span></div>
+  <div class="card kpi" data-testid="kpi-patterns"><span class="kpi-label">Dark patterns caught</span><span class="kpi-value" id="kpi-patterns">0</span></div>
+  <div class="card kpi" data-testid="kpi-cancelled"><span class="kpi-label">Subscriptions cancelled</span><span class="kpi-value" id="kpi-cancelled">0</span></div>
+  <div class="card kpi" data-testid="kpi-watches"><span class="kpi-label">Active watches</span><span class="kpi-value" id="kpi-watches">0</span></div>
 </section>
 
-<section class="card">
-  <h2>Getting started</h2>
-  <p>The full dashboard (timeline, subscription and audit-log grids, alerts, chat) is coming in a later milestone.
-     For now you can browse the fictional merchants on the
-     <a href="/shop" target="_blank" rel="noopener">dummy website</a>.</p>
-  <ul class="plain">
-    {% for mch in merchants %}
-    <li><strong>{{ mch.name }}</strong>: {{ mch.tagline }}
-      {% if mch.fair_trial_member %}<span class="pill pill-teal">Fair Trial</span>{% endif %}</li>
-    {% endfor %}
-  </ul>
-  <p class="muted">Audit log: <a href="/api/audit-log">JSON</a> · <a href="/api/audit-log.csv">CSV</a> ·
-    <a href="/api/audit-log/verify">verify chain</a> · <a href="/healthz">healthz</a></p>
+<div class="two-col">
+  <section class="card" aria-labelledby="alerts-h">
+    <h2 id="alerts-h">Alerts</h2>
+    <div id="alerts" class="alerts" aria-live="polite" data-testid="alerts-panel"><p class="muted">No alerts yet.</p></div>
+  </section>
+  <section class="card" aria-labelledby="timeline-h">
+    <h2 id="timeline-h">Timeline</h2>
+    <div id="timeline" class="timeline" data-testid="timeline"><p class="muted">No subscriptions yet.</p></div>
+    <p class="legend muted small">
+      <span class="lg lg-trial"></span> trial <span class="lg lg-deadline"></span> real deadline
+      <span class="lg lg-timer"></span> safety timer <span class="lg lg-charge"></span> charge
+      <span class="lg lg-cancel"></span> cancelled <span class="lg lg-today"></span> today
+    </p>
+  </section>
+</div>
+
+<section class="card" aria-labelledby="subs-h">
+  <div class="card-head">
+    <h2 id="subs-h">Subscriptions</h2>
+    <label class="sr-only" for="subs-filter">Filter subscriptions</label>
+    <input id="subs-filter" type="search" placeholder="Filter…">
+  </div>
+  <div id="subs-grid" class="grid" data-testid="subs-grid"></div>
 </section>
+
+<section class="card" aria-labelledby="notices-h">
+  <h2 id="notices-h">Cancellation notices sent</h2>
+  <div id="notices"><p class="muted">None yet.</p></div>
+</section>
+
+<section class="card" aria-labelledby="audit-h">
+  <div class="card-head">
+    <h2 id="audit-h">Audit log</h2>
+    <span id="chain" class="chain" data-testid="audit-chain">checking…</span>
+    <label class="sr-only" for="audit-filter">Filter audit log</label>
+    <input id="audit-filter" type="search" placeholder="Filter, e.g. R2">
+    <button class="btn btn-ghost" id="audit-export" data-testid="audit-log-export">Export CSV</button>
+    <a class="small" href="/api/audit-log.csv">server CSV</a>
+  </div>
+  <div id="audit-grid" class="grid grid-tall" data-testid="audit-log-grid"></div>
+</section>
+
+<button class="chat-fab btn" id="chat-open" data-testid="chat-open" aria-controls="chat" aria-expanded="false">Ask SubGuard</button>
+<aside class="chat" id="chat" aria-label="Chat with SubGuard" hidden>
+  <header class="chat-head">
+    <strong>SubGuard chat</strong>
+    <span class="badge badge-llm" data-testid="chat-provider">{{ llm.name }} · {{ llm.model }}</span>
+    <button class="btn btn-ghost btn-sm" id="chat-close" aria-label="Close chat">✕</button>
+  </header>
+  <div class="chat-log" id="chat-log" aria-live="polite"></div>
+  <div class="chat-suggest" id="chat-suggest">
+    <button class="btn btn-ghost btn-sm">Is it still worth it? I barely used it.</button>
+    <button class="btn btn-ghost btn-sm">Should I switch to yearly?</button>
+    <button class="btn btn-ghost btn-sm">Cancel Penwright</button>
+  </div>
+  <form class="chat-form" id="chat-form">
+    <label class="sr-only" for="chat-input">Message</label>
+    <input id="chat-input" data-testid="chat-input" autocomplete="off" placeholder="Ask about your subscriptions…">
+    <button class="btn" data-testid="chat-send">Send</button>
+  </form>
+</aside>
+
+<dialog id="confirm-dialog" class="dialog" aria-labelledby="confirm-title"></dialog>
+{% endblock %}
+{% block scripts %}
+<script src="/static/dashboard.js"></script>
+<script src="/static/chat.js"></script>
 {% endblock %}

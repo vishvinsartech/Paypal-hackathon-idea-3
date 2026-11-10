@@ -171,6 +171,18 @@ async def renewal_reminders(svc: Services, day: int) -> None:
                          actions=[action("keep", "Keep"), action("cancel", "Cancel")], subscription_id=sub.id)
 
 
+async def scheduled_reminders(svc: Services, day: int) -> None:
+    """Reminders the chat agent scheduled (schedule_reminder tool)."""
+    for rem in [r for r in svc.store.load("state").reminders if not r.sent and r.day <= day]:
+        sub = svc.sub(rem.subscription_id)
+        name = svc.merchant(sub.merchant_id).name if sub else "your subscription"
+        await send_alert(svc, user_id=rem.user_id, key=f"chat-reminder:{rem.id}", kind="reminder_note",
+                         level="info", title=f"Reminder: {name}", body=rem.note or f"You asked me to remind you "
+                         f"about {name} today.", subscription_id=rem.subscription_id)
+        async with svc.store.aedit("state") as state:
+            next(r for r in state.reminders if r.id == rem.id).sent = True
+
+
 async def tick(svc: Services, day: int) -> None:
     await sync_statuses(svc)
     await watch_prices(svc)
@@ -178,3 +190,4 @@ async def tick(svc: Services, day: int) -> None:
     await layer2_urgent(svc, day)
     await billing_day(svc, day)
     await renewal_reminders(svc, day)
+    await scheduled_reminders(svc, day)

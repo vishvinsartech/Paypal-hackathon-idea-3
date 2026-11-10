@@ -103,3 +103,55 @@ def test_demo_reset(client: TestClient) -> None:
 def test_static_assets(client: TestClient) -> None:
     for path in ("/static/app.css", "/static/app.js", "/static/shield.svg", "/shop/static/shop.css"):
         assert client.get(path).status_code == 200
+
+
+DASHBOARD_TESTIDS = ("brand", "mode-badge", "view-shop", "kpi-protected", "demo-open-shop", "timeline", "sim-plus-1",
+                     "sim-jump-5", "sim-jump-6", "sim-jump-15", "sim-jump-21", "sim-jump-27", "sim-price-rise",
+                     "subs-grid", "audit-log-grid", "audit-log-export", "chat-open", "chat-input", "chat-send")
+
+
+def test_dashboard_selector_contract(client: TestClient) -> None:
+    """Static part of the selector contract (spec 7.5); the rest is rendered by JS (scripts/ui_check.py)."""
+    text = client.get("/?demo=1").text
+    for testid in DASHBOARD_TESTIDS:
+        assert f'data-testid="{testid}"' in text, testid
+    bar = re.compile(r'<section[^>]*id="demo-bar"[^>]*>')
+    assert "hidden" not in bar.search(text).group(0)  # type: ignore[union-attr]
+    assert "hidden" in bar.search(client.get("/").text).group(0)  # type: ignore[union-attr]  # hidden without ?demo=1
+    assert re.search(r'src="https://cdn\.jsdelivr\.net/npm/ag-grid-community@\d+\.\d+\.\d+/', text)  # pinned
+    js = "".join(client.get(f"/static/{f}").text for f in ("app.js", "dashboard.js", "grids.js", "chat.js"))
+    for testid in ("toast-alert", "addon-remove-yes", "alert-price-rise", "alert-keep", "alert-cancel",
+                   "blocked-charge", "timer-chip", "risk-score", "cancellation-notice", "confirm-card",
+                   "confirm-button", "chat-done", "status-"):
+        assert testid in js, testid
+
+
+def test_view_subscriptions(demo_client: TestClient) -> None:
+    rows = demo_client.get("/api/view/subscriptions?user=priya").json()["rows"]
+    assert [(r["merchant"], r["status"], r["price_text"]) for r in rows] == [("Framewise", "ACTIVE", "$12/mo")]
+    assert rows[0]["next_charge_text"] == "Day 25 · $12"
+
+
+def test_view_penwright_timeline_fields(demo_client: TestClient) -> None:
+    from tests.story_helpers import subscribe
+
+    subscribe(demo_client, "penwright", "penwright-pro")
+    row = next(r for r in demo_client.get("/api/view/subscriptions?user=priya").json()["rows"]
+               if r["merchant_id"] == "penwright")
+    days = (row["trial_end_day"], row["deadline_day"], row["timer"]["fire_day"], row["next_billing_day"])
+    assert days == (14, 7, 6, 15)
+    assert row["timer_text"] == "Cancel on Day 6 unless you keep it" and row["step_up_text"] == "$49.99"
+    assert abs(row["risk"] - 87) <= 5
+
+
+def test_subscription_page(demo_client: TestClient) -> None:
+    from tests.story_helpers import subscribe
+
+    main, _ = subscribe(demo_client, "penwright", "penwright-pro")
+    text = demo_client.get(f"/subscriptions/{main['id']}?user=priya").text
+    for snippet in ('data-testid="risk-score"', 'id="findings-grid"', 'id="findings-data"', "Page says vs PayPal plan",
+                    "Consent snapshot", 'id="sub-audit-grid"', "Real cancel deadline: <strong>Day 7</strong>"):
+        assert snippet in text, snippet
+    assert "PROMPT_INJECTION_ATTEMPT" in text  # in the findings JSON
+    assert demo_client.get(f"/subscriptions/{main['id']}?user=john").status_code == 404  # R5
+    assert demo_client.get("/subscriptions/nope?user=priya").status_code == 404

@@ -185,6 +185,36 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   simulated `charge_due` and moves to the next cycle; a CANCELLED one logs `charge_blocked` and gets the
   "First charge due today: blocked" alert. The R4 rate limit is kept in process memory (1 worker, D-020).
 
+## UI + chat agent (milestone 6)
+
+- **D-060 AG Grid version.** AG Grid Community **36.2.0** (UMD bundle from jsDelivr, pinned). 36.3.0 was the npm
+  `latest` but less than a week old on 2026-11-10, so we took the newest release older than two weeks. API checked
+  in the bundle: `agGrid.createGrid`, `themeQuartz.withParams` (theming API, no CSS file), `setGridOption`
+  (`rowData`, `quickFilterText`), `exportDataAsCsv`. `grids.js` also calls
+  `ModuleRegistry.registerModules([AllCommunityModule])` defensively. No Enterprise features, no licence key.
+- **D-061 Chat history lives in the browser.** `/api/chat` is stateless: the page sends the previous turns as plain
+  text (last 12), and tool traffic is not replayed. No chat storage on the server; every tool call and LLM call
+  is in the audit log (provider, model, latency, tokens, never the prompt).
+- **D-062 Mock chat = small script interpreter.** `data/fixtures/llm/chat.json` scripts are tool-call steps plus a
+  final `say` template whose `{tool.field}` slots are filled only from tool results (R7). The mock picks the
+  subscription by the script's merchant or by matching words in the message. Two or more matches -> a clarifying
+  question (corner case 33). Any other message gets the "mock mode" fallback.
+- **D-063 Unknown tools are policy blocks.** A model calling a tool that isn't in `tools_schema.py` (e.g. a direct
+  `cancel_subscription`) gets an error result and an audited R1 `blocked` decision. Ownership errors inside
+  tools are audited as R5 blocks; `propose_cancel` goes through the same `issue_token` checks (R4/R5).
+- **D-064 Evidence view = live page, not a screenshot.** In mock mode the capture is static HTML (no screenshot),
+  so `/subscriptions/{id}` shows the merchant page in a same-origin iframe with each finding's
+  `evidence_testid` outlined in red. Hidden text (the injection line) can't be outlined and is listed in the
+  findings grid instead.
+- **D-065 Alerts become "handled" when their subscription is cancelled.** After a successful cancel, open alerts
+  for that subscription that offer keep/cancel/remove-add-on buttons are acknowledged, so stale buttons
+  disappear. The "Done" alert (Restart trial) is created later and stays actionable.
+- **D-066 `schedule_reminder`** stores `Reminder`s in `state.json` (no new file). `tick()` sends each one once, as
+  an info alert, on its day.
+- **D-067 Browser check.** `python scripts/tasks.py ui-check` (`scripts/ui_check.py`) starts its own mock server on
+  a free port with a throwaway `DATA_DIR`, drives Story A through the real UI with Playwright, and fails on any
+  console error. It needs the CDN, so it isn't part of `pytest`.
+
 ## Not used in v1 (sponsor tools)
 
 - **Bryntum:** a CSS timeline is enough for a prototype.

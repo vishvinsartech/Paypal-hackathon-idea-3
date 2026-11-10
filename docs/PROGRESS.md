@@ -30,8 +30,14 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
     PayPal write), checking actors and rule ids in the audit log. `tests/test_policy.py` covers R1-R7 plus
     corner cases 4, 5, 10, 11, 12, 13, 14, 29-32, 34, 36. 157 tests pass; ruff clean. Also ran Story A against
     a live mock server over HTTP (startup demo seed, outbox files, audit chain verified, no log errors).
-- [ ] **6. UI (AG Grid) + chat agent.**
+- [x] **6. UI (AG Grid) + chat agent.**
   - *Check:* the full Story A works in mock mode in the browser with no console errors; the chat produces a confirmation card for Framewise with **$228/yr**; the audit log grid exports CSV.
+  - Done 2026-11-10 (commit `9d77d13`). `python scripts/tasks.py ui-check` drove Story A through the real UI in
+    headless Chromium: shop -> companion (risk 87) -> add-on removed via confirm card -> timer chip "Day 6" ->
+    Day 5 toast -> Day 6 CANCELLED + notice -> Day 15 blocked charge -> Day 21 price-rise alert -> chat
+    "$228/yr" card -> confirmed -> KPI **$872.76/yr** -> audit-log CSV downloaded (chain verified) ->
+    subscription page. No console errors. 173 tests pass (16 new: `test_chat.py` + page tests); ruff clean.
+    AG Grid Community 36.2.0 pinned (D-060). **Not verified live:** the chat with a real Anthropic/OpenAI model.
 - [ ] **7. Tests and hardening.**
   - *Check:* `test_scenario.py` runs Story A + B end to end in mock mode and asserts **$872.76**; every corner case in section 8 has a test or a doc note; optional `@pytest.mark.sandbox` smoke test (skipped without credentials); ruff is clean.
 - [ ] **8. Sponsor wiring.** Zapier (real hook in sandbox + outbox in mock), `render.yaml` + deploy.
@@ -42,6 +48,18 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
   - *Check:* every item in section 15 "Definition of done" is satisfied.
 
 ## Notes for next session
+
+### Milestone 6 notes (2026-11-10)
+- UI: `app/static/app.js` (window.SG: api, toast, confirm card, refresh fan-out), `dashboard.js` (KPIs, alerts,
+  timeline, notices, demo bar, 5 s polling), `grids.js` (all AG Grid code), `chat.js` (SSE over fetch).
+  View model for the grid/timeline: `GET /api/view/subscriptions?user=` (`app/routes/views.py`).
+- Chat: `app/core/agent.py` (loop, max 8 steps, audit `llm_call`), `app/core/chat_tools.py` (tools, R5 checks),
+  `app/routes/chat.py` (`POST /api/chat` SSE: text / tool / card / done / error events), mock scripts in
+  `app/llm/mock_chat.py` + `data/fixtures/llm/chat.json`.
+- Selector contract: every id is present (static in templates, the rest rendered by JS); `scripts/ui_check.py`
+  exercises most of them, which is useful for milestone 9's `check_scenes.py`. `--shots DIR` saves screenshots.
+- Duplicate test ids by design: `alert-keep` / `alert-cancel` appear on several alerts, so scope them inside
+  `alert-price-rise` in the video recorder.
 
 ### Milestone 5 notes (2026-11-10)
 - Core: `app/core/services.py` (`Services` = settings, store, gateway, notifier, policy; on `app.state.services`),

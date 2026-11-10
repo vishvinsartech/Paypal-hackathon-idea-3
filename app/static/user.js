@@ -56,7 +56,9 @@
   async function tick(force) {
     if (!force && (document.hidden || document.querySelector("dialog[open]"))) return;
     try {
-      const html = await (await fetch(location.href, {headers: {Accept: "text/html"}})).text();
+      const url = new URL(location.href);
+      url.searchParams.set("live", "1"); // marks the background refresh, so the terminal log can skip it
+      const html = await (await fetch(url, {headers: {Accept: "text/html"}})).text();
       const doc = new DOMParser().parseFromString(html, "text/html");
       document.querySelectorAll("[data-live]").forEach((el) => {
         const fresh = doc.getElementById(el.id);

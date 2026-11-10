@@ -327,6 +327,7 @@ Everything comes from `.env`. Every variable is documented in [`.env.example`](.
 | `PAYPAL_SANDBOX_BUYER_EMAIL` / `_PASSWORD` | – | Personal sandbox account for auto-approval |
 | `PAYPAL_WEBHOOK_ID` | – | Optional webhook signature verification |
 | `ZAPIER_CATCH_HOOK_URL` | – | Optional; empty means notifications go to `data/runtime/outbox/` |
+| `LOG_ALL_REQUESTS` | `false` | `true` prints every request in the terminal; by default background polling (successful GETs to `/api/*`, static files, `/healthz`) is hidden, and page loads, POSTs and errors still show |
 | `DEMO_SEED` | `true` | On first start / reset (both modes): script userA's Penwright usage (opened twice) |
 | `PENWRIGHT_*`, `DEMO_CURRENCY` | spec values | Demo prices and terms |
 

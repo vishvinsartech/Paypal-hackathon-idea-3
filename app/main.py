@@ -13,6 +13,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.access_log import quiet_access_log
 from app.config import ROOT_DIR, ConfigError, Settings, load_settings
 from app.core.audit_log import mask_secrets
 from app.core.auditor import Auditor
@@ -71,6 +72,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             log.error(str(exc))
             raise SystemExit(str(exc)) from None
 
+    quiet_access_log(not settings.log_all_requests)  # hide the dashboards' background polling (app/access_log.py)
     store = JsonStore(settings.runtime_dir, settings.seed_dir, app_mode=settings.app_mode, pricing=settings.pricing)
     gateway = build_gateway(settings, store)
 

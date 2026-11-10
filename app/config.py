@@ -50,6 +50,7 @@ class Settings(BaseSettings, PricingFields):
     repo_url: str = "https://github.com/vishvinsartech/Paypal-hackathon-idea-3"  # footer "GitHub" + "MIT license" links
 
     zapier_catch_hook_url: str = ""
+    log_all_requests: bool = False  # true: show every request in the terminal, including background polling
     demo_seed: bool = True  # mock mode: script userA's Penwright usage on first start / reset
     render_api_key: str = ""
 

@@ -1,7 +1,7 @@
 """Approve sandbox subscriptions as the sandbox personal buyer, with Playwright (sandbox only).
 
-Used by `make seed --demo-subs`, the sandbox UI check, and the live demo's Start button (D-116), where a visible
-browser window logs in and approves so the judges see PayPal's real consent page without anyone typing.
+Used by `make seed --demo-subs` and the sandbox UI check (`approve_all`: logs in and clicks consent), and by the
+live demo (`open_for_confirmation`, D-117): a visible window logs in as the buyer and a person confirms.
 
 PayPal only lets the buyer approve a subscription, on PayPal's own page. This logs in with
 PAYPAL_SANDBOX_BUYER_EMAIL / _PASSWORD and clicks the consent button. Selectors are PayPal's sandbox
@@ -12,7 +12,9 @@ from __future__ import annotations
 
 import asyncio
 import re
+from collections.abc import Awaitable, Callable
 from pathlib import Path
+from typing import Literal
 
 from playwright.async_api import Error as PwError
 from playwright.async_api import Page, async_playwright
@@ -21,6 +23,8 @@ from playwright.async_api import TimeoutError as PwTimeout
 RETURN_URL = "http://127.0.0.1:8000/shop/sandbox-return"
 CANCEL_URL = "http://127.0.0.1:8000/shop/sandbox-cancel"
 RETURN_RE = re.compile(r"^http://127\.0\.0\.1:8000/shop/sandbox-return")
+CANCEL_RE = re.compile(r"^http://127\.0\.0\.1:8000/shop/sandbox-cancel")
+SANDBOX_REDIRECTS = re.compile(r"^http://127\.0\.0\.1:8000/shop/sandbox-")
 CONSENT = re.compile(r"agree|subscribe|continue", re.I)
 
 
@@ -95,7 +99,7 @@ async def approve_all(urls: list[str], email: str, password: str, *, headed: boo
     async with async_playwright() as pw:
         browser = await pw.chromium.launch(headless=not headed, slow_mo=slow_mo)
         context = await browser.new_context()
-        await context.route(re.compile(r"^http://127\.0\.0\.1:8000/shop/sandbox-"),
+        await context.route(SANDBOX_REDIRECTS,
                             lambda route: route.fulfill(status=200, body="SubGuard sandbox return"))
         page = await context.new_page()
         for i, url in enumerate(urls):
@@ -114,3 +118,66 @@ async def approve_all(urls: list[str], email: str, password: str, *, headed: boo
                 results.append(False)
         await browser.close()
     return results
+
+
+ConfirmOutcome = Literal["approved", "cancelled", "closed", "timeout"]
+WINDOW_ARGS = ["--window-size=1000,860", "--window-position=160,60"]
+
+
+async def open_for_confirmation(url: str, email: str, password: str, *, timeout_s: float = 300,
+                                slow_mo: float = 60, headless: bool = False,
+                                presenter: Callable[[Page], Awaitable[None]] | None = None) -> ConfirmOutcome:
+    """Live demo (D-117): open PayPal's approval page in a visible window, log in as the sandbox buyer, then
+    wait for a PERSON to confirm. Nothing here clicks the consent button.
+
+    Returns "approved" (PayPal redirected back), "cancelled" ("Cancel and return"), "closed" (window closed)
+    or "timeout". The window closes itself afterwards. `headless` and `presenter` (a coroutine that plays the
+    person on the logged-in page) exist only for scripted checks; the live demo never passes them.
+    """
+    async with async_playwright() as pw:
+        browser = await pw.chromium.launch(headless=headless, slow_mo=slow_mo, args=WINDOW_ARGS)
+        try:
+            context = await browser.new_context(no_viewport=True)
+            await context.route(SANDBOX_REDIRECTS, lambda route: route.fulfill(
+                status=200, content_type="text/html",
+                body="<p style='font:16px system-ui;padding:24px'>Done. Back to SubGuard…</p>"))
+            page = await context.new_page()
+            await page.goto(url, wait_until="domcontentloaded", timeout=60000)
+            await page.bring_to_front()
+            if await _visible(page, "#email, #password", 8000):
+                await _login(page, email, password)
+            acting = asyncio.create_task(presenter(page)) if presenter else None
+            try:
+                return await _wait_for_person(page, timeout_s)
+            finally:
+                if acting:
+                    acting.cancel()
+        finally:
+            try:
+                await browser.close()
+            except PwError:
+                pass  # the person already closed it
+
+
+async def _wait_for_person(page: Page, timeout_s: float) -> ConfirmOutcome:
+    loop = asyncio.get_running_loop()
+    end, checked_url = loop.time() + timeout_s, ""
+    while loop.time() < end:
+        if page.is_closed():
+            return "closed"
+        url = page.url
+        if RETURN_RE.match(url):
+            await asyncio.sleep(0.8)  # let the "Done" note show for a moment
+            return "approved"
+        if CANCEL_RE.match(url):
+            return "cancelled"
+        if url != checked_url:
+            checked_url = url
+            try:
+                if SELLER_LOGIN in (await page.content()):
+                    raise RuntimeError("PAYPAL_SANDBOX_BUYER_EMAIL is the sandbox BUSINESS (seller) account; "
+                                       "PayPal needs a separate sandbox PERSONAL account to approve")
+            except PwError:
+                pass  # navigating or closed; look again
+        await asyncio.sleep(0.5)
+    return "timeout"

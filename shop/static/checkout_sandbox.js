@@ -65,14 +65,29 @@
     }).render(container);
   }
 
-  // Live demo (D-116, the window the Start button opened): no PayPal button to click. The server approves as the
-  // sandbox buyer in its own visible browser window, then this page shows the live PayPal card.
-  async function autoApprove() {
+  // Live demo (D-117, the window the Start button opened): a "Subscribe with PayPal" button. Clicking it has the
+  // server open PayPal's approval page in its own window, already logged in as the sandbox buyer (from .env);
+  // the presenter confirms there. A real PayPal pop-up can't be filled in from this page (other site).
+  function demoButton() {
     slot.innerHTML = "";
-    status.textContent = "Live demo: a separate browser window logs in to PayPal as the sandbox buyer and approves…";
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "paypal-btn";
+    b.dataset.testid = "demo-subscribe";
+    b.textContent = "Subscribe with PayPal";
+    slot.appendChild(b);
+    status.textContent = "Click Subscribe: PayPal opens logged in as the sandbox buyer, and you confirm there.";
+    b.addEventListener("click", () => demoSubscribe(b));
+    window.dispatchEvent(new CustomEvent("subguard:demo-ready"));
+  }
+
+  async function demoSubscribe(b) {
+    b.disabled = true;
+    status.textContent = "PayPal is open in a separate window, logged in as the sandbox buyer. Confirm the " +
+      "subscription there…";
     window.dispatchEvent(new CustomEvent("subguard:demo-approving"));
     try {
-      const res = await fetch("/api/checkout/demo-auto-approve", {
+      const res = await fetch("/api/checkout/demo-paypal-window", {
         method: "POST", headers: {"Content-Type": "application/json"},
         body: JSON.stringify({merchant_id: area.dataset.merchant, plan_key: area.dataset.planKey, user_id: user,
           review_id: area.dataset.reviewId || null}),
@@ -82,8 +97,9 @@
       done(data);
       window.dispatchEvent(new CustomEvent("subguard:demo-subscribed", {detail: data}));
     } catch (err) {
-      status.textContent = "Automatic PayPal approval failed: " + err.message;
-      window.dispatchEvent(new CustomEvent("subguard:demo-error", {detail: err.message}));
+      status.textContent = err.message + " Click Subscribe to try again.";
+      b.disabled = false;
+      window.dispatchEvent(new CustomEvent("subguard:demo-retry", {detail: err.message}));
     }
   }
 
@@ -93,7 +109,7 @@
       window.dispatchEvent(new CustomEvent("subguard:demo-error", {detail: "No sandbox plan yet. Run make seed."}));
       return;
     }
-    if (window.SG_AUTODEMO) return autoApprove();
+    if (window.SG_AUTODEMO) return demoButton();
     try {
       const paypal = await loadSdk();
       slot.innerHTML = "";

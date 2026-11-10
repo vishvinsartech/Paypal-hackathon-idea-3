@@ -15,7 +15,7 @@
   const banner = document.createElement("p");
   banner.className = "autodemo-banner";
   banner.setAttribute("role", "status");
-  banner.textContent = "Live demo: this window plays userA. It closes by itself when the trial is set up.";
+  banner.textContent = "Live demo: this window plays userA. It closes by itself once you confirm in PayPal.";
   banner.style.cssText = "position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:10000;margin:0;" +
     "padding:8px 14px;border-radius:999px;background:#0f1f3a;color:#e8eef8;font:600 13px system-ui,sans-serif;" +
     "box-shadow:0 6px 20px rgba(0,0,0,.35)";
@@ -30,11 +30,20 @@
   });
   window.addEventListener("subguard:review-error", (ev) => tell({stage: "error",
     message: "SubGuard couldn't check the Penwright page: " + ev.detail}));
+  window.addEventListener("subguard:demo-ready", () => {
+    window.focus();
+    const b = document.querySelector("[data-testid=demo-subscribe]");
+    if (b) b.scrollIntoView({behavior: "smooth", block: "center"});
+    tell({stage: "ready"});
+  });
   window.addEventListener("subguard:demo-approving", () => tell({stage: "approving"}));
+  window.addEventListener("subguard:demo-retry", (ev) => tell({stage: "retry", message: ev.detail}));
   window.addEventListener("subguard:demo-error", (ev) => tell({stage: "error", message: ev.detail}));
   window.addEventListener("subguard:demo-subscribed", async (ev) => {
+    window.focus();
     tell({stage: "subscribed", sub: ev.detail});
     await sleep(CARD_MS);
+    try { window.opener.focus(); } catch (e) { /* the browser may not allow it */ }
     window.close();
   });
 

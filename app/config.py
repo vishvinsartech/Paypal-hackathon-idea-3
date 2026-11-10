@@ -45,7 +45,6 @@ class Settings(BaseSettings, PricingFields):
     paypal_merchant_mode: Literal["single", "partner"] = "single"
     paypal_sandbox_buyer_email: str = ""
     paypal_sandbox_buyer_password: str = ""
-    demo_approve_headed: bool = True  # live demo Start (sandbox): show the browser that approves as the buyer
     paypal_webhook_id: str = ""
     paypal_autopay_url: str = "https://www.sandbox.paypal.com/myaccount/autopay/"
     repo_url: str = "https://github.com/vishvinsartech/Paypal-hackathon-idea-3"  # footer "GitHub" + "MIT license" links

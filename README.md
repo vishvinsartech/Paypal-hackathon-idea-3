@@ -228,13 +228,16 @@ PayPal returns them (10-day trial $0, 3 x $24.99, then $49.99). The same card is
 it shows **CANCELLED**, again read from PayPal, plus **View in PayPal sandbox**, a link to the buyer's Automatic
 payments page (`PAYPAL_AUTOPAY_URL`).
 
-**Live demo in sandbox mode:** open http://127.0.0.1:8000/?demo=1 and press **▶ Start demo**. Penwright opens
-in a new window (allow pop-ups for 127.0.0.1) and plays userA. It opens the Terms and clicks PayPal, the
-SubGuard companion's review (real AI) stays on screen for a few seconds, then it continues to PayPal. A second
-browser window logs in to PayPal **as your Personal sandbox account and approves on PayPal's real page**, with
-no typing (it uses `PAYPAL_SANDBOX_BUYER_EMAIL` / `_PASSWORD`; set `DEMO_APPROVE_HEADED=false` to hide it). The
-Penwright window shows "Subscribed via PayPal ✓" (ACTIVE), closes itself, and the live demo carries on: safety
-timer, the days, the Day 5 **Keep / Cancel** question, then Day 11. It takes about a minute to reach ACTIVE.
+**Live demo in sandbox mode:** open http://127.0.0.1:8000/?demo=1 and press **▶ Start demo**.
+1. Penwright opens in a new window (allow pop-ups for 127.0.0.1) and plays userA. It opens the Terms and clicks
+   PayPal. The SubGuard companion's review (real AI) stays on screen for a few seconds, then it continues.
+2. Click **Subscribe with PayPal** in the Penwright window. PayPal's confirmation page opens in its own window,
+   **already logged in** as your Personal sandbox account (`PAYPAL_SANDBOX_BUYER_EMAIL` / `_PASSWORD`).
+3. Confirm it yourself: **Continue**, then **Agree & Subscribe**. The PayPal window closes, Penwright shows
+   "Subscribed via PayPal ✓" (ACTIVE) and closes too, and the live demo carries on: safety timer, the days,
+   the Day 5 **Keep / Cancel** question, then Day 11.
+
+If you close PayPal's window or choose "Cancel and return", nothing is set up; click Subscribe again.
 
 ### What's real and what's simulated
 

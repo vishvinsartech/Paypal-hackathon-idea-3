@@ -72,6 +72,11 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
 
 ## Notes for next session
 
+### Sandbox Start: the presenter confirms in PayPal (2026-11-11)
+- No auto-approve: the Penwright window's **Subscribe with PayPal** opens PayPal already logged in as the sandbox
+  buyer, and the presenter confirms there (D-117). Real sandbox run with a scripted presenter: Subscribe at
+  17 s, ACTIVE at 54 s, the window closed, the Day 5 check-in, Cancel, PayPal CANCELLED, no console errors.
+
 ### Start demo in sandbox mode (2026-11-11)
 - Start opens Penwright in its own window, which reviews the page, approves the real sandbox subscription as the
   buyer automatically, shows the PayPal card and closes. The control room then runs the rest of the story

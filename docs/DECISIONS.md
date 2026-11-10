@@ -469,6 +469,17 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   whichever consent button PayPal shows ("Continue", then "Agree & Subscribe") until the redirect: about 28 s
   instead of about 115 s. The demo seed (scripted usage only) now runs in both modes, so the check-in says
   "opened it twice" in sandbox mode too, and zero usage reads "You haven't opened it yet."
+- **D-117 The presenter confirms in PayPal (replaces D-116's auto-approve).** After the companion's Continue,
+  the Penwright window shows **Subscribe with PayPal** and waits for a click. `POST
+  /api/checkout/demo-paypal-window` (sandbox only, one at a time) creates the subscription and opens PayPal's
+  approval page in a visible browser window that logs in with `PAYPAL_SANDBOX_BUYER_*`. It then waits up to 5
+  minutes for a person to click Continue / Agree & Subscribe; SubGuard never clicks consent. A popup from the
+  page itself can't be filled in, because PayPal's login is on another site, so the window is a separate
+  Playwright browser. Outcomes: approved (PayPal redirected back), so it waits for ACTIVE and registers;
+  "Cancel and return", window closed, or timeout give a 409 with a plain message and nothing registered.
+  Subscribe can be clicked again, and the control room shows each stage. Audited as `demo_paypal_window` with
+  the outcome. `DEMO_APPROVE_HEADED` is removed. `open_for_confirmation(headless=, presenter=)` exist only for
+  scripted checks.
 
 ## Not used in v1 (sponsor tools)
 

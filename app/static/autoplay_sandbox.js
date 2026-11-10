@@ -1,7 +1,7 @@
-// "Start demo" in sandbox mode (D-116), steps 1-2 of the stepper. Penwright opens in its own window and plays
-// userA: the SubGuard companion reviews the page (real LLM), "Continue to PayPal", and the server approves the
-// real sandbox subscription as the sandbox buyer in a visible browser (no typing in front of the judges). The
-// window reports each stage here with postMessage, shows the live PayPal card, and closes itself.
+// "Start demo" in sandbox mode (D-116/D-117), steps 1-2 of the stepper. Penwright opens in its own window and
+// plays userA: the SubGuard companion reviews the page (real LLM) and "Continue to PayPal". The presenter clicks
+// "Subscribe with PayPal" and confirms in PayPal's window, which opens already logged in as the sandbox buyer.
+// The window reports each stage here with postMessage, shows the live PayPal card, and closes itself.
 (function () {
   "use strict";
   window.SGSandboxStart = function (win, ui) {
@@ -23,10 +23,16 @@
           review = d.review;
           mark("read", "done", `Risk ${review.risk_score} · cancel by Day ${review.deadlines.real_cancel_deadline_day}`);
           say(esc(review.summary || ""));
+        } else if (d.stage === "ready") {
+          mark("approve", "active", "click Subscribe");
+          say("In the Penwright window, click <strong>Subscribe with PayPal</strong>.");
         } else if (d.stage === "approving") {
-          mark("approve", "active", "PayPal sandbox…");
-          say("userA continues to PayPal. The sandbox buyer logs in and agrees on PayPal's real page " +
-            "(automated for the live demo)…");
+          mark("approve", "active", "confirm in PayPal");
+          say("PayPal's window is open, logged in as userA's sandbox account. <strong>Confirm the subscription " +
+            "there</strong>; the demo continues here once PayPal says yes.");
+        } else if (d.stage === "retry") {
+          mark("approve", "active", "not confirmed");
+          say(esc(d.message) + " Click <strong>Subscribe with PayPal</strong> in the Penwright window to try again.");
         } else if (d.stage === "subscribed") {
           finish();
           mark("approve", "done", `PayPal ${d.sub.status}`);

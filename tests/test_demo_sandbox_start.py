@@ -1,7 +1,8 @@
-"""Start demo in sandbox mode (D-116): Penwright window -> companion -> server approves as the sandbox buyer.
+"""Start demo in sandbox mode (D-116/D-117): Penwright window -> companion -> the presenter clicks Subscribe ->
+PayPal's page opens logged in as the sandbox buyer -> the presenter confirms -> registered.
 
-The mock PayPal stands in for the sandbox here and the buyer's browser is faked; the real path is checked by hand
-and by scripts/sandbox_ui_check.py. The app is flipped to sandbox mode after start-up, keeping the mock gateway.
+The mock PayPal stands in for the sandbox here and the PayPal window is faked; the real path is checked by hand.
+The app is flipped to sandbox mode after start-up, keeping the mock gateway.
 """
 
 from __future__ import annotations
@@ -33,32 +34,33 @@ def set_buyer(c: TestClient, **values: str) -> None:
         setattr(c.app.state.services.settings, k, v)  # type: ignore[attr-defined]
 
 
-def fake_buyer(c: TestClient, ok: bool = True) -> list[dict[str, Any]]:
-    """Replace the Playwright buyer: approve the newest pending mock subscription, like PayPal's consent click."""
+def fake_window(c: TestClient, outcome: str = "approved") -> list[dict[str, Any]]:
+    """Replace PayPal's window: on "approved", approve the newest pending mock subscription, as the presenter's
+    confirmation would."""
     calls: list[dict[str, Any]] = []
     gw = c.app.state.services.gw  # type: ignore[attr-defined]
 
-    async def approve_all(urls: list[str], email: str, password: str, **kw: Any) -> list[bool]:
-        calls.append({"urls": urls, "email": email, **kw})
-        if ok:
+    async def open_for_confirmation(url: str, email: str, password: str, **kw: Any) -> str:
+        calls.append({"url": url, "email": email, **kw})
+        if outcome == "approved":
             state = c.app.state.services.store.load("mock_paypal")  # type: ignore[attr-defined]
             pending = [s for s in state.subscriptions.values() if s.status == "APPROVAL_PENDING"]
             await gw.mock_approve(pending[-1].id, Ctx(actor="user"))
-        return [ok]
+        return outcome
 
-    buyer.approve_all = approve_all  # type: ignore[assignment]  # restored by the autouse fixture
+    buyer.open_for_confirmation = open_for_confirmation  # type: ignore[assignment]  # restored by the fixture
     return calls
 
 
 @pytest.fixture(autouse=True)
 def restore_buyer() -> Iterator[None]:
-    original = buyer.approve_all
+    original = buyer.open_for_confirmation
     yield
-    buyer.approve_all = original  # type: ignore[assignment]
+    buyer.open_for_confirmation = original  # type: ignore[assignment]
 
 
 def start(c: TestClient, **body: Any) -> Any:
-    return c.post("/api/checkout/demo-auto-approve", json={"user_id": "usera", **body})
+    return c.post("/api/checkout/demo-paypal-window", json={"user_id": "usera", **body})
 
 
 def test_mock_mode_refuses(client: TestClient) -> None:
@@ -72,10 +74,10 @@ def test_needs_the_buyer_account(sandbox_client: TestClient) -> None:
     assert res.status_code == 400 and "PAYPAL_SANDBOX_BUYER_EMAIL" in res.text
 
 
-def test_approves_as_buyer_and_registers(sandbox_client: TestClient) -> None:
+def test_confirmed_in_paypal_window_registers(sandbox_client: TestClient) -> None:
     c = sandbox_client
     set_buyer(c)
-    calls = fake_buyer(c)
+    calls = fake_window(c)
     review = c.post("/api/review/preflight", json={"merchant_url": "/shop/penwright", "plan_key": "penwright-pro",
                                                    "user_id": "usera"}).json()
     res = start(c, review_id=review["review_id"])
@@ -83,23 +85,25 @@ def test_approves_as_buyer_and_registers(sandbox_client: TestClient) -> None:
     sub = res.json()
     assert sub["status"] == "ACTIVE" and sub["owner_id"] == "usera" and sub["merchant_id"] == "penwright"
     (call,) = calls
-    assert call["email"] == "buyer@personal.example" and call["headed"] is True and call["slow_mo"] > 0
+    assert call["email"] == "buyer@personal.example" and call["timeout_s"] >= 120
     (timer,) = [t for t in c.get("/api/timers?user=usera").json() if t["subscription_id"] == sub["id"]]
     assert (timer["reminder_day"], timer["fire_day"]) == (5, 6)
-    (row,) = audit(c, "demo_auto_approve")
+    (row,) = audit(c, "demo_paypal_window")
     assert row["result"] == "ok" and row["details"]["paypal_id"] == sub["paypal_id"]
     assert row["details"]["buyer"] == "b***@personal.example" and "pw" not in str(row)
     assert audit(c, "paypal_subscription_created")
 
 
-def test_failed_approval_registers_nothing(sandbox_client: TestClient) -> None:
+@pytest.mark.parametrize(("outcome", "text"), [("closed", "window was closed"), ("cancelled", "Cancel and return"),
+                                               ("timeout", "5 minutes")])
+def test_not_confirmed_registers_nothing(sandbox_client: TestClient, outcome: str, text: str) -> None:
     c = sandbox_client
     set_buyer(c)
-    fake_buyer(c, ok=False)
+    fake_window(c, outcome)
     res = start(c)
-    assert res.status_code == 502 and "approve-shots" in res.json()["error"]
+    assert res.status_code == 409 and text in res.json()["error"] and res.json()["outcome"] == outcome
     assert c.get("/api/subscriptions?user=usera").json() == []
-    assert audit(c, "demo_auto_approve")[0]["result"].startswith("error:")
+    assert audit(c, "demo_paypal_window")[0]["result"] == f"not_confirmed:{outcome}"
 
 
 def test_pages_wire_the_sandbox_start(sandbox_client: TestClient) -> None:
@@ -108,12 +112,14 @@ def test_pages_wire_the_sandbox_start(sandbox_client: TestClient) -> None:
     btn = html.split('id="demo-start"', 1)[1].split(">", 1)[0]
     assert 'data-sandbox="1"' in btn and "disabled" not in btn
     assert html.index("/static/autoplay_sandbox.js") < html.index("/static/autoplay.js")
-    assert "the buyer login is automatic" in html
+    assert "already logged in as the sandbox buyer" in html
     shop = c.get("/shop/penwright").text
     assert shop.index("/shop/static/autodemo.js") < shop.index("/shop/static/checkout_sandbox.js")
     js = c.get("/shop/static/autodemo.js").text
     assert 'get("autodemo") !== "1"' in js and "window.close()" in js and "location.origin" in js
-    assert "demo-auto-approve" in c.get("/shop/static/checkout_sandbox.js").text
+    checkout = c.get("/shop/static/checkout_sandbox.js").text
+    assert "demo-paypal-window" in checkout and 'b.textContent = "Subscribe with PayPal"' in checkout
+    assert "consent" not in c.get("/shop/static/autodemo.js").text.lower()  # the presenter confirms, not a script
     assert "subguard:review" in c.get("/static/companion.js").text
 
 

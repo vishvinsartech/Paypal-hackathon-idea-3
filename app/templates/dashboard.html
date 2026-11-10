@@ -32,7 +32,7 @@
     <h2 id="pipeline-h">userA's Penwright trial, step by step</h2>
     {% if settings.is_sandbox %}
     <button class="btn btn-start" id="demo-start" data-testid="demo-start" data-sandbox="1"
-            title="Opens Penwright in a new window, approves the trial in the real PayPal sandbox as the buyer, then continues here.">&#9654; Start demo</button>
+            title="Opens Penwright in a new window. Click Subscribe there and confirm in PayPal (logged in for you); the story then continues here.">&#9654; Start demo</button>
     {% else %}
     <button class="btn btn-start" id="demo-start" data-testid="demo-start">&#9654; Start demo</button>
     {% endif %}
@@ -53,8 +53,9 @@
     </ol>
   </div>
   <p class="pipe-status" id="pipe-status" aria-live="polite" data-testid="pipeline-status">
-    {% if settings.is_sandbox %}Press <strong>Start demo</strong>: Penwright opens in a new window, userA subscribes through the real
-    PayPal sandbox (the buyer login is automatic), the window closes and the story continues here. It pauses at the check-in.
+    {% if settings.is_sandbox %}Press <strong>Start demo</strong>: Penwright opens in a new window. Click <strong>Subscribe with PayPal</strong>
+    there and confirm in PayPal's window (already logged in as the sandbox buyer). The story then continues here and
+    pauses at the check-in.
     {% else %}Press <strong>Start demo</strong> to run the story. It pauses at the check-in so userA can keep or cancel.{% endif %}
   </p>
   <div id="pipe-done"></div>

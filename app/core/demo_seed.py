@@ -1,4 +1,5 @@
-"""Mock-mode demo data (DEMO_SEED=true): userA's scripted Penwright usage.
+"""Demo data (DEMO_SEED=true), in both modes: userA's scripted Penwright usage (sandbox too since D-116, so the
+live demo's check-in tells the same story; it never touches PayPal).
 
 The story starts with no subscriptions: userA approves the Penwright trial herself on Day 0. Usage events are
 scripted (`source="seed"`) so the Day 5 check-in can say "You've opened it twice" reproducibly (D-053).
@@ -21,7 +22,7 @@ ReviewFn = Callable[[str, str, str, int], Awaitable[str | None]]  # (merchant, p
 
 async def seed_demo(svc: Services, review: ReviewFn | None = None) -> bool:
     """`review` is accepted for API compatibility (the reset route passes one); no seeded subscription needs it."""
-    if svc.gw.mock is None or not svc.settings.demo_seed or svc.store.load("state").demo_seeded:
+    if not svc.settings.demo_seed or svc.store.load("state").demo_seeded:
         return False
     async with svc.store.aedit("usage") as usage:
         for (user_id, merchant_id), days in SCRIPTED_USAGE.items():

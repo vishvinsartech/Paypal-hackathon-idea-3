@@ -1,4 +1,5 @@
-// "Start demo": runs userA's story through the same APIs the UI uses (mock mode), with an animated stepper.
+// "Start demo": runs userA's story through the same APIs the UI uses, with an animated stepper. Mock mode does
+// steps 1-2 here; sandbox mode opens a real Penwright window for them (autoplay_sandbox.js, D-116).
 // Day 0 review -> PayPal approval -> safety timer -> days pass -> PAUSE at the check-in for userA's choice
 // (Keep / Cancel / don't answer) -> the rest of the timeline to the first charge day.
 // A cancel still needs the confirmation card's tap (R1/R3); nothing here bypasses the policy.
@@ -88,21 +89,13 @@
     }
   }
 
-  // ---- the run ---------------------------------------------------------------------------------
-  async function run() {
-    btn.disabled = true;
-    btn.textContent = "Running…";
-    resetSteps();
-    say("Resetting the demo…");
-    await post("/api/demo/reset");
-    await refresh();
-
+  // Steps 1-2 in mock mode: the review and a mock PayPal approval, all in this page.
+  async function mockStart() {
     mark("read", "active", "reading…");
     say("<strong>Day 0.</strong> userA clicks PayPal on Penwright. SubGuard reads the fine print first…");
     const pre = await post("/api/review/preflight", {merchant_url: "/shop/penwright", plan_key: "penwright-pro", user_id: user});
     await sleep(1400);
-    const deadline = pre.deadlines.real_cancel_deadline_day;
-    mark("read", "done", `Risk ${pre.risk_score} · cancel by Day ${deadline}`);
+    mark("read", "done", `Risk ${pre.risk_score} · cancel by Day ${pre.deadlines.real_cancel_deadline_day}`);
     say(esc(pre.summary));
     await sleep(1600);
 
@@ -112,8 +105,21 @@
     await post("/api/checkout/mock-approve", {paypal_id: created.paypal_id});
     const sub = await post("/api/subscriptions/register", {paypal_id: created.paypal_id, merchant_id: "penwright",
       plan_key: "penwright-pro", user_id: user, review_id: pre.review_id});
-    await refresh();
     mark("approve", "done", `PayPal ${sub.status}`);
+    return {pre, sub};
+  }
+
+  // ---- the run ---------------------------------------------------------------------------------
+  async function run(win) {
+    btn.disabled = true;
+    btn.textContent = "Running…";
+    resetSteps();
+    say("Resetting the demo…");
+    await post("/api/demo/reset");
+    await refresh();
+    const {pre, sub} = win ? await window.SGSandboxStart(win, {mark, say, esc, user}) : await mockStart();
+    await refresh();
+    const deadline = pre ? pre.deadlines.real_cancel_deadline_day : null;
     await sleep(900);
 
     mark("timer", "active");
@@ -188,9 +194,16 @@
   }
 
   btn.addEventListener("click", async () => {
+    // Sandbox: open the Penwright window now, inside the click, or the browser blocks it as a pop-up.
+    const win = btn.dataset.sandbox ? window.open("about:blank", "penwright-demo", "popup,width=1180,height=900") : null;
+    if (btn.dataset.sandbox && !win) {
+      say("Your browser blocked the Penwright window. Allow pop-ups for this page, then press Start demo again.");
+      return;
+    }
     try {
-      await run();
+      await run(win);
     } catch (err) {
+      if (win && !win.closed) win.close();
       say(`The demo stopped: ${esc(err.message)}`);
       toast(err.message, {level: "urgent"});
     } finally {

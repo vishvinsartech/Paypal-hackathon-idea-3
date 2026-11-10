@@ -455,6 +455,20 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   HTML with server HTML so the localized text doesn't cause a swap every tick. The PayPal card adds PayPal's
   own `start_time`. It doesn't show PayPal's `next_billing_time`: PayPal bills at start + 10 days (the "Day 10"
   date), while the spec counts the first charge as Day 11, so the two would differ by a day.
+- **D-116 Start demo in sandbox mode.** The Start button no longer turns itself off in sandbox mode. Steps 1-2 run
+  in a real Penwright window that Start opens (it opens `about:blank` during the click so pop-up blockers allow
+  it). With `?autodemo=1` the shop plays userA: it opens the Terms and clicks PayPal, the companion's real-LLM
+  review stays up for 6 s, then it clicks Continue. `POST /api/checkout/demo-auto-approve` (sandbox only, needs
+  `PAYPAL_SANDBOX_BUYER_*`, one at a time) creates the subscription with the SDK and approves it as the sandbox
+  buyer in a visible Playwright browser (`DEMO_APPROVE_HEADED`, slow_mo 120 ms). It waits for ACTIVE and
+  registers it, audited as `demo_auto_approve` with the buyer's email masked. The window shows the live PayPal
+  card, sends each stage to the control room with `postMessage` (same origin only), and closes itself. The
+  stepper then continues exactly as in mock mode (timer, days, the Day 5 Keep/Cancel, Day 11). This is a
+  subscribe, not a cancel, so R1-R7 are unchanged. The buyer helper moved to
+  `app/integrations/sandbox_buyer.py` (the scripts keep a shim). Its consent step is now one loop that clicks
+  whichever consent button PayPal shows ("Continue", then "Agree & Subscribe") until the redirect: about 28 s
+  instead of about 115 s. The demo seed (scripted usage only) now runs in both modes, so the check-in says
+  "opened it twice" in sandbox mode too, and zero usage reads "You haven't opened it yet."
 
 ## Not used in v1 (sponsor tools)
 

@@ -1,8 +1,10 @@
 """Checkout + registration: the shop's PayPal button talks to these.
 
 Mock mode: create -> mock-approve -> register. Sandbox: the PayPal JS SDK creates/approves, then onApprove
-posts to /register. Register polls PayPal until ACTIVE (corner case 2) and only then saves the
-subscription + consent snapshot. Unconfirmed subscriptions get no snapshot and no timer.
+posts to /register. Live demo in sandbox (D-116): /checkout/demo-auto-approve creates the subscription and
+approves it as the sandbox buyer in a visible browser, so nobody types PayPal credentials in front of judges.
+Register polls PayPal until ACTIVE (corner case 2) and only then saves the subscription + consent snapshot.
+Unconfirmed subscriptions get no snapshot and no timer.
 """
 
 from __future__ import annotations
@@ -14,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from app.core.audit_log import mask_email
 from app.core.paypal_card import paypal_card
 from app.core.policy import Decision
 from app.core.services import Services
@@ -26,6 +29,8 @@ from app.store import JsonStore
 
 router = APIRouter(prefix="/api")
 POLL_INTERVAL = 3.0
+DEMO_SLOW_MO_MS = 120  # the buyer window types and clicks slowly enough for the judges to follow
+_demo_approval = asyncio.Lock()  # one automated approval at a time
 
 
 def get_gateway(request: Request) -> PayPalGateway:
@@ -87,6 +92,55 @@ async def checkout_mock_approve(body: ApproveIn, gw: PayPalGateway = Depends(get
         raise HTTPException(400, "Mock approval only exists in mock mode")
     view = await gw.mock_approve(body.paypal_id, Ctx(actor="user"))
     return {"paypal_id": view.id, "status": view.status}
+
+
+class AutoApproveIn(BaseModel):
+    merchant_id: str = "penwright"
+    plan_key: str = "penwright-pro"
+    user_id: str = "usera"
+    review_id: str | None = None
+
+
+@router.post("/checkout/demo-auto-approve", response_model=None)
+async def demo_auto_approve(body: AutoApproveIn, request: Request, store: JsonStore = Depends(get_store),
+                            gw: PayPalGateway = Depends(get_gateway)) -> Subscription | JSONResponse:
+    """Live demo, sandbox only: create the real sandbox subscription, approve it as the sandbox buyer, register it."""
+    from app.integrations.sandbox_buyer import CANCEL_URL, RETURN_URL, approve_all
+
+    svc: Services = request.app.state.services
+    s = svc.settings
+    if not s.is_sandbox:
+        raise HTTPException(400, "Automatic approval only exists in sandbox mode (mock mode approves in the page)")
+    if not (s.paypal_sandbox_buyer_email and s.paypal_sandbox_buyer_password):
+        raise HTTPException(400, "Set PAYPAL_SANDBOX_BUYER_EMAIL and PAYPAL_SANDBOX_BUYER_PASSWORD in .env "
+                                 "(the sandbox Personal account) for the live demo's automatic approval")
+    merchant = _merchant(store, body.merchant_id)
+    _check_user(store, body.user_id)
+    if _demo_approval.locked():
+        raise HTTPException(409, "An automatic PayPal approval is already running")
+    async with _demo_approval:
+        ctx = Ctx(actor="user", user_id=body.user_id, merchant=merchant)
+        view = await gw.create_subscription(gw.plan_id(body.plan_key), ctx, return_url=RETURN_URL,
+                                            cancel_url=CANCEL_URL)
+        (ok,) = await approve_all([view.approve_url or ""], s.paypal_sandbox_buyer_email,
+                                  s.paypal_sandbox_buyer_password, headed=s.demo_approve_headed,
+                                  shots_dir=s.runtime_dir / "approve-shots", slow_mo=DEMO_SLOW_MO_MS)
+        store.audit.append(actor="user", event="demo_auto_approve", user_id=body.user_id, transport="sdk",
+                           result="ok" if ok else "error:approval did not finish",
+                           reason="Live demo: approved in PayPal's sandbox page as the sandbox buyer (automated)",
+                           details={"paypal_id": view.id, "buyer": mask_email(s.paypal_sandbox_buyer_email)})
+        if not ok:
+            return JSONResponse({"error": "PayPal's approval page didn't finish. Screenshots are in "
+                                          "data/runtime/approve-shots/."}, status_code=502)
+        active = await _wait_active(gw, view.id, ctx, 60.0)
+    if active.status != "ACTIVE":
+        return JSONResponse({"error": f"PayPal hasn't activated it yet (status {active.status})"}, status_code=502)
+    try:
+        sub, _ = await register_active(svc, active, merchant_id=merchant.id, plan_key=body.plan_key,
+                                       user_id=body.user_id, review_id=body.review_id)
+    except OwnershipError as exc:
+        raise HTTPException(409, str(exc)) from None
+    return sub
 
 
 async def _wait_active(gw: PayPalGateway, paypal_id: str, ctx: Ctx, timeout: float) -> SubscriptionView:

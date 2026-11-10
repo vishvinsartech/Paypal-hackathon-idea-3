@@ -65,8 +65,35 @@
     }).render(container);
   }
 
+  // Live demo (D-116, the window the Start button opened): no PayPal button to click. The server approves as the
+  // sandbox buyer in its own visible browser window, then this page shows the live PayPal card.
+  async function autoApprove() {
+    slot.innerHTML = "";
+    status.textContent = "Live demo: a separate browser window logs in to PayPal as the sandbox buyer and approves…";
+    window.dispatchEvent(new CustomEvent("subguard:demo-approving"));
+    try {
+      const res = await fetch("/api/checkout/demo-auto-approve", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({merchant_id: area.dataset.merchant, plan_key: area.dataset.planKey, user_id: user,
+          review_id: area.dataset.reviewId || null}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || data.detail || "HTTP " + res.status);
+      done(data);
+      window.dispatchEvent(new CustomEvent("subguard:demo-subscribed", {detail: data}));
+    } catch (err) {
+      status.textContent = "Automatic PayPal approval failed: " + err.message;
+      window.dispatchEvent(new CustomEvent("subguard:demo-error", {detail: err.message}));
+    }
+  }
+
   window.addEventListener("subguard:continue", async () => {
-    if (!area.dataset.planId) { status.textContent = "This plan isn't in the sandbox yet. Run `make seed`."; return; }
+    if (!area.dataset.planId) {
+      status.textContent = "This plan isn't in the sandbox yet. Run `make seed`.";
+      window.dispatchEvent(new CustomEvent("subguard:demo-error", {detail: "No sandbox plan yet. Run make seed."}));
+      return;
+    }
+    if (window.SG_AUTODEMO) return autoApprove();
     try {
       const paypal = await loadSdk();
       slot.innerHTML = "";

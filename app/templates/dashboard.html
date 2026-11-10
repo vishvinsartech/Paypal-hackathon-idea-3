@@ -31,8 +31,8 @@
   <div class="card-head">
     <h2 id="pipeline-h">userA's Penwright trial, step by step</h2>
     {% if settings.is_sandbox %}
-    <button class="btn btn-start" id="demo-start" data-testid="demo-start" disabled
-            title="Start runs in mock mode. In sandbox mode, approve the trial through the shop.">&#9654; Start demo</button>
+    <button class="btn btn-start" id="demo-start" data-testid="demo-start" data-sandbox="1"
+            title="Opens Penwright in a new window, approves the trial in the real PayPal sandbox as the buyer, then continues here.">&#9654; Start demo</button>
     {% else %}
     <button class="btn btn-start" id="demo-start" data-testid="demo-start">&#9654; Start demo</button>
     {% endif %}
@@ -53,7 +53,8 @@
     </ol>
   </div>
   <p class="pipe-status" id="pipe-status" aria-live="polite" data-testid="pipeline-status">
-    {% if settings.is_sandbox %}In sandbox mode, start from the shop: <a href="/shop/penwright">Open Penwright</a>.
+    {% if settings.is_sandbox %}Press <strong>Start demo</strong>: Penwright opens in a new window, userA subscribes through the real
+    PayPal sandbox (the buyer login is automatic), the window closes and the story continues here. It pauses at the check-in.
     {% else %}Press <strong>Start demo</strong> to run the story. It pauses at the check-in so userA can keep or cancel.{% endif %}
   </p>
   <div id="pipe-done"></div>
@@ -116,5 +117,6 @@
 {% block scripts %}
 <script src="/static/dashboard.js"></script>
 <script src="/static/chat.js"></script>
+<script src="/static/autoplay_sandbox.js"></script>
 <script src="/static/autoplay.js"></script>
 {% endblock %}

@@ -105,7 +105,7 @@ Then open:
 - **Health:** http://127.0.0.1:8000/healthz · **API docs:** http://127.0.0.1:8000/docs (also in the footer's **Developer** menu)
 
 The demo has one persona, **userA**, and one fictional merchant, **Penwright Studio**. It starts with no
-subscriptions; on first start mock mode only scripts userA's Penwright usage (she opens it twice during the trial).
+subscriptions; on first start it only scripts userA's Penwright usage, in both modes (she opens it twice during the trial).
 
 ---
 
@@ -228,6 +228,14 @@ PayPal returns them (10-day trial $0, 3 x $24.99, then $49.99). The same card is
 it shows **CANCELLED**, again read from PayPal, plus **View in PayPal sandbox**, a link to the buyer's Automatic
 payments page (`PAYPAL_AUTOPAY_URL`).
 
+**Live demo in sandbox mode:** open http://127.0.0.1:8000/?demo=1 and press **▶ Start demo**. Penwright opens
+in a new window (allow pop-ups for 127.0.0.1) and plays userA. It opens the Terms and clicks PayPal, the
+SubGuard companion's review (real AI) stays on screen for a few seconds, then it continues to PayPal. A second
+browser window logs in to PayPal **as your Personal sandbox account and approves on PayPal's real page**, with
+no typing (it uses `PAYPAL_SANDBOX_BUYER_EMAIL` / `_PASSWORD`; set `DEMO_APPROVE_HEADED=false` to hide it). The
+Penwright window shows "Subscribed via PayPal ✓" (ACTIVE), closes itself, and the live demo carries on: safety
+timer, the days, the Day 5 **Keep / Cancel** question, then Day 11. It takes about a minute to reach ACTIVE.
+
 ### What's real and what's simulated
 
 | Real in sandbox mode | Simulated (in every mode) |
@@ -316,7 +324,7 @@ Everything comes from `.env`. Every variable is documented in [`.env.example`](.
 | `PAYPAL_SANDBOX_BUYER_EMAIL` / `_PASSWORD` | – | Personal sandbox account for auto-approval |
 | `PAYPAL_WEBHOOK_ID` | – | Optional webhook signature verification |
 | `ZAPIER_CATCH_HOOK_URL` | – | Optional; empty means notifications go to `data/runtime/outbox/` |
-| `DEMO_SEED` | `true` | Mock mode: create the demo subscriptions on first start / reset |
+| `DEMO_SEED` | `true` | On first start / reset (both modes): script userA's Penwright usage (opened twice) |
 | `PENWRIGHT_*`, `DEMO_CURRENCY` | spec values | Demo prices and terms |
 
 Changing a price changes the shop text, the mock PayPal plans and the seeded sandbox plans together. Run

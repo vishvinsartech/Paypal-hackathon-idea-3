@@ -66,6 +66,7 @@
     open(`${head()}<div class="sg-body" role="alert" data-testid="companion-error"><p>SubGuard couldn't check this page. Continue at your own risk?</p><p class="sg-mode">${esc(msg)}</p></div>
       <div class="sg-actions"><button class="sg-btn sg-back" data-testid="companion-back">Back out</button><button class="sg-btn sg-go" data-testid="companion-continue">Continue to PayPal</button></div>`);
     wire(null);
+    window.dispatchEvent(new CustomEvent("subguard:review-error", {detail: msg}));
   }
 
   function renderReview(r) {
@@ -89,6 +90,7 @@
       </div>
       <div class="sg-actions"><button class="sg-btn sg-back" data-testid="companion-back">Back out</button><button class="sg-btn sg-go" data-testid="companion-continue">Continue to PayPal</button></div>`);
     wire(r.review_id);
+    window.dispatchEvent(new CustomEvent("subguard:review", {detail: r}));  // the live demo's Penwright window listens
   }
 
   function backOut() {

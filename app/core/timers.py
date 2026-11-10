@@ -137,7 +137,8 @@ async def warn(svc: Services, timer: Timer, day: int) -> None:
     billing = timer.billing_day or sub.next_billing_day
     ends = (f"Your {name} trial ends on Day {billing - 1}, but your real last day to cancel is Day {deadline}."
             if billing is not None else f"Your {name} trial is ending. Your real last day to cancel is Day {deadline}.")
-    body = (f"{ends} You've opened it {times(used)}. Do you want to keep it? "
+    usage = f"You've opened it {times(used)}." if used else "You haven't opened it yet."
+    body = (f"{ends} {usage} Do you want to keep it? "
             f"If I don't hear back, I'll cancel it {when} so you're not charged.")
     alert, _ = await send_alert(svc, user_id=sub.owner_id, key=f"timer-warn:{timer.id}:{day}", kind="reminder",
                                 level="warning", title=f"{name}: keep it or cancel?", body=body,

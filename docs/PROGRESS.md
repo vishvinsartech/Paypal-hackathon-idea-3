@@ -72,6 +72,12 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
 
 ## Notes for next session
 
+### Start demo in sandbox mode (2026-11-11)
+- Start opens Penwright in its own window, which reviews the page, approves the real sandbox subscription as the
+  buyer automatically, shows the PayPal card and closes. The control room then runs the rest of the story
+  (D-116). Checked against the real sandbox: review in about 18 s, ACTIVE in about 60 s, the Day 5 check-in,
+  Cancel, PayPal CANCELLED, no console errors. Tests: `tests/test_demo_sandbox_start.py`.
+
 ### Key dates on userA's dashboard (2026-11-11)
 - Each subscription card lists its key dates as calendar dates in the viewer's time zone: subscribed (date +
   time), check-in, auto-cancel, real last day to cancel, trial end, first charge, price rise, cancelled/kept,

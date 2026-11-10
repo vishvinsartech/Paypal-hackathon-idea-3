@@ -11,7 +11,8 @@
   <p class="companion-note" data-subguard-ignore data-testid="companion-note">&#128737; SubGuard companion active. Simulates the SubGuard browser extension.</p>
   <script src="/static/companion.js" defer></script>
   <script src="/static/paypal-card.js" defer></script>
-  {% if settings.is_sandbox %}<script src="/shop/static/checkout_sandbox.js" defer></script>
+  {% if settings.is_sandbox %}<script src="/shop/static/autodemo.js" defer></script>
+  <script src="/shop/static/checkout_sandbox.js" defer></script>
   {% else %}<script src="/shop/static/checkout.js" defer></script>{% endif %}
   {% if merchant.fair_trial_member %}
   <p class="fair-trial" data-testid="fair-trial-badge">&#10003; Protected by SubGuard: cancel anytime</p>

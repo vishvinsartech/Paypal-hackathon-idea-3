@@ -58,10 +58,11 @@ def check_in(svc: Services, alerts: list[Alert]) -> dict[str, Any] | None:
     days = max(1, svc.day - sub.signup_day)
     cost = year_one_cost(sub.consent_snapshot.billing_cycles) if sub.consent_snapshot else None
     suggest = "cancel" if opens < RARELY_USED else "keep"
-    reason = (f"You opened it {times(opens)} in {days} days"
-              + (f", and keeping it costs {svc.money(cost)} in the first paid year." if cost else "."))
+    used = f"You opened it {times(opens)} in {days} days" if opens else f"You haven't opened it in {days} days"
+    reason = used + (f", and keeping it costs {svc.money(cost)} in the first paid year." if cost else ".")
     return {"alert": alert, "merchant": merchant.name,
-            "usage": f"Opened {times(opens)} in {days} days" + (f" (last on Day {last})." if last is not None else "."),
+            "usage": (f"Opened {times(opens)} in {days} days" if opens else f"Not opened in {days} days")
+            + (f" (last on Day {last})." if last is not None else "."),
             "suggest": suggest, "reason": reason}
 
 

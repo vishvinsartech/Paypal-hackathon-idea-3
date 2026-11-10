@@ -126,8 +126,15 @@ async def demo_paypal_window(body: DemoWindowIn, request: Request, store: JsonSt
         ctx = Ctx(actor="user", user_id=body.user_id, merchant=merchant)
         view = await gw.create_subscription(gw.plan_id(body.plan_key), ctx, return_url=RETURN_URL,
                                             cancel_url=CANCEL_URL)
-        outcome = await open_for_confirmation(view.approve_url or "", s.paypal_sandbox_buyer_email,
-                                              s.paypal_sandbox_buyer_password, timeout_s=DEMO_CONFIRM_TIMEOUT_S)
+        try:
+            outcome = await open_for_confirmation(view.approve_url or "", s.paypal_sandbox_buyer_email,
+                                                  s.paypal_sandbox_buyer_password, timeout_s=DEMO_CONFIRM_TIMEOUT_S)
+        except Exception as exc:  # noqa: BLE001 - the browser couldn't start or PayPal's page broke: say so, no trace
+            store.audit.append(actor="system", event="demo_paypal_window", user_id=body.user_id, transport="sdk",
+                               result=f"error:{type(exc).__name__}", reason=str(exc)[:200],
+                               details={"paypal_id": view.id})
+            return JSONResponse({"error": f"Couldn't open PayPal's window ({type(exc).__name__}). Check the "
+                                          "server terminal, then click Subscribe again."}, status_code=502)
         store.audit.append(actor="user", event="demo_paypal_window", user_id=body.user_id, transport="sdk",
                            result="ok" if outcome == "approved" else f"not_confirmed:{outcome}",
                            reason="Live demo: PayPal's approval page opened logged in as the sandbox buyer; "

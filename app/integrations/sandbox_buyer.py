@@ -14,11 +14,13 @@ import asyncio
 import re
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from playwright.async_api import Error as PwError
 from playwright.async_api import Page, async_playwright
 from playwright.async_api import TimeoutError as PwTimeout
+
+from app.integrations.own_loop import run_on_own_loop
 
 RETURN_URL = "http://127.0.0.1:8000/shop/sandbox-return"
 CANCEL_URL = "http://127.0.0.1:8000/shop/sandbox-cancel"
@@ -124,9 +126,14 @@ ConfirmOutcome = Literal["approved", "cancelled", "closed", "timeout"]
 WINDOW_ARGS = ["--window-size=1000,860", "--window-position=160,60"]
 
 
-async def open_for_confirmation(url: str, email: str, password: str, *, timeout_s: float = 300,
-                                slow_mo: float = 60, headless: bool = False,
-                                presenter: Callable[[Page], Awaitable[None]] | None = None) -> ConfirmOutcome:
+async def open_for_confirmation(url: str, email: str, password: str, **kwargs: Any) -> ConfirmOutcome:
+    """See `_open_for_confirmation`; runs it in a worker thread on its own event loop (works under any server)."""
+    return await run_on_own_loop(_open_for_confirmation, url, email, password, **kwargs)
+
+
+async def _open_for_confirmation(url: str, email: str, password: str, *, timeout_s: float = 300,
+                                 slow_mo: float = 60, headless: bool = False,
+                                 presenter: Callable[[Page], Awaitable[None]] | None = None) -> ConfirmOutcome:
     """Live demo (D-117): open PayPal's approval page in a visible window, log in as the sandbox buyer, then
     wait for a PERSON to confirm. Nothing here clicks the consent button.
 

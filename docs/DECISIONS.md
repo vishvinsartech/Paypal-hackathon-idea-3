@@ -479,7 +479,11 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   "Cancel and return", window closed, or timeout give a 409 with a plain message and nothing registered.
   Subscribe can be clicked again, and the control room shows each stage. Audited as `demo_paypal_window` with
   the outcome. `DEMO_APPROVE_HEADED` is removed. `open_for_confirmation(headless=, presenter=)` exist only for
-  scripted checks.
+  scripted checks. **Fix:** on Windows, `uvicorn --reload` serves on a SelectorEventLoop, which can't start
+  Playwright's driver subprocess (`NotImplementedError`). Subscribe failed with a 500 and the live page capture
+  quietly fell back to the static one. Both now run on their own loop in a worker thread
+  (`app/integrations/own_loop.py`, a Proactor loop on Windows). OpenAI errors now keep OpenAI's reason (for
+  example "organization must be verified to use gpt-5").
 
 ## Not used in v1 (sponsor tools)
 

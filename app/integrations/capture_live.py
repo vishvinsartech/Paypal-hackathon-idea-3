@@ -18,6 +18,7 @@ from app.integrations.capture import (
     contrast_ratio,
     normalize_ws,
 )
+from app.integrations.own_loop import run_on_own_loop
 
 log = logging.getLogger("subguard.capture")
 
@@ -99,25 +100,28 @@ class PlaywrightCapture:
         return [(lk["href"], lk["text"]) for lk in data.get("links", [])]
 
     async def capture(self, path: str, base_url: str) -> PageCapture:
-        merchant = _merchant_from_path(path)
         try:
-            from playwright.async_api import async_playwright
-
-            async with async_playwright() as pw:
-                browser = await pw.chromium.launch()
-                try:
-                    data, png = await self._page(browser, base_url.rstrip("/") + path, path, shot=True)
-                    cap = PageCapture(url=path, merchant_id=merchant, screenshot_png_b64=png, method=self.method)
-                    links = self._to_capture(data, path, cap)
-                    for link in _terms_links(links, path):
-                        sub, _ = await self._page(browser, base_url.rstrip("/") + link, link, shot=False)
-                        self._to_capture(sub, link, cap)
-                        cap.linked_pages.append(link)
-                finally:
-                    await browser.close()
-            return cap
+            return await run_on_own_loop(self._live, path, base_url)  # works under `uvicorn --reload` on Windows
         except CaptureError:
             raise
         except Exception as exc:  # browser missing / crashed -> static capture, logged
             log.warning(f"live capture failed, using static capture: {type(exc).__name__}: {str(exc)[:160]}")
             return await self.fallback.capture(path, base_url)
+
+    async def _live(self, path: str, base_url: str) -> PageCapture:
+        merchant = _merchant_from_path(path)
+        from playwright.async_api import async_playwright
+
+        async with async_playwright() as pw:
+            browser = await pw.chromium.launch()
+            try:
+                data, png = await self._page(browser, base_url.rstrip("/") + path, path, shot=True)
+                cap = PageCapture(url=path, merchant_id=merchant, screenshot_png_b64=png, method=self.method)
+                links = self._to_capture(data, path, cap)
+                for link in _terms_links(links, path):
+                    sub, _ = await self._page(browser, base_url.rstrip("/") + link, link, shot=False)
+                    self._to_capture(sub, link, cap)
+                    cap.linked_pages.append(link)
+            finally:
+                await browser.close()
+        return cap

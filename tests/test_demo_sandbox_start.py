@@ -157,3 +157,24 @@ def test_no_usage_reads_naturally(client: TestClient) -> None:
     assert "You haven't opened it yet." in check["body"] and "opened it never" not in check["body"]
     html = client.get("/user").text
     assert "Not opened in 5 days." in html and "You haven&#39;t opened it in 5 days" in html  # Jinja escapes '
+
+
+def test_playwright_helpers_work_under_a_selector_loop() -> None:
+    """`uvicorn --reload` on Windows serves on a SelectorEventLoop, which can't start subprocesses (Playwright's
+    driver). run_on_own_loop gives the coroutine its own loop in a thread, so it works there too (D-117)."""
+    import asyncio
+    import sys
+
+    from app.integrations.own_loop import run_on_own_loop
+
+    async def spawn() -> str:
+        proc = await asyncio.create_subprocess_exec(sys.executable, "-c", "print('hi')",
+                                                    stdout=asyncio.subprocess.PIPE)
+        out, _ = await proc.communicate()
+        return out.decode().strip()
+
+    async def server() -> str:
+        return await run_on_own_loop(spawn)
+
+    with asyncio.Runner(loop_factory=asyncio.SelectorEventLoop) as runner:
+        assert runner.run(server()) == "hi"

@@ -387,6 +387,7 @@ To deploy:
 | Problem | Fix |
 |---|---|
 | `SubGuard can't start: ... is required in sandbox mode` | Fill in the named variable in `.env`, or run in mock mode (`make dev`). |
+| Review says "basic check (AI unavailable)"; audit log shows `OpenAI API error 404: Your organization must be verified` | Verify the organization at platform.openai.com (Settings → General), or set `OPENAI_MODEL` to a model your key can use now (for example `gpt-5.4`), then restart. |
 | `PAYPAL_API_BASE must be https://api-m.sandbox.paypal.com` | SubGuard is sandbox-only; restore the default value. |
 | Port 8000 is already in use | Stop the other server, or run `.venv/bin/python -m uvicorn app.main:app --port 8001 --workers 1` (Windows: `.venv\Scripts\python`). |
 | The grids are empty or look unstyled | The browser can't reach `cdn.jsdelivr.net` (AG Grid). Check your network or proxy. |

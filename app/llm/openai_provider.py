@@ -11,6 +11,7 @@ from typing import Any
 
 import openai
 
+from app.core.audit_log import mask_secrets
 from app.integrations.capture import PageCapture
 from app.llm.base import (
     AUDITOR_SYSTEM_PROMPT,
@@ -43,8 +44,9 @@ class OpenAIProvider:
     async def _create(self, **kwargs: Any) -> Any:
         try:
             return await self.client.chat.completions.create(model=self.model, **kwargs)
-        except openai.APIStatusError as exc:
-            raise LLMError(f"OpenAI API error {exc.status_code}") from None
+        except openai.APIStatusError as exc:  # keep OpenAI's reason (e.g. "organization must be verified")
+            reason = str(getattr(exc, "message", "") or "").split(" Please go to")[0][:160]
+            raise LLMError(f"OpenAI API error {exc.status_code}: {mask_secrets(reason)}") from None
         except openai.APIConnectionError:
             raise LLMError("OpenAI API unreachable") from None
 

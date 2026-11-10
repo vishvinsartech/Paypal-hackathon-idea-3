@@ -446,6 +446,15 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   `--require-clips`. To make room, six scenes lost 2-4 s and two narrations a sentence or word (165 s with the
   clip, 150 s without). Logic shared in `demo-video/videolib.py` and unit-tested without ffmpeg. Recording
   instructions: `demo-video/README.md`. The automated recorder and voice-over are still milestone 9.
+- **D-115 Key dates as calendar dates.** Each card on userA's dashboard has a "Key dates" list: Subscribed
+  (the real date and time SubGuard recorded the PayPal approval, `registered_at`), check-in, auto-cancel, real
+  last day to cancel, trial end (site says), first charge, price rise, then Cancelled / Kept. A sim day N maps to
+  `registered_at + (N - signup_day)` days (`app/core/sub_dates.py`), so the dates match the Day buttons. A cancel
+  shows its sim day's date with the real time of the PayPal call. The server writes UTC text in
+  `<time datetime>` tags and `user.js` shows them in the viewer's time zone; the live refresh compares server
+  HTML with server HTML so the localized text doesn't cause a swap every tick. The PayPal card adds PayPal's
+  own `start_time`. It doesn't show PayPal's `next_billing_time`: PayPal bills at start + 10 days (the "Day 10"
+  date), while the spec counts the first charge as Day 11, so the two would differ by a day.
 
 ## Not used in v1 (sponsor tools)
 

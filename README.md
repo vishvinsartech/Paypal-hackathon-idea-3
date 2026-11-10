@@ -133,6 +133,9 @@ To click through it yourself instead:
    Click **Continue to PayPal**.
 3. On the Live demo the timeline shows the plan: check-in on **Day 5**, safety timer on **Day 6**. On userA's
    dashboard her subscription card says **"Site says: trial ends Day 10 · Real last day to cancel: Day 7."**
+   Its **Key dates** list shows each step as a real date in your time zone: when she subscribed (date and time),
+   the Day 5 check-in, the Day 6 auto-cancel, the Day 7 deadline, the trial end, the first charge and the price
+   rise. Dates count from the sign-up moment and follow the Day buttons.
 4. **Day 5** (click **Day 5** in the demo bar): *"Your Penwright trial ends on Day 10, but your real last day to
    cancel is Day 7. You've opened it twice. Do you want to keep it?"* It arrives in-app, plus email and SMS (written
    to `data/runtime/outbox/` in mock mode). userA's dashboard shows it with her usage and the advice *"SubGuard

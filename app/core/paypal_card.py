@@ -73,6 +73,7 @@ async def paypal_card(svc: Services, sub: Subscription) -> dict[str, Any]:
                                     "plan_debug_id": v.plan_debug_id, "local_status": sub.status})
     return {**base, "ok": True, "status": v.subscription.status, "plan_id": v.plan.id, "plan_name": v.plan.name,
             "currency": v.plan.currency, "cycles": cycles, "cycles_text": " · ".join(c["text"] for c in cycles),
+            "start_time": v.subscription.start_time,
             "next_billing_time": v.subscription.next_billing_time, "transport": v.transport,
             "debug_id": v.subscription_debug_id, "plan_debug_id": v.plan_debug_id,
             "checked_at": v.checked_at.isoformat(), "matches_local": v.subscription.status == sub.status,

@@ -83,3 +83,14 @@ body, .card, .topbar, .tab, .btn { transition: background-color .25s, color .25s
 .dev-menu summary { cursor: pointer; }
 .dev-body { display: flex; gap: 12px; align-items: center; padding-top: 6px; }
 .ag-cell .who { line-height: 1.5; vertical-align: middle; }
+.kd-title { margin: 10px 0 4px; }
+.key-dates { list-style: none; margin: 0 0 10px; padding: 0; border: 1px solid var(--line); border-radius: 8px; }
+.kd { display: grid; grid-template-columns: minmax(150px, 1.1fr) minmax(170px, 1.3fr) 1fr; gap: 2px 12px; padding: 6px 10px; border-top: 1px solid var(--line); align-items: baseline; }
+.kd:first-child { border-top: 0; }
+.kd-label { font-weight: 600; }
+.kd-note { color: var(--muted); font-size: .85rem; }
+.kd-today { background: var(--tint); }
+.kd-today .kd-label::after { content: " · today"; color: var(--amber); font-weight: 700; }
+.kd-off .kd-label, .kd-off .kd-when { color: var(--muted); text-decoration: line-through; }
+.kd-blocked .kd-note, .kd-done .kd-note { color: var(--teal); }
+@media (max-width: 640px) { .kd { grid-template-columns: 1fr; } }

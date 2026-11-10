@@ -34,7 +34,7 @@ def step_up(cycles: list[BillingCycleDef], signup_day: int) -> tuple[int | None,
     return trial_end, None
 
 
-def _timer(timers: list[Timer], sub_id: str) -> Timer | None:
+def current_timer(timers: list[Timer], sub_id: str) -> Timer | None:
     mine = [t for t in timers if t.subscription_id == sub_id]
     return next((t for t in mine if t.status == "PENDING"), mine[-1] if mine else None)
 
@@ -44,7 +44,7 @@ def sub_view(svc: Services, sub: Subscription, timers: list[Timer]) -> dict[str,
     plan = next((p for p in merchant.plans if p.key == sub.plan_key), None)
     snap = sub.consent_snapshot
     review = tm.review_for(svc, sub)
-    timer = _timer(timers, sub.id)
+    timer = current_timer(timers, sub.id)
     trial_end, step_day = step_up(snap.billing_cycles, sub.signup_day) if snap else (None, None)
     prices = [c.price for c in snap.billing_cycles if c.price > 0] if snap else []
     timer_text = None

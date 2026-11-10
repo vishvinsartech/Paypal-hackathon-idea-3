@@ -35,6 +35,13 @@
     return data;
   }
 
+  // PayPal's own timestamps, in the viewer's time zone (D-115).
+  const local = (iso) => {
+    const d = new Date(iso);
+    return isNaN(d) ? esc(iso) : `<time datetime="${esc(iso)}" title="${esc(d.toISOString())}">${esc(d.toLocaleString(undefined,
+      {weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZoneName: "short"}))}</time>`;
+  };
+
   function html(c) {
     if (!c.ok) {
       return `<section class="pp-card" data-testid="paypal-subscribed"><div class="pp-head"><span class="pp-mark">PayPal</span>
@@ -56,6 +63,7 @@
         <dt>Subscription ID</dt><dd><code data-testid="paypal-sub-id">${esc(c.paypal_id)}</code></dd>
         <dt>Plan</dt><dd>${esc(c.plan_name)} <span class="pp-meta">(<code>${esc(c.plan_id)}</code>)</span></dd>
         <dt>Billing cycles</dt><dd><ol class="pp-cycles" data-testid="paypal-cycles">${c.cycles.map((x) => `<li>${esc(x.text)}</li>`).join("")}</ol></dd>
+        ${c.start_time ? `<dt>Started</dt><dd data-testid="paypal-start-time">${local(c.start_time)} <span class="pp-meta">(PayPal's clock)</span></dd>` : ""}
         ${created}${cancel}
       </dl>
       <p class="pp-meta">Status, plan and cycles fetched live from PayPal at ${esc(when)} UTC via ${esc(c.transport)}${c.debug_id ? ` · debug id <code>${esc(c.debug_id)}</code>` : ""} · ${esc(c.source)}</p>

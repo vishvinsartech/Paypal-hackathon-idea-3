@@ -72,6 +72,12 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
 
 ## Notes for next session
 
+### Key dates on userA's dashboard (2026-11-11)
+- Each subscription card lists its key dates as calendar dates in the viewer's time zone: subscribed (date +
+  time), check-in, auto-cancel, real last day to cancel, trial end, first charge, price rise, cancelled/kept,
+  each with its sim day and state (D-115). The PayPal card shows PayPal's own start time. Tests:
+  `tests/test_key_dates.py`.
+
 ### Real PayPal sandbox approval (2026-11-10)
 - Sandbox checkout: companion -> real PayPal JS SDK button (server-side create) -> PayPal's approval window.
   "Subscribed via PayPal ✓" card (live status, plan, cycles, debug ids) on the shop and both dashboards; after

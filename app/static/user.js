@@ -36,6 +36,21 @@
     await tick(true);
   });
 
+  // Key dates (D-115): the server renders UTC text; show each <time data-local> in the viewer's own time zone.
+  const DATE = {weekday: "short", day: "numeric", month: "short", year: "numeric"};
+  const DATETIME = {...DATE, hour: "2-digit", minute: "2-digit", timeZoneName: "short"};
+  function localize(root) {
+    root.querySelectorAll("time[data-local]").forEach((t) => {
+      const d = new Date(t.getAttribute("datetime"));
+      if (isNaN(d)) return;
+      t.textContent = d.toLocaleString(undefined, t.dataset.local === "datetime" ? DATETIME : DATE);
+      t.title = d.toISOString();
+    });
+  }
+  const served = new WeakMap(); // [data-live] element -> the server HTML it last showed
+  document.querySelectorAll("[data-live]").forEach((el) => served.set(el, el.innerHTML));
+  localize(document);
+
   // Live: the demo may run in another tab. Swap only the server-rendered [data-live] sections that changed, then
   // refresh the AG Grid activity list and the AG Charts through their APIs (they are never re-created).
   async function tick(force) {
@@ -45,11 +60,14 @@
       const doc = new DOMParser().parseFromString(html, "text/html");
       document.querySelectorAll("[data-live]").forEach((el) => {
         const fresh = doc.getElementById(el.id);
-        if (!fresh || fresh.innerHTML === el.innerHTML) return;
+        // Compare server HTML with server HTML: the visible copy has localized dates.
+        if (!fresh || fresh.innerHTML === served.get(el)) return;
+        served.set(el, fresh.innerHTML);
         const open = new Set([...el.querySelectorAll("details[open] summary")].map((s) => s.textContent));
         el.innerHTML = fresh.innerHTML;
         el.hidden = fresh.hidden;
         el.querySelectorAll("details summary").forEach((s) => { if (open.has(s.textContent)) s.parentElement.open = true; });
+        localize(el);
       });
       await refresh();
     } catch (e) { /* offline for a moment: try again next tick */ }

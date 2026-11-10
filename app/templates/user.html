@@ -2,6 +2,7 @@
 {% block title %}SubGuard: {{ current_user.name if current_user else "user" }}'s dashboard{% endblock %}
 {% block content %}
 {% set u = current_user %}
+{% macro when(w) %}{% if w %}<time datetime="{{ w.iso }}" data-local="{{ w.fmt }}">{{ w.text }}</time>{% endif %}{% endmacro %}
 <div data-testid="user-dashboard">
 <section class="hero profile" id="live-head" data-live>
   <span class="avatar" aria-hidden="true">{{ (u.name if u else "?")[:1] | upper }}</span>
@@ -49,7 +50,8 @@
   {% for c in cards %}
   <article class="sub-card" data-testid="sub-card">
     <header class="sub-card-head">
-      <div><strong class="sub-name">{{ c.merchant }}</strong> <span class="muted">{{ c.plan }} · {{ c.price_text }}</span></div>
+      <div><strong class="sub-name">{{ c.merchant }}</strong> <span class="muted">{{ c.plan }} · {{ c.price_text }}</span>
+        {% if c.subscribed %}<br><span class="muted small" data-testid="subscribed-at">Subscribed {{ when(c.subscribed) }}</span>{% endif %}</div>
       <div class="row">
         <span class="pill pill-{{ c.status | lower }}" data-testid="status-{{ c.merchant_id }}">{{ c.status }}</span>
         {% if c.risk is not none %}<span class="risk-big risk-{{ c.risk_level }}" data-testid="risk-score">Risk {{ c.risk }}/100</span>{% endif %}
@@ -58,6 +60,16 @@
     {% if c.trial_end_day is not none and c.deadline_day is not none %}
     <p class="deadline-line" data-testid="deadline-line">Site says: trial ends Day {{ c.trial_end_day }} · <strong>Real last day to cancel: Day {{ c.deadline_day }}.</strong></p>
     {% endif %}
+    <h3 class="small kd-title">Key dates <span class="muted tiny">· in your time zone · demo days follow the Day buttons</span></h3>
+    <ol class="key-dates" data-testid="key-dates">
+      {% for r in c.dates %}
+      <li class="kd kd-{{ r.state }}" data-testid="date-{{ r.key }}">
+        <span class="kd-label">{{ r.label }}</span>
+        <span class="kd-when">{% if r.when %}{{ when(r.when) }}{% else %}—{% endif %} <span class="muted small">· Day {{ r.day }}</span></span>
+        <span class="kd-note">{{ r.note }}</span>
+      </li>
+      {% endfor %}
+    </ol>
     <dl class="sub-facts">
       <div><dt>Next charge</dt><dd data-testid="next-charge">{{ c.next_charge_text }}</dd></div>
       <div><dt>Safety timer</dt><dd>{{ c.timer_text or "—" }}</dd></div>

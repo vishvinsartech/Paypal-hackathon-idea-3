@@ -16,12 +16,13 @@ from app.core import timers as tm
 from app.core.activity import Activity, activity_for
 from app.core.savings import money_protected, year_one_cost
 from app.core.services import Services
+from app.core.sub_dates import key_dates, stamp
 from app.core.usage import last_open_day, opens_between, times
 from app.models import Alert, Subscription
 from app.routes.actions import get_services
 from app.routes.deps import get_settings, get_store
 from app.routes.pages import _base, templates
-from app.routes.views import sub_view
+from app.routes.views import current_timer, sub_view
 from app.store import JsonStore
 
 router = APIRouter()
@@ -30,13 +31,17 @@ RARELY_USED = 3  # fewer opens than this during the trial -> SubGuard suggests c
 
 def card(svc: Services, sub: Subscription) -> dict[str, Any]:
     """One subscription card: the grid row's facts plus the site-vs-real deadline line."""
-    view = sub_view(svc, sub, svc.store.load("timers").items)
+    timers = svc.store.load("timers").items
+    view = sub_view(svc, sub, timers)
     review = tm.review_for(svc, sub)
     deadline = review.data.deadlines.real_cancel_deadline_day if review else view["deadline_day"]
+    dates = key_dates(svc, sub, view, current_timer(timers, sub.id), deadline)
     next_charge = view["next_charge_text"]
     if sub.status != "ACTIVE" and sub.next_billing_day is not None:
         next_charge = f"Day {sub.next_billing_day} · blocked (no active PayPal subscription)"
-    return {**view, "deadline_day": deadline, "next_charge_text": next_charge, "can_decide": sub.status == "ACTIVE"
+    return {**view, "deadline_day": deadline, "next_charge_text": next_charge, "dates": dates,
+            "subscribed": stamp(sub.registered_at, with_time=True),
+            "dated": {r["key"]: r["when"] for r in dates}, "can_decide": sub.status == "ACTIVE"
             and sub.kept_day is None, "risk_level": "high" if (view["risk"] or 0) >= 60 else
             ("mid" if (view["risk"] or 0) >= 30 else "low")}
 

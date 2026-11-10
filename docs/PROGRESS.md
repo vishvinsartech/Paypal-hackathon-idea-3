@@ -38,8 +38,15 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
     "$228/yr" card -> confirmed -> KPI **$872.76/yr** -> audit-log CSV downloaded (chain verified) ->
     subscription page. No console errors. 173 tests pass (16 new: `test_chat.py` + page tests); ruff clean.
     AG Grid Community 36.2.0 pinned (D-060). **Not verified live:** the chat with a real Anthropic/OpenAI model.
-- [ ] **7. Tests and hardening.**
+- [x] **7. Tests and hardening.**
   - *Check:* `test_scenario.py` runs Story A + B end to end in mock mode and asserts **$872.76**; every corner case in section 8 has a test or a doc note; optional `@pytest.mark.sandbox` smoke test (skipped without credentials); ruff is clean.
+  - Done 2026-11-10 (commit `391215b`). `tests/test_scenario.py` runs Story A and B on one shared timeline
+    (HTTP API + chat) and asserts **$872.76**, risk 87/15, deadline Day 7, injection flagged, R3 token reuse
+    rejected, and every cancel paired with an allowed policy decision. `docs/CORNER_CASES.md` maps all 39
+    corner cases to code + tests (3 doc notes: 1, 8, 26); a test checks that every referenced test exists.
+    New code: `/webhooks/paypal` (6), currency guard (8), exports -> early-trial-end alert (27). 188 tests pass
+    (`-m 'not sandbox'` by default); ruff clean; `ui-check` still passes. `pytest -m sandbox` ran against the
+    real sandbox: OAuth + seeded plan prices passed; the settings check skipped (no `ANTHROPIC_API_KEY` in `.env`).
 - [ ] **8. Sponsor wiring.** Zapier (real hook in sandbox + outbox in mock), `render.yaml` + deploy.
   - *Check:* Zapier delivery works (or outbox in mock); the Render URL is in the README.
 - [ ] **9. Demo-video tooling, code only** (section 13). Don't record or render a video.
@@ -48,6 +55,14 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
   - *Check:* every item in section 15 "Definition of done" is satisfied.
 
 ## Notes for next session
+
+### Milestone 7 notes (2026-11-10)
+- Default `pytest` excludes the `sandbox` marker (pyproject `addopts`); `python -m pytest -m sandbox` opts in.
+- Webhooks: `app/routes/webhooks.py`; sandbox verification uses `app.state.verify_webhook` (wired in `main.py`
+  from the SDK backend's REST client) and needs `PAYPAL_WEBHOOK_ID`. Status changes from both the webhook and the
+  poller go through `escalation.apply_status`.
+- Milestone 8 (Zapier): `Notifier` already retries 3x and maps 2xx to `accepted` (tested with respx); what remains
+  is a real Catch Hook URL in `.env`, the Zap itself (or `docs/ZAPIER_SETUP.md`), and `render.yaml` + deploy.
 
 ### Milestone 6 notes (2026-11-10)
 - UI: `app/static/app.js` (window.SG: api, toast, confirm card, refresh fan-out), `dashboard.js` (KPIs, alerts,

@@ -260,24 +260,24 @@ Demo controls become an overlay. Colours and fonts mostly stay (dark navy, teal 
 
 | ID | Done | Commit | Note |
 |---|---|---|---|
-| B1 companion scroll | [ ] | | |
-| B2 day offset | [ ] | | |
-| B3 empty summary | [ ] | | |
-| B4 step tracker | [ ] | | |
-| B5 toasts | [ ] | | |
-| B6 chat button | [ ] | | |
-| B7 timeline | [ ] | | |
-| B8 Day 11 actor | [ ] | | |
-| B9 mobile nav | [ ] | | |
-| B10 CLEAR_TERMS | [ ] | | |
-| B11 chat chips | [ ] | | |
-| B12 README facts | [ ] | | |
-| D6 Day 8 vs act-by Day 7 | [ ] | | |
-| D7 consent / Day 7 reminder | [ ] | | |
-| D8 usage label | [ ] | | |
-| D10 charges avoided | [ ] | | |
-| Persona Priya | [ ] | | |
-| Fair Trial badge | [ ] | | |
+| B1 companion scroll | [x] | b76a096, b4396cd | focus title, sticky head/foot, max 720 px; ui-check at both viewports (D-140) |
+| B2 day offset | [x] | b76a096 | preflight `display` block, relative + calendar dates (D-131) |
+| B3 empty summary | [x] | a312faf | drew only on the 5 s refresh; now on load (D-137) |
+| B4 step tracker | [x] | a312faf | `app/core/steps.py`, derived from audit events (D-137) |
+| B5 toasts | [x] | 514dce0 | top right, 6 s, aria-live (D-139) |
+| B6 chat button | [x] | 514dce0 | in the top bar (D-139) |
+| B7 timeline | [x] | 514dce0 | fixed Day 0-14, five dots; U7 moves it onto the merged card (D-138) |
+| B8 Day 11 actor | [x] | 181397d | fresh GET, status + debug id stored; audit actor stays `system` (D-134) |
+| B9 mobile nav | [ ] | | deferred to Phase 3 with U10/U27, as the item says |
+| B10 CLEAR_TERMS | [x] | b76a096 | both paths + tests (D-136) |
+| B11 chat chips | [x] | 514dce0 | 3 chips, scripted answers from tool results (D-139) |
+| B12 README facts | [ ] | | Phase 4 (S1), as the item says |
+| D6 Day 8 vs act-by Day 7 | [x] | b76a096 | `terms_last_day`; one wording in companion, alerts, card, chat, sub page, narration (D-132) |
+| D7 consent / Day 7 reminder | [x] | 7104e36 | opt-in box -> `notice_auto_sent` (R2); else Day 7 reminder (D-133) |
+| D8 usage label | [x] | b76a096 | |
+| D10 charges avoided | [x] | 181397d | $24.99 + "up to $524.88 in year one"; confirm card still /yr until U12 (D-135) |
+| Persona Priya | [x] | a1ff74b | id `priya`, `full_name` Priya Sharma, `/me` (D-130) |
+| Fair Trial badge | [x] | 514dce0 | badge gone, member kept, partner note on evidence page + README (D-141) |
 | A1 Quillnote | [ ] | | |
 | A2 AI vs basic | [ ] | | |
 | A3 notice in words | [ ] | | |

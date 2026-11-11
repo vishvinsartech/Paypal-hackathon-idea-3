@@ -15,6 +15,15 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
   `docs/img/v3/<phase>/`. The baseline set `p0/` shows B1 (companion opens scrolled down), B4 (steps never tick by
   hand), B6 (floating chat button over the timeline) and B7 (axis to Day 31, "from Day 101").
 
+- [x] **Phase 1. Correctness bugs and story logic** (2026-11-11, commits `a1ff74b`..`b4396cd`). Done: persona
+  Priya, B1-B8, B10, B11, D6, D7, D8, D10, Fair Trial badge (DECISIONS D-130..D-141). Deferred as FIX_PLAN says:
+  B9 (Phase 3) and B12 (Phase 4). `make test`: **298 passed** (was 286), 2 deselected. `make lint`: clean.
+  `make ui-check`: passed, now also checking the companion in view at 1440×900 and 390×844, steps ticking by hand,
+  the toast top right, the chat chips and the act-by dates. Screenshots: `docs/img/v3/p1/` (looked at: companion
+  opens at the top at both sizes; steps tick on a manual run; five-dot timeline with no overlaps; chat entry in the
+  top bar). Seen for later phases: the mobile top bar wraps onto three lines (U27), and the KPI count-up can still
+  be running when a screenshot is taken (U29).
+
 ## v1-v2 milestones (history)
 
 - [x] **1. Preflight.** Run `claude mcp list`; check Python >= 3.11, Node >= 18 and `npx`; install the APIMatic PayPal context plugin; write `docs/PAYPAL_TOOLS.md` and `docs/PAYPAL_SDK_NOTES.md`; create `docs/DECISIONS.md`.

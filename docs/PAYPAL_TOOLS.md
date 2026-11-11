@@ -3,6 +3,7 @@
 **Verified 2026-11-10** against the running server: `npx -y @paypal/mcp --tools=all`, which reports
 `PayPal 1.11.0`, "Mode: Sandbox", **28 tools**. Env: `PAYPAL_ACCESS_TOKEN` (client-credentials token,
 see `scripts/paypal_token.sh`; sandbox tokens expire after a few hours) and `PAYPAL_ENVIRONMENT=SANDBOX`.
+Claude Code starts it through `scripts/mcp_paypal.mjs`, which fetches that token itself on every (re)connect.
 
 Note: the agent-toolkit README lists `update_subscription`, but this server version does **not** expose
 it. The live list below wins.

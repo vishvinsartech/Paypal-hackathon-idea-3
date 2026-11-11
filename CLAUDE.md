@@ -105,8 +105,8 @@ Prices and terms are `.env` variables (`app/pricing.py`, DECISIONS D-015). Code 
 - Demo: `http://127.0.0.1:8000/?demo=1`; dummy shop at `/shop`.
 
 ## MCP notes
-- `.mcp.json` registers the PayPal MCP server (`npx -y @paypal/mcp --tools=all`, env
-  `PAYPAL_ACCESS_TOKEN` from `scripts/paypal_token.sh`, `PAYPAL_ENVIRONMENT=SANDBOX`).
+- `.mcp.json` registers the PayPal MCP server via `node scripts/mcp_paypal.mjs` (reads `.env`, gets a fresh sandbox
+  token, runs `npx -y @paypal/mcp --tools=all` with `PAYPAL_ENVIRONMENT=SANDBOX`). Token expired -> `/mcp` reconnect.
 - APIMatic PayPal context plugin: query it before writing PayPal SDK code.
 - Exact PayPal MCP tool names: `docs/PAYPAL_TOOLS.md`.
 

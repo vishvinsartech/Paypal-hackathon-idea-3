@@ -2,12 +2,8 @@
   "mcpServers": {
     "paypal": {
       "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@paypal/mcp", "--tools=all"],
-      "env": {
-        "PAYPAL_ACCESS_TOKEN": "${PAYPAL_ACCESS_TOKEN:-}",
-        "PAYPAL_ENVIRONMENT": "${PAYPAL_ENVIRONMENT:-SANDBOX}"
-      }
+      "command": "node",
+      "args": ["scripts/mcp_paypal.mjs"]
     }
   }
 }

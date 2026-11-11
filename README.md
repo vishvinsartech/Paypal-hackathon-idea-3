@@ -317,9 +317,10 @@ through the PayPal MCP server, and reads both back as `CANCELLED`.
 - **Webhooks need a public URL.** Locally, SubGuard polls PayPal every 10 seconds instead. To use webhooks,
   expose the app (for example with ngrok), create a sandbox webhook pointing to `/webhooks/paypal`, and set
   `PAYPAL_WEBHOOK_ID`.
-- **Claude Code / MCP (development only):** `.mcp.json` registers the PayPal MCP server. Give it a token with
-  `export PAYPAL_ACCESS_TOKEN=$(scripts/paypal_token.sh)` (tokens expire after a few hours; re-run it).
-  The running app gets its own token, so it doesn't need this variable.
+- **Claude Code / MCP (development only):** `.mcp.json` starts the PayPal MCP server through
+  `scripts/mcp_paypal.mjs`, which reads the client id and secret from `.env`, gets a fresh sandbox token and runs
+  `npx -y @paypal/mcp --tools=all`. Nothing to export; if a token expires, reconnect it with `/mcp`.
+  The running app gets its own token, so it doesn't need this either.
 
 ---
 

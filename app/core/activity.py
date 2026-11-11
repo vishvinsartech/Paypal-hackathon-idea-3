@@ -85,7 +85,7 @@ EVENTS: dict[str, Describe] = {
                                           f"{_edited(e)})."),
     "cancellation_email_app_opened": lambda e: ("You", "you", f"You opened the cancellation email in your email "
                                                 f"app (edited: {_edited(e)})."),
-    "cancellation_email_gmail_opened": lambda e: ("You", "you", f"You opened the cancellation email in Gmail "
+    "cancellation_email_gmail_opened": lambda e: ("You", "you", f"You opened the cancellation email in webmail "
                                                   f"(edited: {_edited(e)})."),
     "notice_auto_sent": lambda e: ("SubGuard", "guard", "Sent your cancellation email for you, as you asked at "
                                    "sign-up (demo outbox)."),

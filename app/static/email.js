@@ -1,13 +1,11 @@
 // Cancellation email preview (D-104, demo only): editable To / Subject / Body, then Send (demo outbox),
-// Open in my email app (a mailto: link with the CURRENT edited text; U13), Gmail as a secondary link, or Close
+// Open in my email app (a mailto: link with the CURRENT edited text; U13), or Close
 // (the draft is kept). The quoted clause is highlighted inside the body (a mirrored backdrop behind the textarea).
 // Nothing is sent without a click; a second Send shows the email already sent. Exposes SG.openEmail(id, opts).
 (function () {
   "use strict";
   if (!window.SG) return;
   const {user, esc, api, toast, refresh} = window.SG;
-  const GMAIL_MAX = 1800;
-  const GMAIL = "https://mail.google.com/mail/?view=cm&fs=1";
   const KEY = (id) => "sg-email-edit-" + id;
   const dlg = document.createElement("dialog");
   dlg.className = "dialog email-dialog";
@@ -18,7 +16,7 @@
 
   const MAILTO_MAX = 1800;
   const mailtoUrl = (to, su, body) => `mailto:${encodeURIComponent(to).replace(/%40/g, "@")}?subject=${encodeURIComponent(su)}&body=${encodeURIComponent(body)}`;
-  const VIA = {gmail_compose_link: "Opened in Gmail (demo)", mailto: "Opened in your email app (demo)"};
+  const VIA = {gmail_compose_link: "Opened in webmail (demo)", mailto: "Opened in your email app (demo)"};
   // Mirror of the body with <mark> around the quoted clause; sits behind the transparent textarea.
   function marked(text, clause) {
     const t = esc(text);
@@ -26,7 +24,6 @@
     const c = esc(clause);
     return t.split(c).join(`<mark data-testid="email-clause">${c}</mark>`) + "\n";
   }
-  const gmailUrl = (to, su, body) => `${GMAIL}&to=${encodeURIComponent(to)}&su=${encodeURIComponent(su)}&body=${encodeURIComponent(body)}`;
   function saveEdit(id, v) { try { localStorage.setItem(KEY(id), JSON.stringify(v)); } catch (e) { /* storage off */ } }
   function loadEdit(id) { try { return JSON.parse(localStorage.getItem(KEY(id)) || "null"); } catch (e) { return null; } }
   function dropEdit(id) { try { localStorage.removeItem(KEY(id)); } catch (e) { /* storage off */ } }
@@ -57,7 +54,6 @@
       <div class="row">
         <button type="button" class="btn" data-testid="email-send">Send</button>
         <button type="button" class="btn btn-ghost" data-testid="email-open-app">Open in my email app</button>
-        <button type="button" class="link-btn" data-testid="email-open-gmail">or Gmail</button>
         <button class="btn btn-ghost" value="close" data-testid="email-dismiss">Close</button>
       </div>
       <p class="muted tiny email-demo-note">Demo: Send saves it to the demo outbox; nothing is emailed by SubGuard.</p></form>`;
@@ -67,7 +63,6 @@
     const sync = () => {
       const cur = read();
       $("email-send").disabled = !cur.to || !cur.body.trim();
-      $("email-open-gmail").disabled = $("email-send").disabled;
       $("email-open-app").disabled = $("email-send").disabled;
       back.innerHTML = marked(cur.body, n.clause);
       saveEdit(n.id, cur);
@@ -85,13 +80,6 @@
     $("email-send").addEventListener("click", () => {
       $("email-send").disabled = true;
       finish("send").catch((e) => { toast(e.message, {level: "urgent"}); sync(); });
-    });
-    $("email-open-gmail").addEventListener("click", () => {
-      const cur = read();
-      const url = gmailUrl(cur.to, cur.subject, cur.body);
-      if (url.length > GMAIL_MAX) { $("email-too-long").hidden = false; return; }
-      window.open(url, "_blank", "noopener"); // opened in the click itself, so it isn't popup-blocked
-      finish("gmail").catch((e) => toast(e.message, {level: "urgent"}));
     });
     $("email-open-app").addEventListener("click", () => {
       const cur = read();

@@ -88,7 +88,7 @@
   {% if notice %}
   <div data-testid="cancellation-notice">
     {% if notice.status == "sent" %}
-    <p class="ok"><strong>{{ {"gmail_compose_link": "Opened in Gmail (demo)", "mailto": "Opened in your email app (demo)"}.get(notice.sent_via, "Email sent (demo)") }}</strong>
+    <p class="ok"><strong>{{ {"gmail_compose_link": "Opened in webmail (demo)", "mailto": "Opened in your email app (demo)"}.get(notice.sent_via, "Email sent (demo)") }}</strong>
       · edited: {{ "yes" if notice.edited else "no" }}</p>
     {% else %}
     <p><strong>Your cancellation email is ready to review and send.</strong></p>
@@ -98,7 +98,7 @@
     <p class="small muted">Drafted by {{ "AI" if notice.draft_source == "llm" else "a standard template" }} · SHA-256: <code>{{ notice.sha256 }}</code></p>
     <button class="btn btn-sm" data-email-open="{{ notice.id }}" data-testid="email-review">{{ "View sent email" if notice.status == "sent" else "Review email" }}</button>
   </div>
-  <p class="muted tiny">Demo only. Production would send from the user's own Gmail/Outlook with send-only permission.</p>
+  <p class="muted tiny">Demo only. Production would send from the user's own email account with send-only permission.</p>
   {% else %}<p class="muted">No cancellation email yet.</p>{% endif %}
 </section>
 </div>

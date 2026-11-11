@@ -136,10 +136,11 @@ def test_dashboard_selector_contract(client: TestClient) -> None:
     assert 'data-merchant="quillnote"' in text and 'id="toggle-fair-trial"' in text  # U6: the Quillnote toggle
     js = "".join(client.get(f"/static/{f}").text for f in ("app.js", "home.js", "grids.js", "chat.js", "email.js"))
     for testid in ("toast-alert", "confirm-card", "email-preview", "email-to", "email-subject",
-                   "email-body", "email-send", "email-open-app", "email-open-gmail", "email-dismiss", "email-sent",
+                   "email-body", "email-send", "email-open-app", "email-dismiss", "email-sent",
                    "email-copy", "email-clause", "confirm-button", "chat-done"):
         assert testid in js, testid
     assert "Restart trial" not in text + js and "restart" not in js
+    assert "Gmail" not in text + js  # no email brand on screen (D-165)
 
 
 def test_view_subscriptions(demo_client: TestClient) -> None:

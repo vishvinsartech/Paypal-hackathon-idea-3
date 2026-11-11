@@ -771,6 +771,12 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   `videolib.BRANDS`: email providers, big tech, AI vendors, Zapier, GitHub, Render, YouTube...) in any caption or
   narration; URLs are stripped first so the repo link can be on screen. PayPal is the platform and is allowed. The
   email modal's secondary "or Gmail" link (D-105) is UI, not a caption; the cancel scene never clicks or highlights it.
+- **D-165 No email brand on screen (overrides part of D-105 and U13).** The email window no longer offers "or Gmail":
+  "Open in my email app" (mailto:, U13) is the only hand-off besides Send, so no brand appears in the app or the
+  video. The other visible wording is neutral too ("your own email account"; an old Gmail-sent notice reads
+  "Opened in webmail (demo)"). The `/api/notices/{id}/gmail` endpoint and its tests stay (API only, no UI) so old
+  notices and the outbox format keep working. `ui-check` now drives Open in my email app and checks the mailto: link
+  carries the edited text.
 
 ## Not used in v1 (sponsor tools)
 

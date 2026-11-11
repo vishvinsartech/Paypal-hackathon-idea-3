@@ -192,12 +192,12 @@
   {% for n in notices %}
   <div class="notice" data-testid="cancellation-notice">
     <p><strong>{{ n.subject }}</strong> → {{ n.to }}<br>
-      <span class="small {{ 'ok' if n.status == 'sent' else 'muted' }}">{% if n.status == "sent" %}{{ {"gmail_compose_link": "Opened in Gmail (demo)", "mailto": "Opened in your email app (demo)"}.get(n.sent_via, "Email sent (demo)") }} · edited: {{ "yes" if n.edited else "no" }}{% else %}Draft, not sent yet{% endif %} · drafted by {{ "AI" if n.draft_source == "llm" else "a standard template" }}</span></p>
+      <span class="small {{ 'ok' if n.status == 'sent' else 'muted' }}">{% if n.status == "sent" %}{{ {"gmail_compose_link": "Opened in webmail (demo)", "mailto": "Opened in your email app (demo)"}.get(n.sent_via, "Email sent (demo)") }} · edited: {{ "yes" if n.edited else "no" }}{% else %}Draft, not sent yet{% endif %} · drafted by {{ "AI" if n.draft_source == "llm" else "a standard template" }}</span></p>
     <button class="btn btn-sm" data-email-open="{{ n.id }}">{{ "View" if n.status == "sent" else "Review & send" }}</button>
   </div>
   {% else %}<p class="muted">None yet. SubGuard drafts one for you after a cancel in PayPal.</p>{% endfor %}
   </div>
-  <p class="muted tiny">Demo only. Production would send from your own Gmail/Outlook with send-only permission.</p>
+  <p class="muted tiny">Demo only. Production would send from your own email account with send-only permission.</p>
 </section>
 </div>
 </div>

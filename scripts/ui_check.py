@@ -4,7 +4,7 @@ Starts its own mock server on a free port with a throwaway DATA_DIR (unless --ba
 `/` empty state + presenter bar (D key) -> shop (U20) -> companion (verdict, 3 things, PayPal check, evidence
 folded) -> merchant welcome only (U22) -> Priya's card (cost line, act-by, dots, Verified with PayPal) -> Day 5
 check-in band on the card (one Keep / Cancel pair, U8) + chat -> "Cancel Penwright trial? You won't be charged
-$24.99" -> email preview (clause highlighted, Open in my email app, Gmail) -> Day 11 proof -> audit drawer
+$24.99" -> email preview (clause highlighted, Open in my email app) -> Day 11 proof -> audit drawer
 (routine hidden, CSV) -> theme -> evidence page tabs (U23-U25). Then 390 px layout (U27), Start demo with all three
 answers on the card, and Quillnote (Layer 2: ACTION NEEDED on the card, polled until CANCELLED).
 Fails on any console error, page error or CDN request (U30).
@@ -245,14 +245,15 @@ def story(base: str, headed: bool) -> None:
         expect(email.get_by_test_id("email-open-app")).to_be_disabled()
         email.get_by_test_id("email-to").fill("cancel@penwright.example")
         body.fill(body.input_value() + "\nEdited by Priya.")
-        ctx.route("https://mail.google.com/**", lambda route: route.fulfill(body="Gmail stub"))
-        with ctx.expect_page() as gmail_info:
-            email.get_by_test_id("email-open-gmail").click()
-        gmail = gmail_info.value
-        gmail.wait_for_load_state()
-        assert gmail.url.startswith("https://mail.google.com/mail/?view=cm") and "Edited%20by%20Priya." in gmail.url
-        gmail.close()
-        expect(email.get_by_test_id("email-sent")).to_have_text("Opened in Gmail (demo)")
+        expect(email.get_by_test_id("email-open-gmail")).to_have_count(0)  # no email brand on screen (D-165)
+        me.evaluate("""() => { const click = HTMLAnchorElement.prototype.click;  // catch the mailto: hand-off
+          HTMLAnchorElement.prototype.click = function () {
+            if (this.href.startsWith("mailto:")) { window.__mailto = this.href; return; }
+            return click.call(this); }; }""")
+        email.get_by_test_id("email-open-app").click()
+        mailto = me.evaluate("() => window.__mailto")
+        assert mailto.startswith("mailto:cancel@penwright.example?subject=") and "Edited%20by%20Priya." in mailto
+        expect(email.get_by_test_id("email-sent")).to_have_text("Opened in your email app (demo)")
         email.get_by_test_id("email-dismiss").click()
         expect(me.get_by_test_id("toast-result")).to_have_count(0)
         expect(card.get_by_test_id("status-penwright")).to_have_text("CANCELLED")
@@ -323,7 +324,7 @@ def story(base: str, headed: bool) -> None:
         expect(page.get_by_test_id("ev-verdict")).to_contain_text("3 things to know")
         for chart in ("chart-cost", "chart-usage", "chart-risk"):  # U25: charts on the evidence page
             expect(page.get_by_test_id(chart).locator("canvas").first).to_be_visible()
-        expect(page.get_by_test_id("cancellation-notice")).to_contain_text("Opened in Gmail (demo)")
+        expect(page.get_by_test_id("cancellation-notice")).to_contain_text("Opened in your email app (demo)")
         page.get_by_test_id("email-review").click()
         expect(page.get_by_test_id("email-sent")).to_be_visible()  # already handed over: shows the sent email
         page.get_by_test_id("email-dismiss").click()

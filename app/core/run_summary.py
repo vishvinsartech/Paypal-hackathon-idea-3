@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from app.core.activity import EVENTS
 from app.core.audit_log import AuditEntry
 from app.core.services import Services
+from app.core.steps import Step, derive_steps
 
 
 class RunRow(BaseModel):
@@ -32,6 +33,7 @@ class RunSummary(BaseModel):
     subscription_id: str | None = None
     paypal_id: str | None = None
     rows: list[RunRow] = []
+    steps: list[Step] = []  # B4: the step tracker, derived from this subscription's events
     full_log_entries: int = 0
 
 
@@ -63,6 +65,7 @@ def run_summary(svc: Services, user_id: str, user_name: str = "Priya") -> RunSum
     starts = [e for e in entries if e.event == "subscription_registered" and e.user_id == user_id]
     out = RunSummary(full_log_entries=len(entries))
     if not starts:
+        out.steps = derive_steps(svc, None, [], None)
         return out
     start = starts[-1]
     sub_id = start.subscription_id
@@ -80,4 +83,6 @@ def run_summary(svc: Services, user_id: str, user_name: str = "Priya") -> RunSum
         if keep:
             picked.append(e)
     out.rows = [r for r in (_row(e, user_name) for e in picked) if r is not None]
+    out.steps = derive_steps(svc, svc.sub(sub_id or ""), [e for e in entries if e.subscription_id == sub_id],
+                             reviews[-1] if reviews else None)
     return out

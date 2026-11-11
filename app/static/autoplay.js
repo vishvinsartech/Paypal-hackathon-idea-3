@@ -95,7 +95,7 @@
     say("<strong>Day 0.</strong> Priya clicks PayPal on Penwright. SubGuard reads the fine print first…");
     const pre = await post("/api/review/preflight", {merchant_url: "/shop/penwright", plan_key: "penwright-pro", user_id: user});
     await sleep(1400);
-    mark("read", "done", `Risk ${pre.risk_score} · cancel by Day ${pre.deadlines.real_cancel_deadline_day}`);
+    mark("read", "done", `Risk ${pre.risk_score} · act by ${pre.display.points.act_by.date}`);  // same text as the derived step (B4)
     say(esc(pre.summary));
     await sleep(1600);
 
@@ -127,7 +127,7 @@
     await sleep(700);
     const checkDay = timer ? timer.reminder_day : null;
     const fireDay = timer ? timer.fire_day : null;
-    mark("timer", timer ? "done" : "warn", timer ? `Ask Day ${checkDay} · cancel Day ${fireDay}` : "No auto-timer");
+    mark("timer", timer ? "done" : "warn", timer ? null : "No auto-timer");  // dated detail comes from the derived steps
     say("<strong>“I'll check with you before your trial runs out.”</strong>");
     await sleep(1400);
 
@@ -141,7 +141,7 @@
       alert = await openCheckin(sub.id);
       await sleep(alert ? 300 : 900);
     }
-    mark("wait", "done", `Days 1-${lastQuiet}`);
+    mark("wait", "done", `${lastQuiet} days`);
 
     let choice = "none";
     if (alert) {
@@ -150,7 +150,8 @@
       await sleep(700);
       choice = await decide(alert, fireDay);
       const said = {keep: "Priya: Keep", cancel: "Priya: Cancel", cancel_failed: "Cancel failed", skip: "No answer"}[choice];
-      mark("ask", choice === "cancel_failed" ? "warn" : "done", said);
+      mark("ask", choice === "cancel_failed" ? "warn" : "done", null);
+      say(esc(said));
     } else {
       mark("ask", "skipped", "no check-in");
     }
@@ -164,13 +165,13 @@
       const s = await subNow(sub.id);
       if (!outcome && s.status === "CANCELLED") {
         outcome = s.cancelled_by === "timer" ? `Auto-cancelled Day ${s.cancelled_day} (R2)` : `Cancelled Day ${s.cancelled_day}`;
-        mark("outcome", "done", outcome);
+        mark("outcome", "done", null);
         say(`<strong>Day ${d}.</strong> Cancelled in PayPal. Priya won't be charged. ` + (s.cancelled_by === "timer"
           ? "Her cancellation email is drafted and waits for her to review and send it."
           : "Her cancellation email was drafted for her to review and send."));
         await sleep(1500);
       } else if (!outcome && choice === "keep") {
-        outcome = "Kept · no more prompts";
+        outcome = "Kept";
         mark("outcome", "done", outcome);
       }
       await sleep(d === fireDay ? 1200 : 420);
@@ -182,12 +183,12 @@
     const kpi = await api(`/api/kpis?user=${user}`);
     await sleep(600);
     if (final.status === "CANCELLED") {
-      mark("proof", "done", `Day ${billing}: charge blocked`);
+      mark("proof", "done", "Checked PayPal: no charge");
       say(`<strong>Day ${billing}.</strong> First charge due today. Checked PayPal: no active subscription, so no charge can be taken.`);
       doneBox.innerHTML = `<p class="pipe-done" data-testid="pipeline-done"><strong>${esc(kpi.charges_avoided_text)} charge never taken</strong> (${esc(kpi.year_one_text)}). Every step is in the audit log below.</p>`;
     } else {
       const row = (await api(`/api/view/subscriptions?user=${user}`)).rows.find((r) => r.id === sub.id);
-      mark("proof", "warn", `Day ${billing}: charged`);
+      mark("proof", "warn", null);
       say(`<strong>Day ${billing}.</strong> Priya kept Penwright, so the first charge goes through as she agreed.`);
       doneBox.innerHTML = `<p class="pipe-done" data-testid="pipeline-done">Kept on purpose: Penwright charges <strong>${esc(row ? row.price_text : "")}</strong> from today, and SubGuard won't ask again.</p>`;
     }

@@ -181,6 +181,6 @@
     bar.hidden = !bar.hidden;
   });
 
-  refresh();
+  document.addEventListener("DOMContentLoaded", () => refresh());  // after every panel script registered (B3)
   setInterval(() => { if (!document.hidden) refresh(); }, 5000);
 })();

@@ -21,7 +21,7 @@
           say("<strong>Day 0.</strong> Priya clicks PayPal on Penwright. SubGuard reads the fine print first…");
         } else if (d.stage === "review") {
           review = d.review;
-          mark("read", "done", `Risk ${review.risk_score} · cancel by Day ${review.deadlines.real_cancel_deadline_day}`);
+          mark("read", "done", `Risk ${review.risk_score}` + (review.display ? ` · act by ${review.display.points.act_by.date}` : ""));
           say(esc(review.summary || ""));
         } else if (d.stage === "ready") {
           mark("approve", "active", "click Subscribe");

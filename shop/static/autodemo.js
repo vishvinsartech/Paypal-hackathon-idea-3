@@ -23,7 +23,7 @@
   window.addEventListener("subguard:review", async (ev) => {
     const r = ev.detail || {};
     tell({stage: "review", review: {review_id: r.review_id, risk_score: r.risk_score, summary: r.summary,
-      deadlines: r.deadlines}});
+      deadlines: r.deadlines, display: r.display}});
     await sleep(READ_MS);
     const go = document.querySelector("[data-testid=companion-continue]");
     if (go) go.click();

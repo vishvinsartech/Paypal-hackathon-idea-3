@@ -49,7 +49,8 @@ A missing value stops startup with the variable's name and a hint to use `APP_MO
 
 `make seed` creates the Penwright and Quillnote products and plans from the `.env` prices and saves their ids in
 `data/runtime/sandbox_ids.json`. Re-running is safe: matching plans are reused. `make seed ARGS="--demo-subs"` also
-creates a demo subscription and approves it as the buyer in a browser; `--no-auto-approve` prints the links instead.
+creates pre-approved Penwright and Quillnote subscriptions (approved as the buyer in a browser) for the demo video
+recorder; run it again before each sandbox take. `--no-auto-approve` prints the links instead.
 
 ### 4. Run and walk through
 

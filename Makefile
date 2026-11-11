@@ -5,7 +5,7 @@ PYTHON ?= python3
 VENV_PY := $(if $(wildcard .venv/bin/python),.venv/bin/python,python)
 SERVE := -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 
-.PHONY: setup dev dev-sandbox seed sandbox-check sandbox-ui-check reset test lint ui-check shots zapier-check demo-video-check demo-video
+.PHONY: setup dev dev-sandbox seed sandbox-check sandbox-ui-check reset test lint ui-check shots zapier-check demo-video-check demo-video \n	demo-video-record demo-video-voice demo-video-build
 
 setup:
 	$(PYTHON) scripts/tasks.py setup
@@ -45,7 +45,18 @@ zapier-check:
 	$(PYTHON) scripts/tasks.py zapier-check $(ARGS)
 
 demo-video-check:
-	$(PYTHON) scripts/tasks.py demo-video-check
+	$(PYTHON) scripts/tasks.py demo-video-check $(ARGS)
 
+# The whole video: check -> record -> voice-over -> build (the app must be running; demo-video/README.md).
+# ARGS go to the build, e.g. make demo-video ARGS="--require-clips --burn-captions"
 demo-video:
-	$(PYTHON) scripts/tasks.py demo-video
+	$(PYTHON) scripts/tasks.py demo-video $(ARGS)
+
+demo-video-record:
+	$(PYTHON) scripts/tasks.py demo-video-record $(ARGS)
+
+demo-video-voice:
+	$(PYTHON) scripts/tasks.py demo-video-voice $(ARGS)
+
+demo-video-build:
+	$(PYTHON) scripts/tasks.py demo-video-build $(ARGS)

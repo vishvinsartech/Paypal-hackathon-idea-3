@@ -388,7 +388,8 @@ def companion_in_view(base: str, headed: bool) -> None:
             box = risk.bounding_box()
             assert box and box["y"] >= 0 and box["y"] + box["height"] <= h, f"{w}x{h}: risk badge off screen {box}"
             card = page.get_by_test_id("companion-overlay").bounding_box()
-            assert card and card["height"] <= min(720, h), f"{w}x{h}: companion taller than allowed {card}"
+            # +0.5 px: sub-pixel layout can report 720.00003 for a 720 px card (a flaky failure, Phase 5)
+            assert card and card["height"] <= min(720, h) + 0.5, f"{w}x{h}: companion taller than allowed {card}"
             expect(page.get_by_test_id("companion-continue")).to_be_in_viewport()  # sticky footer
             page.keyboard.press("Escape")
             expect(page.get_by_test_id("companion-overlay")).to_have_count(0)

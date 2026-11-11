@@ -1,7 +1,7 @@
 """Seed the PayPal sandbox (`make seed`): products + plans from .env pricing -> data/runtime/sandbox_ids.json.
 
 Usage: python scripts/seed_sandbox.py [--demo-subs] [--no-auto-approve] [--headless]
-  --demo-subs        also create one demo Penwright subscription for the buyer
+  --demo-subs        also create pre-approved Penwright + Quillnote subscriptions for the buyer (demo video)
   --no-auto-approve  print the approve links instead of approving them with Playwright
   --headless         run the approval browser headless (default: headed, as PayPal prefers)
 Idempotent: re-running reuses every product/plan that still matches the current prices.
@@ -25,7 +25,7 @@ from app.integrations.paypal_seed import Seeder, check_paypal_settings  # noqa: 
 from app.integrations.paypal_types import PayPalError, SubscriptionView  # noqa: E402
 from app.store import JsonStore  # noqa: E402
 
-DEMO_SUB_PLANS = ("penwright-pro",)
+DEMO_SUB_PLANS = ("penwright-pro", "quillnote-plus")  # the demo video registers both (record_demo.py)
 
 
 def sandbox_settings() -> Settings:

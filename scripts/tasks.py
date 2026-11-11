@@ -2,8 +2,10 @@
 
 Usage: python scripts/tasks.py <task> [args]
 Tasks: setup dev dev-sandbox seed sandbox-check sandbox-ui-check reset test lint ui-check zapier-check
-       demo-video-check demo-video
+       demo-video-check demo-video demo-video-record demo-video-voice demo-video-build
 Extra args go to `seed` / `sandbox-check` / `sandbox-ui-check` / the demo-video tasks (e.g. `seed --demo-subs`).
+`demo-video` is the whole pipeline (check -> record -> voice-over -> build; extra args go to the build), the same
+as demo-video/make_video.sh.
 """
 
 from __future__ import annotations
@@ -54,6 +56,17 @@ def reset() -> int:
     return run(py(), "-c", code)
 
 
+def demo_video() -> int:
+    """check -> record -> voice-over -> build, stopping at the first failure (demo-video/make_video.sh)."""
+    steps = (("demo-video/check_scenes.py",), ("demo-video/record_demo.py",), ("demo-video/make_voiceover.py",),
+             ("demo-video/build_video.py", *sys.argv[2:]))
+    for step in steps:
+        code = run(py(), *step)
+        if code:
+            return code
+    return 0
+
+
 TASKS = {
     "setup": setup,
     "dev": lambda: dev(),
@@ -68,7 +81,10 @@ TASKS = {
     "shots": lambda: run(py(), "scripts/shots.py", *sys.argv[2:]),
     "zapier-check": lambda: run(py(), "scripts/zapier_check.py", *sys.argv[2:]),
     "demo-video-check": lambda: run(py(), "demo-video/check_scenes.py", *sys.argv[2:]),
-    "demo-video": lambda: run(py(), "demo-video/build_video.py", *sys.argv[2:]),
+    "demo-video": demo_video,
+    "demo-video-record": lambda: run(py(), "demo-video/record_demo.py", *sys.argv[2:]),
+    "demo-video-voice": lambda: run(py(), "demo-video/make_voiceover.py", *sys.argv[2:]),
+    "demo-video-build": lambda: run(py(), "demo-video/build_video.py", *sys.argv[2:]),
 }
 
 if __name__ == "__main__":

@@ -740,6 +740,38 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   current plan. Hosted-demo and video links stay placeholders until the human tasks are done. `LICENSE` is the
   standard MIT text, unchanged.
 
+## v3 Phase 5: video tooling (2026-11-11, docs/FIX_PLAN.md)
+
+- **D-160 Scenes: the v3 beats, dates as placeholders (V1).** `scenes.json` has the ten FIX_PLAN beats, 170 s with
+  the 15 s PayPal clip (155 s without), cap 175 s. Calendar dates are `{on:N}` (N days after a sign-up made today,
+  the same rule as the app and `ui_check.on()`), resolved when checking, recording and voicing, so the narration says
+  "Act by Nov 18 (the terms allow Nov 19)" on whatever day the video is made; the voice-over speaks "November 18".
+  The 125 wpm check counts the resolved text. Narration avoids sim-day talk except "Day 5", "Day 6" and "Day 11",
+  which the presenter bar and proof banner show.
+- **D-161 The Quillnote beat is recorded last (V1).** `04_ai_vs_basic` needs a Quillnote subscription, but one made
+  at Day 0 would fire its Layer 2 timer (act by Day 4) before the Day 5 check-in and crowd Penwright's story. So the
+  scene is `"separate": true`: the recorder runs it after the main take, with an off-screen `"setup"` (companion
+  review + approval + register) and `{sub:quillnote-plus}` in its URL. `build_video.py` already cuts by scene id, so
+  the scene still lands in its scenes.json slot. Its dates are relative to that sign-up, which is "today" either way.
+- **D-162 Sandbox recordings use pre-approved subscriptions (V2).** PayPal's approval window is the hand-recorded
+  clip, so in `APP_MODE=sandbox` the recorder skips actions marked `"mock_only"` (Continue to PayPal) and, after
+  `03_companion` (`"sandbox_subscribe"`), registers the subscription `make seed ARGS=--demo-subs` approved, linked to
+  the companion's review. `--demo-subs` now pre-approves Penwright and Quillnote. A subscription that is no longer
+  ACTIVE stops the take with "run the seed again". The mode comes from `/healthz`, so the video shows "PayPal
+  Sandbox" whenever the server runs in sandbox mode.
+- **D-163 Voice-over and final mix (V2).** `make_voiceover.py` uses `demo-video/audio/<id>.wav|.mp3` if present,
+  else edge-tts (`demo-video/requirements.txt`, not in the app's requirements). ffprobe measures every file; one
+  longer than its scene fails the step. `build_video.py` delays each voice to where its scene really starts in the
+  cut (a skipped clip shifts the rest and drops its own voice), mixes with `amix normalize=0`, optional `--music` at
+  0.08, optional `--burn-captions` (the on_screen captions, bottom centre, so the shop's "Fictional merchant" banner
+  stays visible). `-preset veryfast -crf 20`, AAC, `+faststart`, `-t 178`, then ffprobe must report < 180 s (and at
+  most the 175 s cap) or the file is deleted. Output `out/demo.mp4`. `make demo-video` / `make_video.sh` run check ->
+  record -> voice-over -> build and stop at the first failure.
+- **D-164 No brands in captions or narration (V3).** `check_scenes.py` fails on a real brand name (a list in
+  `videolib.BRANDS`: email providers, big tech, AI vendors, Zapier, GitHub, Render, YouTube...) in any caption or
+  narration; URLs are stripped first so the repo link can be on screen. PayPal is the platform and is allowed. The
+  email modal's secondary "or Gmail" link (D-105) is UI, not a caption; the cancel scene never clicks or highlights it.
+
 ## Not used in v1 (sponsor tools)
 
 - **Bryntum:** a CSS timeline is enough for a prototype.

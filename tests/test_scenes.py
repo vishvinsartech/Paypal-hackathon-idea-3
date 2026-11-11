@@ -22,16 +22,18 @@ def _ui_sources(client: TestClient) -> str:
     scripts = [f.read_text(encoding="utf-8") for f in (ROOT_DIR / "app" / "static").glob("*.js")]
     # Priya's card, check-in and proof banner render only later in the story, so their template source counts too.
     templates = [f.read_text(encoding="utf-8") for f in (ROOT_DIR / "app" / "templates").glob("*.html")]
-    return "\n".join(pages + scripts + templates)
+    shop = [f.read_text(encoding="utf-8") for f in (*(ROOT_DIR / "shop" / "static").glob("*.js"),
+                                                    *(ROOT_DIR / "shop" / "templates").glob("*.html"))]
+    return "\n".join(pages + scripts + templates + shop)  # the same sources as check_scenes.py
 
 
 def test_total_under_the_cap_and_narration_fits() -> None:
     assert SCENES["max_total_seconds"] <= 175
     total = sum(s["duration"] for s in SCENES["scenes"])
-    assert total <= SCENES["max_total_seconds"], total
+    assert total <= 170 <= SCENES["max_total_seconds"], total  # FIX_PLAN V1: <= 170 s, cap 175 s
     wpm = SCENES["words_per_minute"]
-    for s in SCENES["scenes"]:
-        words = len(re.findall(r"\S+", s["narration"]))
+    for s in SCENES["scenes"]:  # {on:N} is spoken as two words ("November 18")
+        words = len(re.findall(r"\S+", re.sub(r"\{on:\d+\}", "Month D", s["narration"])))
         assert words <= s["duration"] * wpm / 60, (s["id"], words)
 
 
@@ -48,7 +50,9 @@ def test_paypal_approval_clip_scene() -> None:
 
 def test_scenes_tell_the_simplified_story() -> None:
     text = json.dumps(SCENES)
-    assert "$524.88" in text and "Day 7" in text and "Day 11" in text and "email-send" in text
+    assert "$524.88" in text and "$24.99" in text and "Day 11" in text and "email-send" in text
+    assert "Act by {on:7} (the terms allow {on:8})" in text  # D6: calendar dates, never "Day 7" on screen
+    assert "Quillnote" in text and "ai-vs-basic" in text and "R1" in text and "R2" in text  # v3 beats
     for gone in ("chat-open", "chat-send", "subs-grid", "kpi-patterns"):  # chat is not in the video (D-112)
         assert gone not in text, gone
     for gone in ("Framewise", "Lumen", "John", "add-on", "872.76", "$19", "yearly"):

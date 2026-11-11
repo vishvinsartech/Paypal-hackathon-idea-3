@@ -9,6 +9,9 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
+import subprocess
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +22,16 @@ SCENES_PATH = ROOT / "demo-video" / "scenes.json"
 HARD_LIMIT_SECONDS = 180  # the hackathon's "under 3 minutes"; scenes.json keeps a 5 s margin below it
 ACTIONS = {"goto", "click", "hover", "type", "press", "wait_for", "wait", "scroll_to", "highlight"}
 ID_RE = re.compile(r"\d\d[a-z]?_[a-z0-9_]+")
+ON_RE = re.compile(r"\{on:(\d+)\}")
+SUB_RE = re.compile(r"\{sub:([a-z0-9-]+)\}")
+SETUPS = {"subscribe"}
+# CLAUDE.md "No real brands": captions and narration never name one (PayPal is the platform we build on). URLs are
+# stripped first, so the repo link may stay on screen. Email: say "Open in my email app", not the provider.
+BRANDS = ("Gmail", "Google", "Outlook", "Yahoo", "Apple", "iCloud", "Microsoft", "Amazon", "Netflix", "Spotify",
+          "Adobe", "Notion", "Grammarly", "Evernote", "Slack", "Zapier", "GitHub", "Anthropic", "Claude", "OpenAI",
+          "ChatGPT", "GPT", "Render", "YouTube")
+BRAND_RE = re.compile(r"\b(" + "|".join(BRANDS) + r")\b")
+URL_RE = re.compile(r"\S+\.(com|org|io|dev)\S*")
 
 
 def load_scenes(path: Path = SCENES_PATH) -> dict[str, Any]:
@@ -35,6 +48,21 @@ def total_seconds(d: dict[str, Any], *, with_clips: bool = True) -> int:
 
 def words(text: str) -> int:
     return len(re.findall(r"\S+", text))
+
+
+def resolve(text: str, *, spoken: bool = False, today: datetime | None = None) -> str:
+    """{on:N} -> the calendar date N days after a sign-up made today, as SubGuard writes it ("Nov 18"), or the
+    spoken form ("November 18") for the voice-over. Same rule as scripts/ui_check.on()."""
+    now = today or datetime.now(UTC)
+
+    def sub(m: re.Match[str]) -> str:
+        d = now + timedelta(days=int(m.group(1)))
+        return f"{d:%B} {d.day}" if spoken else f"{d:%b} {d.day}"
+    return ON_RE.sub(sub, text)
+
+
+def brands(text: str) -> list[str]:
+    return BRAND_RE.findall(URL_RE.sub("", text))
 
 
 def validate(d: dict[str, Any], root: Path = ROOT) -> tuple[list[str], list[str]]:
@@ -67,8 +95,13 @@ def validate(d: dict[str, Any], root: Path = ROOT) -> tuple[list[str], list[str]
         if not isinstance(s.get("duration"), int) or s.get("duration", 0) <= 0:
             errors.append(f"{sid}: duration must be a positive whole number of seconds")
             continue
-        if words(s.get("narration", "")) > s["duration"] * wpm / 60:
-            errors.append(f"{sid}: {words(s['narration'])} words don't fit {s['duration']} s at {wpm} wpm")
+        spoken = resolve(s.get("narration", ""), spoken=True)
+        if words(spoken) > s["duration"] * wpm / 60:
+            errors.append(f"{sid}: {words(spoken)} words don't fit {s['duration']} s at {wpm} wpm")
+        for b in sorted(set(brands(s.get("on_screen", "")) + brands(s.get("narration", "")))):
+            errors.append(f"{sid}: real brand {b!r} in the caption or narration (CLAUDE.md: no real brands)")
+        if s.get("setup") and (set(s["setup"]) - SETUPS or not s.get("separate")):
+            errors.append(f"{sid}: setup must be one of {sorted(SETUPS)} on a \"separate\": true scene")
         if is_clip(s):
             clip = s.get("clip", "")
             if not clip.startswith("demo-video/clips/"):
@@ -83,9 +116,13 @@ def validate(d: dict[str, Any], root: Path = ROOT) -> tuple[list[str], list[str]
         else:
             if not s.get("actions"):
                 errors.append(f"{sid}: needs at least one action")
+            made = {s["setup"]["subscribe"]} if s.get("setup", {}).get("subscribe") else set()
             for a in s.get("actions", []):
                 if a.get("action") not in ACTIONS:
                     errors.append(f"{sid}: unknown action {a.get('action')!r}")
+                for key in SUB_RE.findall(a.get("url", "")):
+                    if key not in made:
+                        errors.append(f"{sid}: {{sub:{key}}} needs \"setup\": {{\"subscribe\": \"{key}\"}}")
     return errors, warnings
 
 
@@ -149,6 +186,31 @@ def video_script_md(d: dict[str, Any]) -> str:
         acts = (f"**clip** `{s['clip']}` (recorded by hand)" if is_clip(s) else
                 "; ".join(a["action"] + (f" `{a.get('target') or a.get('url')}`" if a.get("target") or a.get("url")
                                          else "") for a in s["actions"]))
-        rows.append(f"| {start // 60}:{start % 60:02d}-{t // 60}:{t % 60:02d} | {s['id']} | {s['on_screen']} | "
-                    f"{acts} | {s['narration']} |")
+        rows.append(f"| {start // 60}:{start % 60:02d}-{t // 60}:{t % 60:02d} | {s['id']} | "
+                    f"{resolve(s['on_screen'])} | {acts} | {resolve(s['narration'])} |")
     return "\n".join(rows) + "\n"
+
+
+def offsets(segments: list[Segment]) -> dict[str, float]:
+    """Where each scene starts in the final cut (a skipped clip shifts everything after it)."""
+    out, t = {}, 0.0
+    for seg in segments:
+        out[seg.scene_id] = round(t, 3)
+        t += seg.duration
+    return out
+
+
+def srt(entries: list[tuple[float, float, str]]) -> str:
+    def ts(x: float) -> str:
+        ms = round(x * 1000)
+        return f"{ms // 3600000:02d}:{ms // 60000 % 60:02d}:{ms // 1000 % 60:02d},{ms % 1000:03d}"
+    return "".join(f"{i}\n{ts(a)} --> {ts(b)}\n{text}\n\n" for i, (a, b, text) in enumerate(entries, 1))
+
+
+def probe_seconds(path: Path) -> float:
+    """Media duration via ffprobe (the hard cap is checked on the real file, not on the plan)."""
+    if shutil.which("ffprobe") is None:
+        raise RuntimeError("ffprobe isn't installed or not on PATH (it comes with ffmpeg: https://ffmpeg.org)")
+    out = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
+                          str(path)], capture_output=True, text=True, check=True).stdout.strip()
+    return float(out)

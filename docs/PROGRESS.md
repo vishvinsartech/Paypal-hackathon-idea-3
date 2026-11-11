@@ -50,3 +50,17 @@ The v1-v2 milestone history (from the original spec, now `docs/archive/BUILD_PRO
   `render.yaml` deploys `prototype-v3`, mock by default; sandbox mode seeds the plans at start. LICENSE is the
   standard MIT text. `make test`: **317 passed**, 2 deselected. `make lint`: clean. `make ui-check`: passed.
   No UI changes, so no new screenshots.
+
+- [x] **Phase 5. Video tooling** (2026-11-11, commit `PHASE5`). Done: V1-V3 (DECISIONS D-160..D-164).
+  `scenes.json` has the ten v3 beats, 170 s with the PayPal clip (155 s without), cap 175 s; dates are `{on:N}`
+  placeholders so the narration says "Act by Nov 18 (the terms allow Nov 19)" on any recording day. New
+  `record_demo.py` (Playwright; mock or sandbox with pre-approved subscriptions from `make seed ARGS=--demo-subs`,
+  which now approves Penwright and Quillnote), `make_voiceover.py` (your audio or edge-tts; ffprobe; fails if a
+  voice is longer than its scene) and `make_video.sh`; `build_video.py` now mixes the voice-over, can burn captions,
+  uses `-preset veryfast`, trims to 178 s and ffprobe-checks < 180 s. `make demo-video` runs the whole pipeline.
+  `make demo-video-check`: passes (one warning: the hand-recorded clip isn't there yet). `make test`: **328
+  passed** (was 317), 2 deselected. `make lint`: clean. `make ui-check`: passed (one earlier run failed on a
+  720.00003 px companion vs 720 px; the check now allows 0.5 px). Verified for real: a full mock take recorded
+  with no problems (every scene within its time), and a build with stand-in tones and a stand-in clip through a
+  portable ffmpeg gave a 170.0 s `demo.mp4` (155.0 s without the clip), captions at the bottom, Quillnote in its
+  slot. Not run here: edge-tts (the real voice) and a sandbox take; ffmpeg/ffprobe aren't installed on this machine.

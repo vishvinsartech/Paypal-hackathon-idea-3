@@ -15,6 +15,7 @@ from app.core.services import Services
 from app.core.usage import exports
 from app.integrations.paypal_gateway import Ctx
 from app.integrations.paypal_types import DAYS_PER_UNIT, PayPalError, cycle_days
+from app.models import Subscription
 from app.store import utcnow
 
 
@@ -102,17 +103,38 @@ async def layer2_urgent(svc: Services, day: int) -> None:
                              subscription_id=sub.id, cta_url=svc.settings.paypal_autopay_url)
 
 
+PROOF_OK = "Checked PayPal: no active subscription, so no charge can be taken."
+PROOF_UNREACHABLE = ("Couldn't reach PayPal to check today. SubGuard's records show the subscription was "
+                     "cancelled in PayPal.")
+
+
+async def charge_day_proof(svc: Services, sub: Subscription, name: str, day: int) -> None:
+    """B8: on the first-charge day SubGuard (not PayPal: PayPal did nothing, the sim clock moved) does a fresh
+    live GET and stores PayPal's status and debug id as the proof. Only claims what the read confirms (R7)."""
+    ctx = Ctx(actor="system", user_id=sub.owner_id, merchant=svc.merchant(sub.merchant_id))
+    try:
+        seen = await svc.gw.verify(sub.paypal_id, ctx)
+    except PayPalError as exc:
+        status, debug, body, result = None, None, PROOF_UNREACHABLE, f"error: {exc}"
+    else:
+        status, debug = seen.subscription.status, seen.subscription_debug_id
+        result = "no_active_subscription" if status != "ACTIVE" else "still_active"
+        body = PROOF_OK if status != "ACTIVE" else (f"PayPal still shows {name} as ACTIVE. Check Automatic "
+                                                    "payments in PayPal today.")
+    await send_alert(svc, user_id=sub.owner_id, key=f"blocked-charge:{sub.id}:{day}", kind="blocked_charge",
+                     level="info" if result == "no_active_subscription" else "urgent",
+                     title=f"{name}: first charge due today", body=body, subscription_id=sub.id)
+    svc.store.audit.append(actor="system", event="charge_blocked", user_id=sub.owner_id, subscription_id=sub.id,
+                           status_after=status, paypal_debug_id=debug, transport=svc.gw.full.transport,  # type: ignore[arg-type]
+                           result=result, reason=body,
+                           details={"checked_by": "SubGuard", "paypal_status": status, "paypal_id": sub.paypal_id})
+
+
 async def billing_day(svc: Services, day: int) -> None:
     for sub in [s for s in svc.store.load("subscriptions").items if s.next_billing_day == day]:
         name = svc.merchant(sub.merchant_id).name
         if sub.status == "CANCELLED":
-            await send_alert(svc, user_id=sub.owner_id, key=f"blocked-charge:{sub.id}:{day}", kind="blocked_charge",
-                             level="info", title=f"{name}: charge due today was blocked",
-                             body="First charge due today: blocked. No active PayPal subscription.",
-                             subscription_id=sub.id)
-            svc.store.audit.append(actor="system", event="charge_blocked", user_id=sub.owner_id,
-                                   subscription_id=sub.id, status_after="CANCELLED",
-                                   reason="No active PayPal subscription")
+            await charge_day_proof(svc, sub, name, day)
         elif sub.status == "ACTIVE":
             cycles = sub.consent_snapshot.billing_cycles if sub.consent_snapshot else []
             step = next((cycle_days(c) for c in cycles if c.price > 0), DAYS_PER_UNIT["MONTH"])

@@ -12,7 +12,7 @@ CHARGES_PER_YEAR = {"DAY": 365, "WEEK": 52, "MONTH": 12, "YEAR": 1}
 
 def year_one_cost(cycles: Sequence[BillingCycleDef]) -> Decimal:
     """Cost of the first year of PAID billing (free trial cycles skipped).
-    Penwright: 3 x 24.99 + 9 x 49.99 = 524.88 (the "Money protected" KPI)."""
+    Penwright: 3 x 24.99 + 9 x 49.99 = 524.88 (the "up to ... in year one" line under "Charges avoided", D10)."""
     paid = [c for c in cycles if c.price > 0]
     if not paid:
         return Decimal("0.00")
@@ -51,3 +51,18 @@ def protected_by_currency(subs: Sequence[Subscription], user_id: str) -> dict[st
 def money_protected(subs: Sequence[Subscription], user_id: str, currency: str = "USD") -> Decimal:
     """"Money protected" KPI in one currency (the demo currency); other currencies are reported separately."""
     return protected_by_currency(subs, user_id).get(currency, Decimal("0.00"))
+
+
+def charges_avoided(subs: Sequence[Subscription], user_id: str, currency: str = "USD") -> Decimal:
+    """D10 "Charges avoided": the charge that really didn't happen, the first paid charge of each subscription
+    SubGuard cancelled (user-confirmed or timer) before it. Penwright: $24.99. From the consent snapshot's
+    PayPal billing cycles; the year-one figure (money_protected) is the secondary "up to" line."""
+    total = Decimal("0.00")
+    for s in subs:
+        if s.owner_id != user_id or s.cancelled_by not in ("user", "timer") or s.consent_snapshot is None:
+            continue
+        if s.consent_snapshot.currency != currency:
+            continue
+        prices = paid_prices(s.consent_snapshot.billing_cycles)
+        total += prices[0] if prices else Decimal("0.00")
+    return total.quantize(Decimal("0.01"))

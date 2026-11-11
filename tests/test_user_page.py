@@ -90,12 +90,15 @@ def test_card_reminder_and_proof(demo_client: TestClient) -> None:
     advance_to(c, 11)
     html = c.get("/user").text
     banner = re.search(r'data-testid="proof-banner"[^>]*><strong>([^<]+)</strong>', html)
-    assert banner and banner.group(1) == "First charge due today: blocked. No active PayPal subscription."
+    assert banner and banner.group(1) == ("First charge due today. Checked PayPal: no active subscription, "
+                                          "so no charge can be taken.")
     assert "Day 11 · blocked (no active PayPal subscription)" in html
-    assert re.search(r'data-testid="user-protected">.*?\$524\.88/yr', html, re.S)
+    assert re.search(r'data-testid="user-avoided">\$24\.99<', html)  # D10: Charges avoided
+    assert 'data-testid="user-year-one">up to $524.88 in year one<' in html
     assert re.search(r'data-testid="user-cancelled">.*?>1<', html, re.S)
     advance_to(c, 12)
-    assert "Day 11: first charge blocked. No active PayPal subscription." in c.get("/user").text
+    later = f"First charge was due {on(11)}. Checked PayPal: no active subscription, so no charge can be taken."
+    assert later in c.get("/user").text
 
 
 def test_keep_card_means_no_buttons(demo_client: TestClient) -> None:
@@ -122,7 +125,7 @@ def test_activity_list_tells_her_story(demo_client: TestClient) -> None:
              "SubGuard: Set a safety timer and told you about it: check in on Day 5, cancel on Day 6",
              "SubGuard: Asked you", "You: You tapped Cancel.", "PayPal: Cancelled your subscription",
              "SubGuard: Drafted the cancellation email", "You: You sent the cancellation email",
-             "PayPal: First charge due: blocked."]
+             "SubGuard: Checked PayPal: no active subscription, so no charge can be taken."]
     pos = [next(i for i, t in enumerate(texts) if t.startswith(o)) for o in order]
     assert pos == sorted(pos), texts
     assert "Email sent (demo)" in c.get("/user").text

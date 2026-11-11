@@ -1,4 +1,4 @@
-// Live demo (presenter control room, D-112): Money protected, alerts (+ toasts for new ones), timeline, the
+// Live demo (presenter control room, D-112): Charges avoided, alerts (+ toasts for new ones), timeline, the
 // "email ready" banner and the demo control bar. Priya's product view is /user.
 // Motion: KPIs count up and glow when they change, the day chip bumps, new alerts slide in, the timeline's
 // "today" line slides. CSS turns it all off under prefers-reduced-motion.
@@ -34,7 +34,9 @@
   onRefresh(async () => {
     const k = await api(`/api/kpis?user=${user}`);
     const extra = Object.values(k.other_currencies || {}).map((t) => ` + ${t}/yr`).join("");
-    setKpi("kpi-protected", k.money_protected_text + "/yr" + extra);
+    setKpi("kpi-protected", k.charges_avoided_text);  // D10: the charge that really didn't happen
+    const y1 = document.getElementById("kpi-year-one");
+    if (y1) y1.textContent = k.year_one_text + extra;
   });
 
   // ---- alerts -------------------------------------------------------------------------------

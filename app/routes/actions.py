@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from app.core import timers as tm
 from app.core.actions import cancel_confirmed, propose_cancel
 from app.core.policy import Decision
-from app.core.savings import money_protected, protected_by_currency
+from app.core.savings import charges_avoided, money_protected, protected_by_currency
 from app.core.services import Services
 from app.models import Alert, Timer
 from app.store import utcnow
@@ -150,7 +150,10 @@ def kpis(user: str = "priya", svc: Services = Depends(get_services)) -> dict[str
     cur = svc.settings.pricing.demo_currency
     protected = money_protected(subs, user, cur)
     others = {c: v for c, v in protected_by_currency(subs, user).items() if c != cur}
-    return {"money_protected": str(protected), "money_protected_text": svc.money(protected), "currency": cur,
+    avoided = charges_avoided(subs, user, cur)
+    return {"charges_avoided": str(avoided), "charges_avoided_text": svc.money(avoided),  # D10 primary figure
+            "year_one_text": f"up to {svc.money(protected)} in year one",
+            "money_protected": str(protected), "money_protected_text": svc.money(protected), "currency": cur,
             "other_currencies": {c: svc.settings.pricing.money(v, c) for c, v in others.items()},
             "dark_patterns_caught": caught,
             "subscriptions_cancelled": sum(1 for s in subs if s.cancelled_by in ("user", "timer")),

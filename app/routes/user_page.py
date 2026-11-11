@@ -15,7 +15,7 @@ from fastapi.responses import HTMLResponse
 from app.config import Settings
 from app.core import timers as tm
 from app.core.activity import Activity, activity_for
-from app.core.savings import money_protected, year_one_cost
+from app.core.savings import charges_avoided, money_protected, year_one_cost
 from app.core.services import Services
 from app.core.sub_dates import day_text, key_dates, stamp, sub_act_by
 from app.core.usage import SIMULATED_SOURCE, last_open_day, opens_between, times
@@ -77,8 +77,10 @@ def proof(svc: Services, alerts: list[Alert]) -> str | None:
     if blocked is None:
         return None
     if blocked.sim_day == svc.day:
-        return blocked.body  # "First charge due today: blocked. No active PayPal subscription."
-    return f"Day {blocked.sim_day}: first charge blocked. No active PayPal subscription."
+        return f"First charge due today. {blocked.body}"
+    sub = svc.sub(blocked.subscription_id or "")
+    when = day_text(sub, blocked.sim_day) if sub else f"Day {blocked.sim_day}"
+    return f"First charge was due {when}. {blocked.body}"
 
 
 @router.get("/user", response_class=HTMLResponse)
@@ -95,6 +97,7 @@ def user_dashboard(
     ctx.update(active_tab="user", cards=[card(svc, s) for s in subs], notices=notices, alerts=alerts,
                check_in=check_in(svc, alerts), proof=proof(svc, alerts),
                protected=svc.money(money_protected(subs, user, settings.pricing.demo_currency)),
+               avoided=svc.money(charges_avoided(subs, user, settings.pricing.demo_currency)),
                cancelled=sum(1 for s in subs if s.status == "CANCELLED"))
     return templates.TemplateResponse(request, "user.html", ctx)
 

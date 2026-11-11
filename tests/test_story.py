@@ -15,7 +15,7 @@ DAY5_ASKED = (f"Your Penwright trial ends on {on(10)}. {ACT_BY}. You've opened i
               "activity, simulated in this demo). "
               "Do you want to keep it?")
 DAY5_BODY = DAY5_ASKED + " If I don't hear back, I'll cancel it tomorrow so you're not charged."
-BLOCKED = "First charge due today: blocked. No active PayPal subscription."
+BLOCKED = "Checked PayPal: no active subscription, so no charge can be taken."
 
 
 def day0(c: TestClient) -> dict[str, Any]:
@@ -68,9 +68,16 @@ def assert_day11_blocked(c: TestClient, sub_id: str) -> None:
     advance_to(c, 11)
     blocked = [a for a in alerts(c, kind="blocked_charge") if a["subscription_id"] == sub_id]
     assert blocked and blocked[0]["body"] == BLOCKED
-    assert audit(c, "charge_blocked", subscription_id=sub_id)
+    (proof,) = audit(c, "charge_blocked", subscription_id=sub_id)
+    # B8: SubGuard checked PayPal live (not "PayPal blocked it"); PayPal's status + debug id are the proof
+    assert proof["actor"] == "system" and proof["details"]["checked_by"] == "SubGuard"
+    assert proof["status_after"] == "CANCELLED" and proof["result"] == "no_active_subscription"
+    assert proof["paypal_debug_id"]
     kpi = c.get("/api/kpis?user=priya").json()
     assert Decimal(kpi["money_protected"]) == Decimal("524.88") and kpi["money_protected_text"] == "$524.88"
+    # D10: lead with the charge that didn't happen; the year-one figure is the secondary line
+    assert Decimal(kpi["charges_avoided"]) == Decimal("24.99") and kpi["charges_avoided_text"] == "$24.99"
+    assert kpi["year_one_text"] == "up to $524.88 in year one"
     assert kpi["subscriptions_cancelled"] == 1
     assert c.get("/api/audit-log/verify").json()["ok"]
 

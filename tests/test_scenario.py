@@ -53,11 +53,14 @@ def test_story_end_to_end_with_chat(demo_client: TestClient) -> None:
     # ---- Day 11: the blocked first charge -----------------------------------------------------------------------
     advance_to(c, 11)
     blocked = [a for a in alerts(c, kind="blocked_charge") if a["subscription_id"] == main["id"]]
-    assert blocked[0]["body"] == "First charge due today: blocked. No active PayPal subscription."
+    assert blocked[0]["body"] == "Checked PayPal: no active subscription, so no charge can be taken."
 
     # ---- The money and the evidence -----------------------------------------------------------------------------
     kpi = c.get("/api/kpis?user=priya").json()
     assert Decimal(kpi["money_protected"]) == Decimal("524.88") and kpi["money_protected_text"] == "$524.88"
+    # D10: lead with the charge that didn't happen; the year-one figure is the secondary line
+    assert Decimal(kpi["charges_avoided"]) == Decimal("24.99") and kpi["charges_avoided_text"] == "$24.99"
+    assert kpi["year_one_text"] == "up to $524.88 in year one"
     assert kpi["subscriptions_cancelled"] == 1
 
     cancels = audit(c, "paypal_cancel", result="ok")

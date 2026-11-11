@@ -183,8 +183,8 @@
     await sleep(600);
     if (final.status === "CANCELLED") {
       mark("proof", "done", `Day ${billing}: charge blocked`);
-      say(`<strong>Day ${billing}.</strong> First charge due today: blocked. No active PayPal subscription.`);
-      doneBox.innerHTML = `<p class="pipe-done" data-testid="pipeline-done"><strong>${esc(kpi.money_protected_text)}</strong> kept in Priya's pocket this year. Every step is in the audit log below.</p>`;
+      say(`<strong>Day ${billing}.</strong> First charge due today. Checked PayPal: no active subscription, so no charge can be taken.`);
+      doneBox.innerHTML = `<p class="pipe-done" data-testid="pipeline-done"><strong>${esc(kpi.charges_avoided_text)} charge never taken</strong> (${esc(kpi.year_one_text)}). Every step is in the audit log below.</p>`;
     } else {
       const row = (await api(`/api/view/subscriptions?user=${user}`)).rows.find((r) => r.id === sub.id);
       mark("proof", "warn", `Day ${billing}: charged`);

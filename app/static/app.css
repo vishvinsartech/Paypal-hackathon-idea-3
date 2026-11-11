@@ -99,6 +99,7 @@ main { max-width: 1280px; margin: 0 auto; padding: 20px 20px 16px; }
 .kpi { display: flex; flex-direction: column; }
 .kpi-label { color: var(--muted); font-size: .85rem; }
 .kpi-value { font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.kpi-sub { color: var(--muted); font-size: .85rem; }
 [data-testid=kpi-protected] .kpi-value { color: var(--teal); }
 .plain { padding-left: 18px; }
 .table { width: 100%; border-collapse: collapse; font-size: .9rem; }

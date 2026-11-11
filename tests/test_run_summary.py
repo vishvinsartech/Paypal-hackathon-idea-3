@@ -33,7 +33,8 @@ def test_cancel_run_reads_as_a_short_story(demo_client: TestClient) -> None:
     assert s["subscription_id"] == main["id"] and s["paypal_id"] == main["paypal_id"]
     texts = " | ".join(r["text"] for r in rows)
     for want in ("Read the fine print", "approved the trial in PayPal", "Set a safety timer", "Asked you",
-                 "Allowed the cancel", "Cancelled your subscription (ACTIVE → CANCELLED)", "First charge due: blocked"):
+                 "Allowed the cancel", "Cancelled your subscription (ACTIVE → CANCELLED)",
+                 "Checked PayPal: no active subscription"):
         assert want in texts, want
     assert len(rows) < len(audit(c)) / 2  # far shorter than the full log
     seqs = {r["seq"] for r in rows}

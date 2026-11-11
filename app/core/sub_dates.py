@@ -1,4 +1,4 @@
-"""Key dates on userA's subscription card (D-115): every "Day N" also as a calendar date.
+"""Key dates on Priya's subscription card (D-115): every "Day N" also as a calendar date.
 
 The sign-up moment is real: `registered_at`, the date and time SubGuard recorded the PayPal approval. Every
 later milestone is a sim day, mapped to a date as `registered_at + (N - signup_day)` days, so "Day 7" reads as

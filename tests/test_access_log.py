@@ -15,12 +15,12 @@ def record(method: str, path: str, status: int) -> logging.LogRecord:
 
 
 @pytest.mark.parametrize(("method", "path", "status", "shown"), [
-    ("GET", "/api/alerts?user=usera", 200, False),
+    ("GET", "/api/alerts?user=priya", 200, False),
     ("GET", "/api/audit-log/verify", 200, False),
     ("GET", "/static/app.js", 304, False),
     ("GET", "/shop/static/checkout.js", 200, False),
     ("GET", "/healthz", 200, False),
-    ("GET", "/user?user=usera&live=1", 200, False),
+    ("GET", "/user?user=priya&live=1", 200, False),
     ("GET", "/", 200, True),                             # a page load
     ("GET", "/user", 200, True),
     ("POST", "/api/checkout/demo-paypal-window", 200, True),  # an action

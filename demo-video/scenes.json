@@ -13,7 +13,7 @@
       "id": "01_hook",
       "duration": 12,
       "on_screen": "Free trials are designed to be forgotten.",
-      "narration": "Free trials are designed to be forgotten. Meet userA. SubGuard reads the fine print for her, and PayPal enforces the outcome.",
+      "narration": "Free trials are designed to be forgotten. Meet Priya. SubGuard reads the fine print for her, and PayPal enforces the outcome.",
       "actions": [
         {"action": "goto", "url": "/?demo=1"},
         {"action": "highlight", "target": "brand"},
@@ -24,7 +24,7 @@
       "id": "02_shop",
       "duration": 14,
       "on_screen": "Penwright Studio: \"10-day free trial, $0 today\"",
-      "narration": "userA wants Penwright, a fictional AI writing app. Ten days free. The real terms hide in tiny grey text and a folded Terms section.",
+      "narration": "Priya wants Penwright, a fictional AI writing app. Ten days free. The real terms hide in tiny grey text and a folded Terms section.",
       "actions": [
         {"action": "goto", "url": "/shop/penwright"},
         {"action": "hover", "target": "shop-fineprint"},
@@ -61,7 +61,7 @@
       "id": "04_card",
       "duration": 14,
       "on_screen": "Site says Day 10. Real last day to cancel: Day 7.",
-      "narration": "This is userA's own SubGuard. The site says the trial ends on Day 10. Her real last day to cancel is Day 7. SubGuard checks in on Day 5.",
+      "narration": "This is Priya's own SubGuard. The site says the trial ends on Day 10. Her real last day to cancel is Day 7. SubGuard checks in on Day 5.",
       "actions": [
         {"action": "goto", "url": "/user"},
         {"action": "highlight", "target": "sub-card"},
@@ -73,7 +73,7 @@
       "id": "05_day5_checkin",
       "duration": 20,
       "on_screen": "Day 5: \"Do you want to keep it?\"",
-      "narration": "Day 5. By email, text and in the app: the trial ends on Day 10, but her real last day is Day 7. She's opened it twice. SubGuard suggests cancelling, as advice. userA decides.",
+      "narration": "Day 5. By email, text and in the app: the trial ends on Day 10, but her real last day is Day 7. She's opened it twice. SubGuard suggests cancelling, as advice. Priya decides.",
       "actions": [
         {"action": "goto", "url": "/?demo=1"},
         {"action": "click", "target": "sim-jump-5"},
@@ -130,7 +130,7 @@
       "id": "09_close",
       "duration": 14,
       "on_screen": "Money protected: $524.88. PayPal Sandbox. MIT licensed.",
-      "narration": "$524.88 stays in userA's pocket this year. AI reads the fine print. PayPal enforces the outcome. Built on the PayPal Sandbox, MIT licensed.",
+      "narration": "$524.88 stays in Priya's pocket this year. AI reads the fine print. PayPal enforces the outcome. Built on the PayPal Sandbox, MIT licensed.",
       "actions": [
         {"action": "highlight", "target": "user-protected"},
         {"action": "click", "target": "nav-analytics"},

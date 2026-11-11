@@ -14,7 +14,7 @@
   </div>
 </section>
 
-{# Sidebar sections (D-122): one section at a time; anything that needs userA stays pinned above them. #}
+{# Sidebar sections (D-122): one section at a time; anything that needs Priya stays pinned above them. #}
 <div class="dash" id="dash">
 <nav class="side-nav" aria-label="Dashboard sections" data-testid="side-nav">
   <a href="#overview" data-nav="overview" data-testid="nav-overview" aria-current="true">
@@ -108,7 +108,7 @@
     </div>
   </article>
   {% else %}
-  <p class="empty" data-testid="user-empty">No subscriptions yet. <a href="/shop/penwright?user={{ u.id if u else 'usera' }}" target="_blank" rel="noopener">Try the Penwright shop.</a></p>
+  <p class="empty" data-testid="user-empty">No subscriptions yet. <a href="/shop/penwright?user={{ u.id if u else 'priya' }}" target="_blank" rel="noopener">Try the Penwright shop.</a></p>
   {% endfor %}
   </div>
   <div id="pp-user" data-paypal-cards hidden>

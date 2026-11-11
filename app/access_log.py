@@ -1,6 +1,6 @@
 """Quiet terminal: hide uvicorn's access-log lines for the pages' background polling.
 
-The dashboards poll /api/* every few seconds, and userA's dashboard re-fetches itself with `?live=1`. Logging each
+The dashboards poll /api/* every few seconds, and Priya's dashboard re-fetches itself with `?live=1`. Logging each
 successful poll buries everything else. This filter drops successful (status < 400) GET/HEAD requests to
 /api/*, static files, /healthz and `live=1` refreshes. Still shown: page loads, every POST (the real actions:
 subscribe, cancel, send...), and every error. `LOG_ALL_REQUESTS=true` turns the filter off.

@@ -11,7 +11,7 @@ from tests.story_helpers import advance_to, alerts, audit, cancel_via_alert, sub
 NOISE = ("paypal_call", "clock_advanced", "demo_control", "paypal_subscription_verified", "confirm_token_issued")
 
 
-def summary(c: TestClient, user: str = "usera") -> dict[str, Any]:
+def summary(c: TestClient, user: str = "priya") -> dict[str, Any]:
     res = c.get(f"/api/audit-log/summary?user={user}")
     assert res.status_code == 200, res.text
     return res.json()
@@ -43,7 +43,7 @@ def test_cancel_run_reads_as_a_short_story(demo_client: TestClient) -> None:
     cancel = next(r for r in rows if "Cancelled your subscription" in r["text"])
     entry = audit(c, "paypal_cancel")[-1]
     assert cancel["proof"] == entry["paypal_debug_id"] and cancel["rule_id"] == "R1"
-    assert all(r["who"] != "You" for r in rows) and any(r["who"] == "userA" for r in rows)
+    assert all(r["who"] != "You" for r in rows) and any(r["who"] == "Priya" for r in rows)
     assert [r["seq"] for r in rows] == sorted(seqs)
 
 
@@ -63,7 +63,7 @@ def test_only_the_latest_run(demo_client: TestClient) -> None:
 def test_blocked_decisions_are_always_shown(demo_client: TestClient) -> None:
     c = demo_client
     main = subscribe(c)
-    res = c.post("/api/agent/confirm", json={"user_id": "usera", "token": "not-a-real-token",
+    res = c.post("/api/agent/confirm", json={"user_id": "priya", "token": "not-a-real-token",
                                              "subscription_ids": [main["id"]]})
     assert res.status_code >= 400 or not res.json().get("ok", True)
     blocked = [r for r in summary(c)["rows"] if r["decision"] == "blocked"]

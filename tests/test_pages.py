@@ -18,9 +18,9 @@ def test_dashboard(client: TestClient) -> None:
     assert "Mock mode" in r.text
 
 
-def test_dashboard_is_useras_with_no_user_switcher(client: TestClient) -> None:
+def test_dashboard_is_priyas_with_no_user_switcher(client: TestClient) -> None:
     text = client.get("/").text
-    assert "Hi userA." in text and "user-switch" not in text
+    assert "Hi Priya." in text and "user-switch" not in text
 
 
 @pytest.mark.parametrize("path", SHOP_PAGES)
@@ -72,11 +72,11 @@ def test_unknown_merchant_404(client: TestClient) -> None:
 
 
 def test_app_page_records_usage(client: TestClient) -> None:
-    client.get("/shop/penwright/app?user=usera")
-    r = client.get("/shop/penwright/app?user=usera")
+    client.get("/shop/penwright/app?user=priya")
+    r = client.get("/shop/penwright/app?user=priya")
     assert 'data-testid="app-opens">2<' in r.text
     usage = client.app.state.store.load("usage").items
-    assert [(u.user_id, u.merchant_id, u.day) for u in usage] == [("usera", "penwright", 0)] * 2
+    assert [(u.user_id, u.merchant_id, u.day) for u in usage] == [("priya", "penwright", 0)] * 2
 
 
 def test_healthz(client: TestClient) -> None:
@@ -111,7 +111,7 @@ def test_static_assets(client: TestClient) -> None:
 DASHBOARD_TESTIDS = ("brand", "mode-badge", "view-shop", "kpi-protected", "demo-open-shop", "timeline", "sim-plus-1",
                      "sim-jump-5", "sim-jump-6", "sim-jump-11", "audit-log-grid", "audit-log-export", "pipeline",
                      "demo-start", "chat-open", "chat-input", "chat-send", "email-ready", "footer", "dev-menu")
-# Presenter view vs userA's view (D-112): these live on /user (or nowhere) now, not on the Live demo.
+# Presenter view vs Priya's view (D-112): these live on /user (or nowhere) now, not on the Live demo.
 NOT_ON_LIVE_DEMO = ("subs-grid", "analytics", "chart-cost", "chart-risk", "kpi-patterns", "kpi-cancelled",
                     "kpi-watches", 'id="notices"', "ag-charts-community")
 
@@ -140,12 +140,12 @@ def test_dashboard_selector_contract(client: TestClient) -> None:
 
 
 def test_view_subscriptions(demo_client: TestClient) -> None:
-    """The story starts empty: userA approves the Penwright trial herself on Day 0."""
-    assert demo_client.get("/api/view/subscriptions?user=usera").json()["rows"] == []
+    """The story starts empty: Priya approves the Penwright trial herself on Day 0."""
+    assert demo_client.get("/api/view/subscriptions?user=priya").json()["rows"] == []
     from tests.story_helpers import subscribe
 
     subscribe(demo_client)
-    rows = demo_client.get("/api/view/subscriptions?user=usera").json()["rows"]
+    rows = demo_client.get("/api/view/subscriptions?user=priya").json()["rows"]
     assert [(r["merchant"], r["status"], r["price_text"]) for r in rows] == [
         ("Penwright Studio", "ACTIVE", "$24.99/mo")]
     assert rows[0]["next_charge_text"] == "Day 11 · $24.99"
@@ -155,7 +155,7 @@ def test_view_penwright_timeline_fields(demo_client: TestClient) -> None:
     from tests.story_helpers import subscribe
 
     subscribe(demo_client)
-    row = next(r for r in demo_client.get("/api/view/subscriptions?user=usera").json()["rows"]
+    row = next(r for r in demo_client.get("/api/view/subscriptions?user=priya").json()["rows"]
                if r["merchant_id"] == "penwright")
     days = (row["trial_end_day"], row["deadline_day"], row["timer"]["fire_day"], row["next_billing_day"])
     assert days == (10, 7, 6, 11)
@@ -167,13 +167,13 @@ def test_subscription_page(demo_client: TestClient) -> None:
     from tests.story_helpers import subscribe
 
     main = subscribe(demo_client)
-    text = demo_client.get(f"/subscriptions/{main['id']}?user=usera").text
+    text = demo_client.get(f"/subscriptions/{main['id']}?user=priya").text
     for snippet in ('data-testid="risk-score"', 'id="findings-grid"', 'id="findings-data"', "Page says vs PayPal plan",
                     "Consent snapshot", 'id="sub-audit-grid"', "Real cancel deadline: <strong>Day 7</strong>"):
         assert snippet in text, snippet
     assert "PROMPT_INJECTION_ATTEMPT" in text  # in the findings JSON
     assert demo_client.get(f"/subscriptions/{main['id']}?user=intruder").status_code == 404  # R5
-    assert demo_client.get("/subscriptions/nope?user=usera").status_code == 404
+    assert demo_client.get("/subscriptions/nope?user=priya").status_code == 404
 
 
 def test_start_demo_pipeline_on_dashboard(client: TestClient) -> None:

@@ -30,7 +30,7 @@ class NoticeOut(BaseModel):
 
 
 @router.get("/notices")
-def list_notices(user: str = "usera", svc: Services = Depends(get_services)) -> list[Notice]:
+def list_notices(user: str = "priya", svc: Services = Depends(get_services)) -> list[Notice]:
     mine = {s.id for s in svc.store.load("subscriptions").items if s.owner_id == user}
     return [n for n in svc.store.load("notices").items if n.subscription_id in mine]
 

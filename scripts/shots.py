@@ -59,7 +59,7 @@ def user_id(base: str) -> str:
     page = httpx.get(f"{base}/user", timeout=10).text
     marker = 'data-user="'
     i = page.find(marker)
-    return page[i + len(marker):page.find('"', i + len(marker))] if i >= 0 else "usera"
+    return page[i + len(marker):page.find('"', i + len(marker))] if i >= 0 else "priya"
 
 
 def walk(base: str, folder: Path, size: tuple[int, int], headed: bool) -> None:

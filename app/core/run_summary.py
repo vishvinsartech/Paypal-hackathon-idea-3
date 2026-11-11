@@ -1,10 +1,10 @@
 """Live demo "What SubGuard did" table (D-121): the current run only, one plain row per thing SubGuard did.
 
-Built only from the hash-chained audit log, reusing userA's activity wording (app/core/activity.py), plus the
+Built only from the hash-chained audit log, reusing Priya's activity wording (app/core/activity.py), plus the
 safety decisions the presenter wants to show: every policy decision (allowed or blocked) and any other blocked
 entry. Low-level noise (PayPal HTTP calls, clock ticks, demo buttons, status re-reads) stays in the full log.
 
-The current run is userA's latest registered subscription: entries for it, the fine-print review that came
+The current run is Priya's latest registered subscription: entries for it, the fine-print review that came
 before it, and anything blocked for her since.
 """
 
@@ -58,7 +58,7 @@ def _row(e: AuditEntry, user_name: str) -> RunRow | None:
                   rule_id=e.rule_id, decision=e.decision, proof=proof)
 
 
-def run_summary(svc: Services, user_id: str, user_name: str = "userA") -> RunSummary:
+def run_summary(svc: Services, user_id: str, user_name: str = "Priya") -> RunSummary:
     entries = svc.store.audit.entries()
     starts = [e for e in entries if e.event == "subscription_registered" and e.user_id == user_id]
     out = RunSummary(full_log_entries=len(entries))

@@ -50,7 +50,7 @@ def audit_log(
 
 
 @router.get("/api/audit-log/summary")
-def audit_log_summary(user: str = "usera", svc: Services = Depends(get_services)) -> RunSummary:
+def audit_log_summary(user: str = "priya", svc: Services = Depends(get_services)) -> RunSummary:
     """Live demo "What SubGuard did": the current run only, in plain words (D-121). The full log stays above."""
     return run_summary(svc, user)
 

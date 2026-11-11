@@ -5,7 +5,7 @@ Decisions: `docs/DECISIONS.md`. Re-read the spec sections a milestone depends on
 
 SubGuard = AI helper that reads subscription fine print, checks it against the real PayPal plan,
 scores risk, checks in before the real deadline, and cancels trials through PayPal before it.
-Demo story (spec section 2): one persona (userA), one merchant (Penwright Studio).
+Demo story (spec section 2): one persona (Priya), one merchant (Penwright Studio).
 Tagline: "AI reads the fine print. PayPal enforces the outcome."
 
 ## Non-negotiable rules
@@ -73,7 +73,7 @@ to the audit log with its rule id. No suspend/pause anywhere in v1. The only Pay
 ### No real brands
 Never use real brands, logos or company names in the app, dummy shop or video. Every merchant page
 shows the banner "Fictional merchant for the SubGuard demo." Merchant: Penwright Studio (trap
-"free trial"). User: userA. No other merchants, users, add-ons, price rises or renewal reminders (D-090).
+"free trial"). User: Priya. No other merchants, users, add-ons, price rises or renewal reminders (D-090).
 
 ## Key numbers (assert in tests, with the DEFAULT prices)
 Prices and terms are `.env` variables (`app/pricing.py`, DECISIONS D-015). Code reads them via

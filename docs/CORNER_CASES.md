@@ -58,7 +58,7 @@ Cases 35 and 36 belonged to the price-rise flow, which was removed when the stor
 |---|---|---|---|
 | 29 | LLM tries to cancel directly / too many subscriptions | `policy.py`, `chat_tools.run_tool` | `test_policy::test_r1_cancel_needs_a_confirmation_tap`, `test_policy::test_r4_max_ten_per_command`, `test_chat::test_model_cannot_cancel_directly`, `test_chat::test_too_many_in_one_command_blocked` |
 | 30 | Expired, reused or mismatched token | `policy._consume` | `test_policy::test_r3_expired_reused_mismatched_and_foreign_tokens`, `test_scenario::test_story_end_to_end_with_chat` (reuse) |
-| 31 | Another user's subscription (a test-only second user vs userA) | `policy._precheck`, `chat_tools._own`, subscription page | `test_policy::test_r5_another_user_cannot_touch_useras_subscriptions`, `test_chat::test_model_cannot_touch_other_users_subscription`, `test_pages::test_subscription_page` |
+| 31 | Another user's subscription (a test-only second user vs userA) | `policy._precheck`, `chat_tools._own`, subscription page | `test_policy::test_r5_another_user_cannot_touch_priyas_subscriptions`, `test_chat::test_model_cannot_touch_other_users_subscription`, `test_pages::test_subscription_page` |
 | 32 | `essential` is never auto-cancelled | `policy._timer_decision` | `test_policy::test_r6_essential_never_auto_cancelled_but_manual_ok` |
 | 33 | Ambiguous cancel request: ask, don't act | `llm/mock_chat.py`, chat system prompt | `test_chat::test_ambiguous_cancel_asks_which_one` |
 | 34 | Multi-cancel partial failure: per-item results | `actions.cancel_confirmed`, `chat.js` | `test_policy::test_r7_partial_failure_reports_per_item` |

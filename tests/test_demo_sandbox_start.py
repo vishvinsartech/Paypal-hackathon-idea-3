@@ -60,7 +60,7 @@ def restore_buyer() -> Iterator[None]:
 
 
 def start(c: TestClient, **body: Any) -> Any:
-    return c.post("/api/checkout/demo-paypal-window", json={"user_id": "usera", **body})
+    return c.post("/api/checkout/demo-paypal-window", json={"user_id": "priya", **body})
 
 
 def test_mock_mode_refuses(client: TestClient) -> None:
@@ -79,14 +79,14 @@ def test_confirmed_in_paypal_window_registers(sandbox_client: TestClient) -> Non
     set_buyer(c)
     calls = fake_window(c)
     review = c.post("/api/review/preflight", json={"merchant_url": "/shop/penwright", "plan_key": "penwright-pro",
-                                                   "user_id": "usera"}).json()
+                                                   "user_id": "priya"}).json()
     res = start(c, review_id=review["review_id"])
     assert res.status_code == 200, res.text
     sub = res.json()
-    assert sub["status"] == "ACTIVE" and sub["owner_id"] == "usera" and sub["merchant_id"] == "penwright"
+    assert sub["status"] == "ACTIVE" and sub["owner_id"] == "priya" and sub["merchant_id"] == "penwright"
     (call,) = calls
     assert call["email"] == "buyer@personal.example" and call["timeout_s"] >= 120
-    (timer,) = [t for t in c.get("/api/timers?user=usera").json() if t["subscription_id"] == sub["id"]]
+    (timer,) = [t for t in c.get("/api/timers?user=priya").json() if t["subscription_id"] == sub["id"]]
     assert (timer["reminder_day"], timer["fire_day"]) == (5, 6)
     (row,) = audit(c, "demo_paypal_window")
     assert row["result"] == "ok" and row["details"]["paypal_id"] == sub["paypal_id"]
@@ -102,7 +102,7 @@ def test_not_confirmed_registers_nothing(sandbox_client: TestClient, outcome: st
     fake_window(c, outcome)
     res = start(c)
     assert res.status_code == 409 and text in res.json()["error"] and res.json()["outcome"] == outcome
-    assert c.get("/api/subscriptions?user=usera").json() == []
+    assert c.get("/api/subscriptions?user=priya").json() == []
     assert audit(c, "demo_paypal_window")[0]["result"] == f"not_confirmed:{outcome}"
 
 

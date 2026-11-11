@@ -21,11 +21,11 @@ def svc_of(c: TestClient) -> Services:
     return c.app.state.services  # type: ignore[attr-defined,no-any-return]
 
 
-def propose(c: TestClient, ids: list[str], user: str = "usera") -> dict:
+def propose(c: TestClient, ids: list[str], user: str = "priya") -> dict:
     return c.post("/api/agent/propose", json={"user_id": user, "subscription_ids": ids}).json()
 
 
-def confirm(c: TestClient, ids: list[str], token: str | None, user: str = "usera") -> tuple[int, dict]:
+def confirm(c: TestClient, ids: list[str], token: str | None, user: str = "priya") -> tuple[int, dict]:
     res = c.post("/api/agent/confirm", json={"user_id": user, "token": token, "subscription_ids": ids})
     return res.status_code, res.json()
 
@@ -37,7 +37,7 @@ def test_r1_cancel_needs_a_confirmation_tap(demo_client: TestClient) -> None:
     status, body = confirm(c, [fw["id"]], None)
     assert status == 403 and body["rule_id"] == "R1"
     # corner case 29: the agent tries to cancel directly -> blocked, explained, audited
-    out = asyncio.run(cancel_confirmed(svc_of(c), "usera", [fw["id"]], None, requested_by="agent"))
+    out = asyncio.run(cancel_confirmed(svc_of(c), "priya", [fw["id"]], None, requested_by="agent"))
     assert isinstance(out, Decision) and out.rule_id == "R1"
     blocked = audit(c, "policy_decision", rule_id="R1", decision="blocked")
     assert any(r["details"]["requested_by"] == "agent" for r in blocked)
@@ -56,11 +56,11 @@ def _timer(**kw: object) -> Timer:
 
 def _sub(**kw: object) -> Subscription:
     base: dict[str, object] = dict(id="s", paypal_id="I-1", plan_key="p", plan_id="P", merchant_id="m",
-                                   owner_id="usera", status="ACTIVE", next_billing_day=11)
+                                   owner_id="priya", status="ACTIVE", next_billing_day=11)
     return Subscription(**{**base, **kw})  # type: ignore[arg-type]
 
 
-USER_A = User(id="usera", name="userA")
+USER_A = User(id="priya", name="Priya")
 
 
 @pytest.mark.parametrize(("timer", "sub_kw", "day", "rule", "ok"), [
@@ -116,7 +116,7 @@ def test_r3_expired_reused_mismatched_and_foreign_tokens(demo_client: TestClient
 # ---- R4 limits ---------------------------------------------------------------------------------
 def test_r4_max_ten_per_command(demo_client: TestClient) -> None:
     ids = [f"s{i}" for i in range(11)]
-    res = demo_client.post("/api/agent/propose", json={"user_id": "usera", "subscription_ids": ids})
+    res = demo_client.post("/api/agent/propose", json={"user_id": "priya", "subscription_ids": ids})
     assert res.status_code == 403 and res.json()["rule_id"] == "R4"
 
 
@@ -124,16 +124,16 @@ def test_r4_rate_limit_per_user(store: JsonStore) -> None:
     now = [1000.0]
     policy = Policy(clock=lambda: now[0])
     for _ in range(MAX_WRITES_PER_MINUTE):
-        assert policy.take_write(store, "usera", "s", "user") is None
-    blocked = policy.take_write(store, "usera", "s", "user")
+        assert policy.take_write(store, "priya", "s", "user") is None
+    blocked = policy.take_write(store, "priya", "s", "user")
     assert blocked is not None and blocked.rule_id == "R4"
     assert policy.take_write(store, "intruder", "s", "user") is None  # per user
     now[0] += 60
-    assert policy.take_write(store, "usera", "s", "user") is None
+    assert policy.take_write(store, "priya", "s", "user") is None
 
 
 # ---- R5 ownership ------------------------------------------------------------------------------
-def test_r5_another_user_cannot_touch_useras_subscriptions(demo_client: TestClient) -> None:
+def test_r5_another_user_cannot_touch_priyas_subscriptions(demo_client: TestClient) -> None:
     c = demo_client
     pw = subscribe(c)
     intruder = add_user(c)
@@ -152,7 +152,7 @@ def test_r5_another_user_cannot_touch_useras_subscriptions(demo_client: TestClie
 def test_r6_essential_never_auto_cancelled_but_manual_ok(demo_client: TestClient) -> None:
     c = demo_client
     main = subscribe(c)
-    c.post(f"/api/subscriptions/{main['id']}/essential", json={"user_id": "usera", "essential": True})
+    c.post(f"/api/subscriptions/{main['id']}/essential", json={"user_id": "priya", "essential": True})
     advance_to(c, 6)
     assert sub(c, main["id"])["status"] == "ACTIVE"
     assert audit(c, "policy_decision", rule_id="R6", decision="blocked", subscription_id=main["id"])
@@ -184,11 +184,11 @@ def test_keep_vs_timer_race_is_consistent(demo_client: TestClient) -> None:
     from app.clock import advance
 
     async def race() -> tm.KeepResult:
-        _, kept = await asyncio.gather(advance(svc, 1), tm.keep(svc, "usera", main["id"]))
+        _, kept = await asyncio.gather(advance(svc, 1), tm.keep(svc, "priya", main["id"]))
         return kept
 
     kept = c.portal.call(race)  # type: ignore[attr-defined]
-    timer = next(t for t in c.get("/api/timers?user=usera").json() if t["subscription_id"] == main["id"])
+    timer = next(t for t in c.get("/api/timers?user=priya").json() if t["subscription_id"] == main["id"])
     status = sub(c, main["id"])["status"]
     assert (kept.status, timer["status"], status) in {("kept", "KEPT", "ACTIVE"), ("too_late", "FIRED", "CANCELLED")}
 
@@ -202,7 +202,7 @@ def test_failed_warnings_block_auto_cancel(demo_client: TestClient) -> None:
     assert sub(c, main["id"])["status"] == "ACTIVE"
     assert audit(c, "timer_warning_failed")
     assert audit(c, "policy_decision", rule_id="R2", decision="blocked", subscription_id=main["id"])
-    timer = next(t for t in c.get("/api/timers?user=usera").json() if t["subscription_id"] == main["id"])
+    timer = next(t for t in c.get("/api/timers?user=priya").json() if t["subscription_id"] == main["id"])
     assert timer["status"] == "FAILED" and alerts(c, kind="urgent")
 
 
@@ -216,7 +216,7 @@ def test_cancel_failure_switches_to_layer2(demo_client: TestClient) -> None:
     assert sub(c, main["id"])["status"] == "ACTIVE" and not alerts(c, kind="cancelled")
     action_needed = alerts(c, kind="action_needed")
     assert action_needed and action_needed[0]["actions"][0]["action"] == "open_autopay"
-    (draft,) = c.get("/api/notices?user=usera").json()
+    (draft,) = c.get("/api/notices?user=priya").json()
     assert draft["status"] == "draft" and not audit(c, "cancellation_email_sent")  # never sent without a click
 
 
@@ -224,13 +224,13 @@ def test_layer2_merchant_flow(demo_client: TestClient) -> None:
     c = demo_client
     c.post("/api/demo/toggle-fair-trial/penwright")
     main = subscribe(c)
-    timer = next(t for t in c.get("/api/timers?user=usera").json() if t["subscription_id"] == main["id"])
+    timer = next(t for t in c.get("/api/timers?user=priya").json() if t["subscription_id"] == main["id"])
     assert timer["layer2"] and timer["fire_day"] == 5 and timer["reminder_day"] == 4
     advance_to(c, 5)
     assert sub(c, main["id"])["status"] == "ACTIVE"  # SubGuard can't cancel for non-members
     alert = alerts(c, kind="action_needed")[0]
     assert alert["level"] == "action_needed" and alert["actions"][0]["url"].startswith("https://www.sandbox.paypal.com")
-    assert c.get("/api/notices?user=usera").json()[0]["subscription_id"] == main["id"]
+    assert c.get("/api/notices?user=priya").json()[0]["subscription_id"] == main["id"]
     advance_to(c, 10)
     assert alerts(c, kind="urgent")  # still ACTIVE 24 sim-hours before the charge
 
@@ -242,7 +242,7 @@ def test_paypal_side_suspend_cancels_timer(demo_client: TestClient) -> None:
     c.portal.call(svc_of(c).gw.mock.set_status, main["paypal_id"], "SUSPENDED")  # type: ignore[attr-defined,union-attr]
     advance_to(c, 1)
     assert sub(c, main["id"])["status"] == "SUSPENDED"
-    timer = next(t for t in c.get("/api/timers?user=usera").json() if t["subscription_id"] == main["id"])
+    timer = next(t for t in c.get("/api/timers?user=priya").json() if t["subscription_id"] == main["id"])
     assert timer["status"] == "CANCELLED" and audit(c, "status_sync", subscription_id=main["id"])
 
 
@@ -253,7 +253,7 @@ def test_short_trial_needs_a_manual_decision(demo_client: TestClient) -> None:
 
     async def late_signup() -> None:
         sub_ = Subscription(id="s-late", paypal_id="I-LATE", plan_key="penwright-pro", plan_id="P",
-                            merchant_id="penwright", owner_id="usera", signup_day=0, next_billing_day=2)
+                            merchant_id="penwright", owner_id="priya", signup_day=0, next_billing_day=2)
         await tm.create_trial_timer(svc, sub_)
 
     c.portal.call(late_signup)  # type: ignore[attr-defined]

@@ -47,7 +47,7 @@ def notice_clause(svc: Services, sub: Subscription) -> str:
 def notice_context(svc: Services, sub: Subscription) -> NoticeContext:
     user = svc.user(sub.owner_id)
     merchant = svc.merchant(sub.merchant_id)
-    return NoticeContext(user_name=user.name if user else sub.owner_id, account_email=user.email if user else "",
+    return NoticeContext(user_name=(user.full_name or user.name) if user else sub.owner_id, account_email=user.email if user else "",
                          merchant_name=merchant.name, to=merchant.support_email, paypal_id=sub.paypal_id,
                          date_text=utcnow().strftime("%d %B %Y").lstrip("0"), clause=notice_clause(svc, sub))
 

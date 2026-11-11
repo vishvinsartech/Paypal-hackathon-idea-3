@@ -1,7 +1,7 @@
 // SubGuard shared UI helpers (window.SG): API calls, toasts, the confirmation card, health dots.
 (function () {
   "use strict";
-  const user = document.body.dataset.user || "usera";
+  const user = document.body.dataset.user || "priya";
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
   const listeners = [];
 
@@ -101,7 +101,7 @@
     return out;
   }
 
-  // PayPal cancelled first; now show each cancellation email draft for userA to review and send (D-104).
+  // PayPal cancelled first; now show each cancellation email draft for Priya to review and send (D-104).
   async function openDrafts(out) {
     for (const r of (out && out.results) || []) {
       if (r.notice_id && window.SG.openEmail) await window.SG.openEmail(r.notice_id, {justCancelled: true});

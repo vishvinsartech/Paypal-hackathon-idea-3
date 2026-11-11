@@ -1,4 +1,4 @@
-// userA's dashboard (/user, D-110/D-112): the subscription card and the Day 5 check-in buttons, plus the live refresh.
+// Priya's dashboard (/user, D-110/D-112): the subscription card and the Day 5 check-in buttons, plus the live refresh.
 // Cancel flow (same everywhere): Cancel -> confirmation card (R1/R3) -> email preview. No extra pop-ups.
 (function () {
   "use strict";

@@ -1,4 +1,4 @@
-"""userA's dashboard (/user), written to her ("you"): her story, built only from the audit log and the store.
+"""Priya's dashboard (/user), written to her ("you"): her story, built only from the audit log and the store.
 
 Every line comes from a recorded event (R7: nothing is claimed that the log doesn't show). Low-level events
 (PayPal HTTP calls, token issue, LLM calls) stay in the full audit log on the live demo page.
@@ -50,7 +50,7 @@ ACTIONS = {"keep": "you tapped Keep", "cancel": "you tapped Cancel",
            "review_email": "you opened your cancellation email",
            "ack": "you dismissed an alert", "open_autopay": "you opened PayPal"}
 
-# The page is userA's own view (D-110), so it speaks to her: "You" did X, SubGuard did Y for you.
+# The page is Priya's own view (D-110), so it speaks to her: "You" did X, SubGuard did Y for you.
 # event -> (who, kind, text). Return None to skip an entry.
 Describe = Callable[[AuditEntry], tuple[Who, str, str] | None]
 EVENTS: dict[str, Describe] = {

@@ -1,5 +1,5 @@
 // Live demo, sandbox mode (D-116): this Penwright window was opened by the control room's Start button
-// (?autodemo=1). It plays userA's part: opens the Terms, clicks PayPal, lets the SubGuard companion's review
+// (?autodemo=1). It plays Priya's part: opens the Terms, clicks PayPal, lets the SubGuard companion's review
 // stay on screen, clicks "Continue to PayPal" (checkout_sandbox.js then has the server approve as the sandbox
 // buyer), shows the live PayPal card, tells the control room, and closes itself.
 (function () {
@@ -15,7 +15,7 @@
   const banner = document.createElement("p");
   banner.className = "autodemo-banner";
   banner.setAttribute("role", "status");
-  banner.textContent = "Live demo: this window plays userA. It closes by itself once you confirm in PayPal.";
+  banner.textContent = "Live demo: this window plays Priya. It closes by itself once you confirm in PayPal.";
   banner.style.cssText = "position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:10000;margin:0;" +
     "padding:8px 14px;border-radius:999px;background:#0f1f3a;color:#e8eef8;font:600 13px system-ui,sans-serif;" +
     "box-shadow:0 6px 20px rgba(0,0,0,.35)";

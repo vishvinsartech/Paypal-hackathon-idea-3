@@ -1,4 +1,4 @@
-"""Top bar + footer on both pages, and userA's dashboard at /user (the product view; D-110, D-112)."""
+"""Top bar + footer on both pages, and Priya's dashboard at /user (the product view; D-110, D-112)."""
 
 from __future__ import annotations
 
@@ -33,11 +33,11 @@ def test_top_bar_and_footer_on_both_pages(client: TestClient) -> None:
     html = client.get("/").text
     for href in ("/shop", "/healthz", "/docs"):  # new tabs, so the live demo window stays put
         assert re.search(rf'href="{href}"[^>]*target="_blank"', html), href
-    assert ">userA's dashboard<" in html
+    assert ">Priya's dashboard<" in html
     toggle = re.search(r'<button[^>]*data-testid="theme-toggle"[^>]*>', html)
     assert toggle and 'aria-label="Switch to light theme"' in toggle.group(0)
     assert 'h.dataset.theme = t' in html.split("</head>")[0]  # theme set before first paint
-    assert "ag-charts-community" not in html  # charts only on userA's dashboard
+    assert "ag-charts-community" not in html  # charts only on Priya's dashboard
     user = client.get("/user").text
     assert re.search(r'src="https://cdn\.jsdelivr\.net/npm/ag-charts-community@\d+\.\d+\.\d+/', user)  # pinned
     assert client.get("/healthz").status_code == 200 and client.get("/docs").status_code == 200
@@ -45,7 +45,7 @@ def test_top_bar_and_footer_on_both_pages(client: TestClient) -> None:
 
 def test_user_page_empty_state(client: TestClient) -> None:
     html = client.get("/user").text
-    assert 'data-testid="user-dashboard"' in html and "Hi userA, here's your SubGuard." in html
+    assert 'data-testid="user-dashboard"' in html and "Hi Priya, here's your SubGuard." in html
     assert "No subscriptions yet." in html and "Try the Penwright shop." in html and 'data-testid="user-empty"' in html
     for t in ("user-protected", "user-cancelled", "user-history", "history-search", "history-status",
               "history-clear", "history-export", "chart-cost", "chart-usage", "chart-risk", "chat-open"):
@@ -66,7 +66,7 @@ def test_card_reminder_and_proof(demo_client: TestClient) -> None:
     assert 'data-sub-keep="' in html and 'data-sub-cancel="' in html
     kd = re.search(r'<details class="kd-details"[^>]*>', html)  # key dates: closed until she opens them
     assert kd and " open" not in kd.group(0) and 'data-testid="key-dates"' in html
-    assert f'href="/subscriptions/{main["id"]}?user=usera" data-testid="view-review">View fine-print review<' in html
+    assert f'href="/subscriptions/{main["id"]}?user=priya" data-testid="view-review">View fine-print review<' in html
     assert "user-reminder" not in html  # no check-in before Day 5
 
     advance_to(c, 5)
@@ -101,7 +101,7 @@ def test_keep_card_means_no_buttons(demo_client: TestClient) -> None:
     c = demo_client
     main = subscribe(c)
     advance_to(c, 5)
-    assert c.post(f"/api/subscriptions/{main['id']}/keep", json={"user_id": "usera"}).json()["status"] == "kept"
+    assert c.post(f"/api/subscriptions/{main['id']}/keep", json={"user_id": "priya"}).json()["status"] == "kept"
     html = c.get("/user").text
     assert "You kept it on Day 5" in html and "data-sub-keep" not in html and "user-reminder" not in html
 
@@ -112,11 +112,11 @@ def test_activity_list_tells_her_story(demo_client: TestClient) -> None:
     subscribe(c)
     advance_to(c, 5)
     cancel_via_alert(c, alerts(c, kind="reminder")[0])
-    n = c.get("/api/notices?user=usera").json()[0]
-    c.post(f"/api/notices/{n['id']}/send", json={"user_id": "usera", "to": n["to"], "subject": n["subject"],
+    n = c.get("/api/notices?user=priya").json()[0]
+    c.post(f"/api/notices/{n['id']}/send", json={"user_id": "priya", "to": n["to"], "subject": n["subject"],
                                                   "body": n["body"]})
     advance_to(c, 11)
-    texts = [f"{r['who']}: {r['text']}" for r in c.get("/api/activity?user=usera").json()]
+    texts = [f"{r['who']}: {r['text']}" for r in c.get("/api/activity?user=priya").json()]
     order = ["SubGuard: Read the fine print for you before PayPal", "You: You approved the trial in PayPal",
              "SubGuard: Set a safety timer and told you about it: check in on Day 5, cancel on Day 6",
              "SubGuard: Asked you", "You: You tapped Cancel.", "PayPal: Cancelled your subscription",
@@ -130,16 +130,16 @@ def test_activity_list_tells_her_story(demo_client: TestClient) -> None:
 def test_subscription_history_grid_rows(demo_client: TestClient) -> None:
     """D-118: one history row per subscription, with trial / deadline days, outcome and its audit-log events."""
     c = demo_client
-    assert c.get("/api/subscription-history?user=usera").json() == []
+    assert c.get("/api/subscription-history?user=priya").json() == []
     main = subscribe(c)
-    (row,) = c.get("/api/subscription-history?user=usera").json()
+    (row,) = c.get("/api/subscription-history?user=priya").json()
     assert (row["id"], row["merchant"], row["status"]) == (main["id"], "Penwright Studio", "ACTIVE")
     assert (row["trial_end_day"], row["deadline_day"]) == (10, 7) and row["outcome"] == "Watching for you"
     assert row["next_charge"] == "Day 11 · $24.99" and 82 <= row["risk"] <= 92
     assert row["subscribed_at"] and row["events"] == len(row["event_log"]) >= 1
     advance_to(c, 5)
     cancel_via_alert(c, alerts(c, kind="reminder")[0])
-    (row,) = c.get("/api/subscription-history?user=usera").json()
+    (row,) = c.get("/api/subscription-history?user=priya").json()
     assert row["status"] == "CANCELLED" and row["outcome"] == "Cancelled in PayPal on Day 5 by you"
     assert any("Cancelled your subscription" in e for e in row["event_log"])
     add_user(c)
@@ -182,7 +182,7 @@ def test_analytics_numbers_come_from_code(demo_client: TestClient) -> None:
 
 
 def test_sidebar_sections(client: TestClient) -> None:
-    """D-122: one section at a time from the sidebar; what needs userA stays above the sections."""
+    """D-122: one section at a time from the sidebar; what needs Priya stays above the sections."""
     subscribe(client)
     advance_to(client, 5)
     html = client.get("/user").text

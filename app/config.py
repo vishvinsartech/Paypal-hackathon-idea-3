@@ -52,7 +52,7 @@ class Settings(BaseSettings, PricingFields):
 
     zapier_catch_hook_url: str = ""
     log_all_requests: bool = False  # true: show every request in the terminal, including background polling
-    demo_seed: bool = True  # mock mode: script userA's Penwright usage on first start / reset
+    demo_seed: bool = True  # mock mode: script Priya's Penwright usage on first start / reset
     render_api_key: str = ""
 
     @field_validator("llm_provider")

@@ -6,7 +6,7 @@
   const area = document.querySelector("[data-testid=shop-paypal-btn]");
   const checkout = document.querySelector("[data-testid=shop-checkout]");
   if (!area || !checkout) return;
-  const user = new URLSearchParams(location.search).get("user") || "usera";
+  const user = new URLSearchParams(location.search).get("user") || "priya";
   const TIMEOUT_MS = 20000;
   let cleared = false;
   let overlay = null;

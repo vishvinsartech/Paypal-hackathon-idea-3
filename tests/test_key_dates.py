@@ -1,4 +1,4 @@
-"""Key dates on userA's subscription card (D-115): real sign-up time, every "Day N" as a calendar date."""
+"""Key dates on Priya's subscription card (D-115): real sign-up time, every "Day N" as a calendar date."""
 
 from __future__ import annotations
 
@@ -74,7 +74,7 @@ def test_timer_fired_and_kept(demo_client: TestClient) -> None:
     c.post("/api/demo/reset")
     main = subscribe(c)
     advance_to(c, 5)
-    c.post(f"/api/subscriptions/{main['id']}/keep", json={"user_id": "usera"})
+    c.post(f"/api/subscriptions/{main['id']}/keep", json={"user_id": "priya"})
     html = c.get("/user").text
     got = rows(html)
     assert "Off: you kept it" in got["auto_cancel"] and "You kept it" in got["deadline"] and "kept" in got
@@ -84,7 +84,7 @@ def test_timer_fired_and_kept(demo_client: TestClient) -> None:
 def test_paypal_card_has_paypal_start_time(demo_client: TestClient) -> None:
     c = demo_client
     main = subscribe(c)
-    got = c.get(f"/api/subscriptions/{main['id']}/paypal?user=usera").json()
+    got = c.get(f"/api/subscriptions/{main['id']}/paypal?user=priya").json()
     signed_up = c.app.state.services.sub(main["id"]).registered_at  # type: ignore[attr-defined]
     assert got["start_time"] and got["start_time"][:10] == signed_up.date().isoformat()
     assert "paypal-start-time" in c.get("/static/paypal-card.js").text

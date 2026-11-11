@@ -1,4 +1,4 @@
-// userA's dashboard sidebar (D-122): shows one section at a time (Overview, Analytics, History, Messages, Emails).
+// Priya's dashboard sidebar (D-122): shows one section at a time (Overview, Analytics, History, Messages, Emails).
 // The URL hash names the section (#analytics), so reloads and links keep it. The check-in, "email ready" and the
 // Day 11 proof banner sit above the sections and are always visible.
 (function () {

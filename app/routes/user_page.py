@@ -1,4 +1,4 @@
-"""userA's dashboard (/user): the product, written to her (D-110, D-111).
+"""Priya's dashboard (/user): the product, written to her (D-110, D-111).
 
 Server-rendered parts: subscription cards, the Day 5 check-in (usage + advice + Keep / Cancel), the Day 11 proof,
 money KPIs, messages and emails. AG Grid (subscription history, D-118) and AG Charts load from
@@ -78,8 +78,9 @@ def proof(svc: Services, alerts: list[Alert]) -> str | None:
 
 
 @router.get("/user", response_class=HTMLResponse)
+@router.get("/me", response_class=HTMLResponse)  # alias (FIX_PLAN persona)
 def user_dashboard(
-    request: Request, user: str = "usera",
+    request: Request, user: str = "priya",
     settings: Settings = Depends(get_settings), store: JsonStore = Depends(get_store),
 ) -> HTMLResponse:
     svc = get_services(request)
@@ -118,8 +119,8 @@ def history_row(c: dict[str, Any], acts: list[Activity]) -> dict[str, Any]:
 
 
 @router.get("/api/subscription-history")
-def subscription_history(user: str = "usera", svc: Services = Depends(get_services)) -> list[dict[str, Any]]:
-    """userA's subscription history for the AG Grid (R5: only her subscriptions), newest first."""
+def subscription_history(user: str = "priya", svc: Services = Depends(get_services)) -> list[dict[str, Any]]:
+    """Priya's subscription history for the AG Grid (R5: only her subscriptions), newest first."""
     subs = [s for s in svc.store.load("subscriptions").items if s.owner_id == user and s.status != "APPROVAL_PENDING"]
     acts = activity_for(svc, user)
     rows = [history_row(card(svc, s), [a for a in acts if a.subscription_id == s.id]) for s in subs]
@@ -127,6 +128,6 @@ def subscription_history(user: str = "usera", svc: Services = Depends(get_servic
 
 
 @router.get("/api/activity")
-def activity(user: str = "usera", svc: Services = Depends(get_services)) -> list[Activity]:
-    """userA's timeline for the AG Grid activity list (from the audit log; R5: only her entries)."""
+def activity(user: str = "priya", svc: Services = Depends(get_services)) -> list[Activity]:
+    """Priya's timeline for the AG Grid activity list (from the audit log; R5: only her entries)."""
     return activity_for(svc, user)

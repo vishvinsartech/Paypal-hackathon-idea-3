@@ -1,4 +1,4 @@
-"""The demo story (spec 2): userA + Penwright. Day 0 approve -> Day 5 "keep or cancel?" -> Cancel / Keep / no answer
+"""The demo story (spec 2): Priya + Penwright. Day 0 approve -> Day 5 "keep or cancel?" -> Cancel / Keep / no answer
 (Day 6 auto-cancel) -> Day 11 blocked charge. Right alerts, actions and audit entries (actors + rule ids)."""
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ def day0(c: TestClient) -> dict[str, Any]:
     assert timer_set["body"] == ("Your real last day to cancel Penwright is Day 7; the first charge is Day 11. "
                                  "I'll ask you on Day 5. If I don't hear back, I'll cancel Penwright on Day 6 "
                                  "so you're not charged.")
-    timer = next(t for t in c.get("/api/timers?user=usera").json() if t["subscription_id"] == main["id"])
+    timer = next(t for t in c.get("/api/timers?user=priya").json() if t["subscription_id"] == main["id"])
     assert (timer["fire_day"], timer["deadline_day"], timer["reminder_day"], timer["billing_day"]) == (6, 7, 5, 11)
     assert timer["shown_to_user"] and timer["status"] == "PENDING"
     assert audit(c, "timer_created", rule_id="R2", subscription_id=main["id"])
@@ -44,10 +44,10 @@ def day5(c: TestClient) -> dict[str, Any]:
 
 
 def assert_done(c: TestClient, sub_id: str, by: str) -> None:
-    """PayPal cancelled first, then a DRAFT email (never sent without userA's click)."""
+    """PayPal cancelled first, then a DRAFT email (never sent without Priya's click)."""
     s = sub(c, sub_id)
     assert s["status"] == "CANCELLED" and s["cancelled_by"] == by
-    notice = next(n for n in c.get("/api/notices?user=usera").json() if n["subscription_id"] == sub_id)
+    notice = next(n for n in c.get("/api/notices?user=priya").json() if n["subscription_id"] == sub_id)
     assert notice["to"] == "cancel@penwright.example" and notice["status"] == "draft" and notice["sent_at"] is None
     assert notice["sha256"] == hashlib.sha256(notice["body"].encode()).hexdigest()
     assert notice["drafted_by"] == "mock · fixtures" and notice["draft_problems"] == []
@@ -68,14 +68,14 @@ def assert_day11_blocked(c: TestClient, sub_id: str) -> None:
     blocked = [a for a in alerts(c, kind="blocked_charge") if a["subscription_id"] == sub_id]
     assert blocked and blocked[0]["body"] == BLOCKED
     assert audit(c, "charge_blocked", subscription_id=sub_id)
-    kpi = c.get("/api/kpis?user=usera").json()
+    kpi = c.get("/api/kpis?user=priya").json()
     assert Decimal(kpi["money_protected"]) == Decimal("524.88") and kpi["money_protected_text"] == "$524.88"
     assert kpi["subscriptions_cancelled"] == 1
     assert c.get("/api/audit-log/verify").json()["ok"]
 
 
 def test_cancel_on_day5(demo_client: TestClient) -> None:
-    """The demo path: userA taps Cancel on the Day 5 check-in and confirms."""
+    """The demo path: Priya taps Cancel on the Day 5 check-in and confirms."""
     c = demo_client
     main = day0(c)
     check = day5(c)
@@ -104,7 +104,7 @@ def test_no_answer_auto_cancels_on_day6(demo_client: TestClient) -> None:
     assert audit(c, "paypal_cancel", actor="timer", rule_id="R2", subscription_id=main["id"], result="ok",
                  status_after="CANCELLED")
     assert_done(c, main["id"], "timer")
-    keep_late = c.post(f"/api/subscriptions/{main['id']}/keep", json={"user_id": "usera"}).json()
+    keep_late = c.post(f"/api/subscriptions/{main['id']}/keep", json={"user_id": "priya"}).json()
     assert keep_late["status"] == "too_late"  # corner case 11
     assert_day11_blocked(c, main["id"])
 
@@ -113,11 +113,11 @@ def test_keep_on_day5_means_no_more_prompts(demo_client: TestClient) -> None:
     c = demo_client
     main = day0(c)
     check = day5(c)
-    res = c.post(f"/api/alerts/{check['id']}/act", json={"user_id": "usera", "action": "keep"}).json()
+    res = c.post(f"/api/alerts/{check['id']}/act", json={"user_id": "priya", "action": "keep"}).json()
     assert res["status"] == "kept"
     s = sub(c, main["id"])
     assert s["status"] == "ACTIVE" and s["kept_day"] == 5
-    assert all(t["status"] == "KEPT" for t in c.get("/api/timers?user=usera").json())
+    assert all(t["status"] == "KEPT" for t in c.get("/api/timers?user=priya").json())
     assert audit(c, "timer_kept", actor="user", subscription_id=main["id"])
     before = {a["id"] for a in alerts(c)}
     advance_to(c, 11)
@@ -125,7 +125,7 @@ def test_keep_on_day5_means_no_more_prompts(demo_client: TestClient) -> None:
     assert {a["id"] for a in alerts(c)} == before  # no further prompts, no blocked-charge claim
     assert not audit(c, "paypal_cancel")
     assert all(a["acknowledged_at"] for a in alerts(c) if a["actions"])
-    assert Decimal(c.get("/api/kpis?user=usera").json()["money_protected"]) == Decimal("0")
+    assert Decimal(c.get("/api/kpis?user=priya").json()["money_protected"]) == Decimal("0")
 
 
 def test_jump_is_idempotent(demo_client: TestClient) -> None:

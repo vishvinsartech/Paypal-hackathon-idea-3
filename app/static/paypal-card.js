@@ -117,7 +117,7 @@
 
   // ---- dashboards: latest run as a strip, earlier runs folded; re-read from PayPal when our status changes ----
   const hosts = Array.from(document.querySelectorAll("[data-paypal-cards]"));
-  const user = (document.body && document.body.dataset.user) || "usera";
+  const user = (document.body && document.body.dataset.user) || "priya";
   const seen = new Map(); // host:mode:subscription id -> our status when it was last read from PayPal
   const at = (s) => (s.registered_at ? Date.parse(s.registered_at) : 0) || 0;
 

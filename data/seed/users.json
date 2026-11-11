@@ -1,10 +1,11 @@
 {
   "items": [
     {
-      "id": "usera",
-      "name": "userA",
+      "id": "priya",
+      "name": "Priya",
+      "full_name": "Priya Sharma",
       "persona": "Freelance writer who pays for apps with PayPal",
-      "email": "usera@subguard-demo.example",
+      "email": "priya@subguard-demo.example",
       "phone": "+15550100001",
       "settings": {
         "auto_cancel_price_rises": true,

@@ -1,5 +1,5 @@
-// All AG Grid setup (Community 36.2.0 from a pinned CDN, D-060): audit log (Live demo), userA's subscription history,
-// findings + per-subscription audit (subscription page). Subscriptions are cards on userA's dashboard (D-112).
+// All AG Grid setup (Community 36.2.0 from a pinned CDN, D-060): audit log (Live demo), Priya's subscription history,
+// findings + per-subscription audit (subscription page). Subscriptions are cards on Priya's dashboard (D-112).
 (function () {
   "use strict";
   if (!window.agGrid || !window.SG) return;
@@ -25,7 +25,7 @@
                 defaultColDef: {sortable: true, filter: true, resizable: true, flex: 1, minWidth: 90}};
   const html = (s) => { const d = document.createElement("span"); d.innerHTML = s; return d; };
 
-  // ---- userA's subscription history (/user, D-118): one row per subscription, search + status filter + CSV ----
+  // ---- Priya's subscription history (/user, D-118): one row per subscription, search + status filter + CSV ----
   const histEl = document.getElementById("history-grid");
   if (histEl) {
     const search = document.getElementById("hist-search");

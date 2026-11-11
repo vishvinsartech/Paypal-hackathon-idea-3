@@ -39,6 +39,6 @@ def test_mock_mode_writes_the_outbox(demo_client: TestClient) -> None:
     mine = [p for p in payloads if p["idempotency_key"] == reminder["idempotency_key"]]
     assert sorted(p["channel"] for p in mine) == ["email", "sms"]
     assert set(mine[0]) >= {"type", "to", "subject", "body", "cta_url", "idempotency_key", "channels"}
-    assert mine[0]["type"] == "user_alert" and mine[0]["to"]["email"] == "usera@subguard-demo.example"
+    assert mine[0]["type"] == "user_alert" and mine[0]["to"]["email"] == "priya@subguard-demo.example"
     start = c.get("/api/audit-log?event=startup").json()[0]
     assert start["details"]["notify"] == "outbox"

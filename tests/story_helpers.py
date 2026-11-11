@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from app.models import User
 
 
-def subscribe(client: TestClient, merchant: str = "penwright", plan_key: str = "penwright-pro", user: str = "usera",
+def subscribe(client: TestClient, merchant: str = "penwright", plan_key: str = "penwright-pro", user: str = "priya",
               review: bool = True) -> dict[str, Any]:
     """What the shop does: companion preflight -> create -> mock approve -> register."""
     review_id = None
@@ -28,7 +28,7 @@ def subscribe(client: TestClient, merchant: str = "penwright", plan_key: str = "
 
 
 def add_user(client: TestClient, user_id: str = "intruder") -> str:
-    """A second, test-only user for the R5 ownership checks (the demo itself has only userA)."""
+    """A second, test-only user for the R5 ownership checks (the demo itself has only Priya)."""
     store = client.app.state.store  # type: ignore[attr-defined]
     with store.edit("users") as users:
         if not any(u.id == user_id for u in users.items):
@@ -36,7 +36,7 @@ def add_user(client: TestClient, user_id: str = "intruder") -> str:
     return user_id
 
 
-def alerts(client: TestClient, user: str = "usera", kind: str | None = None) -> list[dict[str, Any]]:
+def alerts(client: TestClient, user: str = "priya", kind: str | None = None) -> list[dict[str, Any]]:
     return [a for a in client.get(f"/api/alerts?user={user}").json() if kind is None or a["kind"] == kind]
 
 
@@ -49,12 +49,12 @@ def advance_to(client: TestClient, day: int) -> None:
     assert client.post(f"/api/demo/advance?to_day={day}").json()["sim_day"] == day
 
 
-def sub(client: TestClient, sub_id: str, user: str = "usera") -> dict[str, Any]:
+def sub(client: TestClient, sub_id: str, user: str = "priya") -> dict[str, Any]:
     return next(s for s in client.get(f"/api/subscriptions?user={user}").json() if s["id"] == sub_id)
 
 
 def cancel_via_alert(client: TestClient, alert: dict[str, Any], action: str = "cancel",
-                     user: str = "usera") -> tuple[dict[str, Any], dict[str, Any]]:
+                     user: str = "priya") -> tuple[dict[str, Any], dict[str, Any]]:
     card = client.post(f"/api/alerts/{alert['id']}/act", json={"user_id": user, "action": action}).json()["confirm"]
     done = client.post("/api/agent/confirm", json={"user_id": user, "token": card["token"],
                                                    "subscription_ids": [i["subscription_id"] for i in card["items"]]})

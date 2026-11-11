@@ -55,7 +55,7 @@ def _check_user(store: JsonStore, user_id: str) -> None:
 class CheckoutIn(BaseModel):
     merchant_id: str
     plan_key: str
-    user_id: str = "usera"
+    user_id: str = "priya"
     js_sdk: bool = False  # True: created for the PayPal JS SDK button (no redirect URLs)
 
 
@@ -67,7 +67,7 @@ class RegisterIn(BaseModel):
     paypal_id: str
     merchant_id: str
     plan_key: str
-    user_id: str = "usera"
+    user_id: str = "priya"
     review_id: str | None = None  # the companion's preflight review, linked to the new subscription
 
 
@@ -100,7 +100,7 @@ async def checkout_mock_approve(body: ApproveIn, gw: PayPalGateway = Depends(get
 class DemoWindowIn(BaseModel):
     merchant_id: str = "penwright"
     plan_key: str = "penwright-pro"
-    user_id: str = "usera"
+    user_id: str = "priya"
     review_id: str | None = None
     source: Literal["demo", "shop"] = "demo"  # live demo window, or a manual shop visit (D-120)
 
@@ -192,12 +192,12 @@ async def register(body: RegisterIn, request: Request, store: JsonStore = Depend
 
 
 @router.get("/subscriptions")
-def list_subscriptions(user: str = "usera", store: JsonStore = Depends(get_store)) -> list[Subscription]:
+def list_subscriptions(user: str = "priya", store: JsonStore = Depends(get_store)) -> list[Subscription]:
     return [s for s in store.load("subscriptions").items if s.owner_id == user]
 
 
 @router.get("/subscriptions/{sub_id}/paypal", response_model=None)
-async def paypal_status(sub_id: str, request: Request, user: str = "usera") -> dict[str, Any] | JSONResponse:
+async def paypal_status(sub_id: str, request: Request, user: str = "priya") -> dict[str, Any] | JSONResponse:
     """The "Subscribed via PayPal" card: status, plan and billing cycles read live from PayPal (D-113)."""
     svc: Services = request.app.state.services
     sub = svc.sub(sub_id)

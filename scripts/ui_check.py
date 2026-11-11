@@ -1,8 +1,8 @@
-"""Browser check: the demo story (userA + Penwright) in mock mode, driven through the real UI with Playwright.
+"""Browser check: the demo story (Priya + Penwright) in mock mode, driven through the real UI with Playwright.
 
 Starts its own mock server on a free port with a throwaway DATA_DIR (unless --base-url is given), then:
 shop -> companion (risk ~87, summary, "I'll check with you...", Continue) -> timer shown -> Day 5 check-in toast ->
-userA's dashboard (card, Day 10 vs Day 7, usage + advice, chat) -> Cancel -> confirm card $524.88/yr -> email preview
+Priya's dashboard (card, Day 10 vs Day 7, usage + advice, chat) -> Cancel -> confirm card $524.88/yr -> email preview
 (edit, empty To disables Send, Gmail link; no toasts) -> Day 11 blocked charge + proof banner -> charts, activity grid,
 theme toggle -> audit-log CSV export -> subscription page.
 Fails on any console error or page error.
@@ -80,7 +80,7 @@ def story(base: str, headed: bool) -> None:
         dash.goto(f"{base}/?demo=1")
         expect(dash.get_by_test_id("timeline")).to_contain_text("No subscriptions yet.")
         expect(dash.get_by_test_id("user-switch")).to_have_count(0)
-        step("dashboard loaded: userA, no subscriptions yet, no user switcher")
+        step("dashboard loaded: Priya, no subscriptions yet, no user switcher")
 
         with ctx.expect_page() as shop_info:
             dash.get_by_test_id("demo-open-shop").click()
@@ -114,7 +114,7 @@ def story(base: str, headed: bool) -> None:
         expect(dash.get_by_test_id("dev-docs")).to_be_visible()
         step("Live demo = control room: timer shown, Money protected only, dev links in the footer menu")
 
-        me = watch(ctx.new_page())  # userA's dashboard in its own window, like a presenter would
+        me = watch(ctx.new_page())  # Priya's dashboard in its own window, like a presenter would
         me.goto(f"{base}/user")
         card = me.get_by_test_id("sub-card")
         expect(card.get_by_test_id("status-penwright")).to_have_text("ACTIVE")
@@ -122,7 +122,7 @@ def story(base: str, headed: bool) -> None:
             "Site says: trial ends Day 10 · Real last day to cancel: Day 7.")
         expect(card.get_by_test_id("risk-score")).to_contain_text("/100")
         expect(card.get_by_test_id("view-review")).to_have_text("View fine-print review")
-        step("userA's dashboard: subscription card with the Day 10 vs Day 7 line, risk, Keep / Cancel")
+        step("Priya's dashboard: subscription card with the Day 10 vs Day 7 line, risk, Keep / Cancel")
 
         dash.bring_to_front()
         dash.get_by_test_id("sim-jump-5").click()
@@ -144,7 +144,7 @@ def story(base: str, headed: bool) -> None:
         expect(me.locator("#chat-log")).to_contain_text("the first paid year costs $524.88")
         shot(me, "02_checkin_and_chat")
         me.locator("#chat-close").click()
-        step("Day 5 (userA): usage summary, advice labelled 'You decide', chat answers with $524.88")
+        step("Day 5 (Priya): usage summary, advice labelled 'You decide', chat answers with $524.88")
 
         reminder.get_by_test_id("alert-cancel").click()
         confirm = me.get_by_test_id("confirm-card")
@@ -159,13 +159,13 @@ def story(base: str, headed: bool) -> None:
         email.get_by_test_id("email-to").fill("")
         expect(email.get_by_test_id("email-send")).to_be_disabled()
         email.get_by_test_id("email-to").fill("cancel@penwright.example")
-        body.fill(body.input_value() + "\nEdited by userA.")
+        body.fill(body.input_value() + "\nEdited by Priya.")
         ctx.route("https://mail.google.com/**", lambda route: route.fulfill(body="Gmail stub"))
         with ctx.expect_page() as gmail_info:
             email.get_by_test_id("email-open-gmail").click()
         gmail = gmail_info.value
         gmail.wait_for_load_state()
-        assert gmail.url.startswith("https://mail.google.com/mail/?view=cm") and "Edited%20by%20userA." in gmail.url
+        assert gmail.url.startswith("https://mail.google.com/mail/?view=cm") and "Edited%20by%20Priya." in gmail.url
         gmail.close()
         expect(email.get_by_test_id("email-sent")).to_have_text("Opened in Gmail (demo)")
         email.get_by_test_id("email-dismiss").click()
@@ -223,7 +223,7 @@ def story(base: str, headed: bool) -> None:
         shot(me, "03c_user_dashboard_light")
         me.get_by_test_id("theme-toggle").click()
         expect(me.locator("html")).to_have_attribute("data-theme", "dark")
-        step("Day 11 (userA): proof banner, sidebar sections, AG Charts, history grid + search, key dates, theme")
+        step("Day 11 (Priya): proof banner, sidebar sections, AG Charts, history grid + search, key dates, theme")
 
         dash.bring_to_front()
         expect(dash.get_by_test_id("audit-chain")).to_contain_text("chain verified")
@@ -238,10 +238,10 @@ def story(base: str, headed: bool) -> None:
         assert "paypal_cancel" in csv_text and "R1" in csv_text, "CSV export missing rows"
         step(f"audit log CSV exported ({len(csv_text.splitlines())} lines), chain verified")
 
-        sub_id = next(s["id"] for s in httpx.get(f"{base}/api/subscriptions?user=usera").json()
+        sub_id = next(s["id"] for s in httpx.get(f"{base}/api/subscriptions?user=priya").json()
                       if s["plan_key"] == "penwright-pro")
         page = watch(ctx.new_page())
-        page.goto(f"{base}/subscriptions/{sub_id}?user=usera")
+        page.goto(f"{base}/subscriptions/{sub_id}?user=priya")
         expect(page.get_by_test_id("risk-score")).to_contain_text("/100")
         expect(page.get_by_test_id("finding-PROMPT_INJECTION_ATTEMPT").first).to_be_visible()
         expect(page.get_by_test_id("cancellation-notice")).to_contain_text("Opened in Gmail (demo)")
@@ -255,7 +255,7 @@ def story(base: str, headed: bool) -> None:
 
 
 def autoplay(base: str, headed: bool) -> None:
-    """The "Start demo" button: runs to the check-in, pauses for userA, then finishes. All three answers."""
+    """The "Start demo" button: runs to the check-in, pauses for Priya, then finishes. All three answers."""
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=not headed)
         dash = watch(browser.new_page(viewport={"width": 1440, "height": 1000}))

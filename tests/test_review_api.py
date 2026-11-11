@@ -49,11 +49,11 @@ def test_preflight_rejects_other_urls(client: TestClient) -> None:
 def test_register_links_the_preflight_review(client: TestClient) -> None:
     review_id = client.post("/api/review/preflight", json={"merchant_url": "/shop/penwright"}).json()["review_id"]
     created = client.post("/api/checkout/create", json={"merchant_id": "penwright", "plan_key": "penwright-pro",
-                                                        "user_id": "usera"}).json()
+                                                        "user_id": "priya"}).json()
     client.post("/api/checkout/mock-approve", json={"paypal_id": created["paypal_id"]})
     sub = client.post("/api/subscriptions/register", json={
         "paypal_id": created["paypal_id"], "merchant_id": "penwright", "plan_key": "penwright-pro",
-        "user_id": "usera", "review_id": review_id}).json()
+        "user_id": "priya", "review_id": review_id}).json()
     review = client.get(f"/api/reviews/{review_id}").json()
     assert review["subscription_id"] == sub["id"]
     _, other = buy(client)  # a second subscription without a preflight review still registers

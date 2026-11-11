@@ -42,8 +42,9 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
   merged card, one Keep / Cancel pair, U12 card, clause highlight, audit drawer with routine hidden, evidence tabs,
   390 px layout + bottom sheet, Start demo with all three answers on the card, Quillnote; no CDN requests).
   Penwright still 87, Quillnote 73. Screenshots: `docs/img/v3/p3/` (looked at: companion desktop + mobile sheet,
-  Day 5 card with band, Day 11 with presenter bar, email modal with highlight, evidence summary, shop). Not run:
-  `scripts/sandbox_ui_check.py` (needs sandbox credentials; updated for the new selectors). Left for Phase 5: the
+  Day 5 card with band, Day 11 with presenter bar, email modal with highlight, evidence summary, shop). `make sandbox-ui-check`:
+  passed against the real PayPal sandbox (commit `74010ed`; the check was stale since D-120 and now serves the SDK
+  button path). Left for Phase 5: the
   video narration still says "Day 7"; scenes.json only has its targets updated.
 
 ## v1-v2 milestones (history)

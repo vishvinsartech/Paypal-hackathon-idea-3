@@ -93,7 +93,7 @@ async def act(alert_id: str, body: ActIn, svc: Services = Depends(get_services))
         offered = next((a for a in alert.actions if a["action"] == "review_email"), {})
         out = {"notice_id": offered.get("notice_id")}  # the UI opens the email preview
     elif body.action == "open_autopay":
-        out = {"url": svc.settings.paypal_autopay_url}
+        out = {"url": svc.settings.autopay_link}
     else:
         out = {"status": "acknowledged"}
     await _ack(svc, alert_id)

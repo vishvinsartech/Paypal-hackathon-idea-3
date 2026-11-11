@@ -94,7 +94,7 @@ def test_model_that_obeys_injection_is_overruled(kind: str, settings: Settings, 
     data = run_review(store, provider, cap, "penwright-pro")
     inj = [c for c in data.clauses if c.type == "PROMPT_INJECTION_ATTEMPT"]
     assert inj and inj[0].source == "code" and quote_ok(inj[0].quote, cap)
-    assert data.risk_score >= 40  # style, money, library and PayPal checks (not the model) keep it far from 0
+    assert data.risk_score >= 30  # style, money, library and PayPal checks (not the model) keep it far from 0
 
 
 def test_anthropic_request_shape(settings: Settings) -> None:

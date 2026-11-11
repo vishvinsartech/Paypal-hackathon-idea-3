@@ -36,6 +36,7 @@ from app.routes import (
     api,
     chat,
     demo,
+    layer2,
     notices,
     pages,
     review,
@@ -149,6 +150,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(analytics.router)
     app.include_router(chat.router)
     app.include_router(views.router)
+    app.include_router(layer2.router)
     app.include_router(webhooks.router)
     app.include_router(shop_routes.router)
     return app

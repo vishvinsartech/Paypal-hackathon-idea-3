@@ -170,10 +170,33 @@ To click through it yourself instead:
 permissions. That lets SubGuard cancel through PayPal, but it doesn't make Penwright's terms fair, so its checkout
 carries no trust badge (it stays `fair_trial_member: true` in the seed for the partner path).
 
-**Layer 2 (merchants outside Fair Trial):** the Fair Trial toggle is hidden from the demo bar to keep the story
-focused, but the code is still there. To try it: `curl -X POST http://127.0.0.1:8000/api/demo/toggle-fair-trial/penwright`
-before signing up. SubGuard then can't cancel in PayPal itself: it drafts the cancellation email and sends an
-"ACTION NEEDED" alert with a link to PayPal's Automatic payments page.
+### Turn the AI off: what changes? (Quillnote)
+
+The demo shop has a second fictional merchant, **Quillnote** (an AI notes app, `/shop/quillnote`). Its catches are
+written in plain prose, so pattern rules can't see them: the notice period is in words ("no later than
+seventy-two hours before your renewal"), the auto-renewal is phrased indirectly, the price step-up ($12.99 ->
+$27.99/month) is only in an FAQ answer, and cancelling means "contact our account team".
+
+Every review also runs the **basic check** (regex rules, no AI) on the same page and stores the result. The
+subscription page's **AI vs basic check** panel lists what each found. On Quillnote the AI finds the notice period,
+the step-up and the hard cancel that the basic check misses, and the deadline comes from the AI-read clause
+(checked word for word against the page, then converted by code: 72 hours -> 3 days -> **act by Day 4**; the basic
+check would say Day 7, too late). Risk: AI **73**, basic check **25**. On Penwright both paths agree (87).
+
+**Layer 2 (merchants outside Fair Trial):** Quillnote isn't a Fair Trial member, so SubGuard can't cancel it in
+PayPal. **Cancel** drafts the cancellation email and shows an **ACTION NEEDED** card with a one-tap link to PayPal's
+Automatic payments page (`PAYPAL_AUTOPAY_URL`; in mock mode a clearly labelled simulated copy). SubGuard then reads
+PayPal every few seconds (read-only) until it shows CANCELLED, and closes the card. The demo-bar Fair Trial toggle
+still works for Penwright: `curl -X POST http://127.0.0.1:8000/api/demo/toggle-fair-trial/penwright`.
+
+### Risk score
+
+Code computes it, never the model (`app/core/risk.py`):
+`min(100, type weights + hard-to-read terms 10 (counted once) + pre-ticked box 10 + min(15, year-one cost / 50)
++ library bonus (1 per matched dark-pattern type, max 5))`. Weights: notice period 20, hard to cancel 14, price
+step-up 10, page vs PayPal mismatch 9, auto-renew 4 (every subscription renews), trial ends early 4, add-on 3,
+hidden instructions to AI 0 (flagged, never scored). Penwright **87**, Quillnote **73**, an honest monthly plan
+with a cancel button about **6** (tests assert 80-92, 70-90 and <= 25).
 
 To start over, click **Reset** in the demo bar, or run `make reset` (`python scripts/tasks.py reset`).
 Then restart the server, which re-creates the demo data.

@@ -108,7 +108,8 @@ async def create_draft(svc: Services, sub: Subscription, *, by_timer: bool = Fal
     if draft is None or problems:
         draft, source, label = template_draft(ctx), "template", TEMPLATE_LABEL
     notice = Notice(id=f"nt-{secrets.token_hex(5)}", subscription_id=sub.id, merchant_id=sub.merchant_id,
-                    sim_day=svc.day, to=ctx.to, subject=draft.subject, body=draft.body,
+                    merchant_name=svc.merchant(sub.merchant_id).name, sim_day=svc.day, to=ctx.to,
+                    subject=draft.subject, body=draft.body,
                     sha256=hashlib.sha256(draft.body.encode("utf-8")).hexdigest(), drafted_by=label,
                     draft_source=source, draft_problems=problems, draft_to=ctx.to, draft_subject=draft.subject,
                     draft_body=draft.body, created_at=utcnow(), by_timer=by_timer)

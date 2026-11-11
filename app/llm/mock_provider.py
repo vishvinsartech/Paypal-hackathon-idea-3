@@ -12,6 +12,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from app.core.durations import number_words
 from app.integrations.capture import PageCapture
 from app.llm.base import (
     ChatMessage,
@@ -38,6 +39,11 @@ def pricing_tokens(p: Pricing) -> dict[str, str]:
         "intro": p.money(p.penwright_intro_price), "intro_raw": str(p.penwright_intro_price),
         "intro_months": str(p.penwright_intro_months), "step_up": p.money(p.penwright_step_up_price),
         "notice_days": str(p.penwright_notice_days), "export_limit": str(p.penwright_export_limit),
+        # Quillnote (A1): its page states numbers in words
+        "q_trial_words": number_words(p.quillnote_trial_days), "q_first_charge_day": str(p.quillnote_first_charge_day),
+        "q_intro": p.money(p.quillnote_intro_price), "q_intro_raw": str(p.quillnote_intro_price),
+        "q_intro_months_words": number_words(p.quillnote_intro_months), "q_step_up": p.money(p.quillnote_step_up_price),
+        "q_notice_words": number_words(p.quillnote_notice_hours), "q_notice_days": str(p.quillnote_notice_days),
     }
 
 

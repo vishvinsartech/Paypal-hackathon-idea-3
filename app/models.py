@@ -222,6 +222,7 @@ class Notice(BaseModel):
     id: str
     subscription_id: str
     merchant_id: str = ""
+    merchant_name: str = ""
     sim_day: int = 0
     to: str
     subject: str

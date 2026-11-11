@@ -57,14 +57,14 @@ async def test_seed_creates_everything_then_reuses(store: JsonStore) -> None:
     sdk, rest = FakeSdk(), FakeRest()
     items = await seeder(store, sdk, rest).run()
     ids = store.load("sandbox_ids")
-    assert set(ids.products) == {"penwright"}
-    assert set(ids.plans) == {"penwright-pro"}
-    assert all(i.action == "created" for i in items) and len(items) == 2
+    assert set(ids.products) == {"penwright", "quillnote"}  # A1: Quillnote is seeded too
+    assert set(ids.plans) == {"penwright-pro", "quillnote-plus"}
+    assert all(i.action == "created" for i in items) and len(items) == 4
     again = await seeder(store, sdk, rest).run()
     assert all(i.action == "reused" for i in again)
-    assert len(sdk.plans) == 1 and len(rest.products) == 1
+    assert len(sdk.plans) == 2 and len(rest.products) == 2
     events = [e for e in store.audit.query() if e.event == "sandbox_seed"]
-    assert len(events) == 2  # reuse writes nothing
+    assert len(events) == 4  # reuse writes nothing
 
 
 async def test_price_change_creates_a_new_plan(store: JsonStore, data_dir: Any) -> None:
@@ -76,7 +76,8 @@ async def test_price_change_creates_a_new_plan(store: JsonStore, data_dir: Any) 
     items = await seeder(pricier, sdk, rest).run()
     new = pricier.load("sandbox_ids").plans["penwright-pro"]
     assert new != old
-    assert {i.key: i.action for i in items} == {"penwright": "reused", "penwright-pro": "replaced"}
+    assert {i.key: i.action for i in items} == {"penwright": "reused", "penwright-pro": "replaced",
+                                                 "quillnote": "reused", "quillnote-plus": "reused"}
 
 
 async def test_missing_remote_plan_or_inactive_plan_is_recreated(store: JsonStore) -> None:
@@ -93,8 +94,8 @@ async def test_missing_remote_plan_or_inactive_plan_is_recreated(store: JsonStor
 def test_plans_respect_paypal_shape_rules() -> None:
     """PayPal: at most one REGULAR cycle, at most two TRIAL cycles, TRIAL before REGULAR (D-031)."""
     p = Pricing()
-    assert p.plans_for("framewise") == [] and p.plans_for("lumen") == []  # one merchant since D-090
-    for merchant in ("penwright",):
+    assert p.plans_for("framewise") == [] and p.plans_for("lumen") == []  # Penwright + Quillnote only (D-142)
+    for merchant in ("penwright", "quillnote"):
         for plan in p.plans_for(merchant):
             kinds = [c.tenure_type for c in plan.billing_cycles]
             assert kinds.count("REGULAR") == 1 and kinds.count("TRIAL") <= 2

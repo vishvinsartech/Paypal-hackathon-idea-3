@@ -19,6 +19,9 @@ class ConfigError(RuntimeError):
     """Raised at startup when the configuration can't be used. The message is user-facing."""
 
 
+MOCK_AUTOPAY_PATH = "/demo/paypal-autopay"
+
+
 class Settings(BaseSettings, PricingFields):
     """Env / .env configuration. Demo prices and terms come from PricingFields (app/pricing.py)."""
 
@@ -75,6 +78,11 @@ class Settings(BaseSettings, PricingFields):
     @property
     def is_sandbox(self) -> bool:
         return self.app_mode == "sandbox"
+
+    @property
+    def autopay_link(self) -> str:
+        """A5: Layer 2's one-tap link. Sandbox: PayPal's Automatic payments page. Mock: a simulated copy."""
+        return self.paypal_autopay_url if self.is_sandbox else MOCK_AUTOPAY_PATH
 
     @property
     def llm_model(self) -> str:

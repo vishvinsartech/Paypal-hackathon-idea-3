@@ -74,6 +74,26 @@
       await refresh();
     } catch (e) { /* offline for a moment: try again next tick */ }
   }
+  // A5 (Layer 2): while an ACTION NEEDED card is up, ask SubGuard to read PayPal every few seconds (read-only GET).
+  // Once PayPal shows CANCELLED the server closes the card; the next tick swaps it out.
+  let checking = false;
+  async function pollLayer2() {
+    const ids = [...new Set([...document.querySelectorAll("[data-poll-sub]")].map((el) => el.dataset.pollSub))];
+    if (!ids.length || checking || document.hidden) return;
+    checking = true;
+    try {
+      for (const id of ids) {
+        const out = await api(`/api/subscriptions/${id}/check-paypal?user=${user}`, {method: "POST", body: {}});
+        if (out && out.cancelled) {
+          toast("PayPal shows it CANCELLED. You won't be charged.", {title: "Checked PayPal", testid: "toast-layer2"});
+          await tick(true);
+        }
+      }
+    } catch (e) { /* PayPal or the network hiccuped: try again next round */ }
+    checking = false;
+  }
+
   refresh();
   setInterval(() => tick(false), 4000);
+  setInterval(pollLayer2, 3000);
 })();

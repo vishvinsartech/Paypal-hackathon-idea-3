@@ -15,6 +15,7 @@ from fastapi.responses import HTMLResponse
 from app.config import Settings
 from app.core import timers as tm
 from app.core.activity import Activity, activity_for
+from app.core.layer2 import open_handoffs
 from app.core.savings import charges_avoided, money_protected, year_one_cost
 from app.core.services import Services
 from app.core.sub_dates import day_text, key_dates, stamp, sub_act_by
@@ -83,6 +84,17 @@ def proof(svc: Services, alerts: list[Alert]) -> str | None:
     return f"First charge was due {when}. {blocked.body}"
 
 
+def action_needed(svc: Services, alerts: list[Alert], user: str) -> list[dict[str, Any]]:
+    """A5: the Layer 2 handoff as a card: one-tap PayPal link, the email draft, and SubGuard watching PayPal."""
+    out = []
+    for a in open_handoffs(alerts, user):
+        notice = next((x.get("notice_id") for x in a.actions if x["action"] == "review_email"), None)
+        out.append({"alert": a, "merchant": svc.merchant(svc.sub(a.subscription_id or "").merchant_id).name
+                    if svc.sub(a.subscription_id or "") else "", "notice_id": notice, "url": svc.settings.autopay_link,
+                    "sandbox": svc.settings.is_sandbox})
+    return out
+
+
 @router.get("/user", response_class=HTMLResponse)
 @router.get("/me", response_class=HTMLResponse)  # alias (FIX_PLAN persona)
 def user_dashboard(
@@ -96,6 +108,7 @@ def user_dashboard(
     alerts = sorted((a for a in store.load("alerts").items if a.user_id == user), key=lambda a: a.created_at)
     ctx.update(active_tab="user", cards=[card(svc, s) for s in subs], notices=notices, alerts=alerts,
                check_in=check_in(svc, alerts), proof=proof(svc, alerts),
+               action_needed=action_needed(svc, alerts, user),
                protected=svc.money(money_protected(subs, user, settings.pricing.demo_currency)),
                avoided=svc.money(charges_avoided(subs, user, settings.pricing.demo_currency)),
                cancelled=sum(1 for s in subs if s.status == "CANCELLED"))

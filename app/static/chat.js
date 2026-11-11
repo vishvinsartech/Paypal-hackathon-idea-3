@@ -63,7 +63,7 @@
   }
 
   function transportName(t) {
-    return {mcp: "MCP", sdk: "SDK", rest: "REST", mock: "mock"}[t] || (t || "");
+    return {mcp: "MCP", sdk: "SDK", rest: "REST", mock: "demo data"}[t] || (t || "");
   }
 
   async function send(text) {

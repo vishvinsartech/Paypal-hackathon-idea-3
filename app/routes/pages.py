@@ -12,6 +12,8 @@ from app.config import ROOT_DIR, Settings
 from app.core import timers as tm
 from app.core.savings import year_one_cost
 from app.core.sub_dates import day_text, sub_act_by
+from app.models import Subscription
+from app.review_types import TYPE_LABELS, ReviewData
 from app.routes.actions import get_services
 from app.routes.deps import get_settings, get_store
 from app.store import JsonStore
@@ -39,6 +41,24 @@ def dashboard(
     return templates.TemplateResponse(request, "dashboard.html", ctx)
 
 
+def ai_vs_basic_view(sub: Subscription, data: ReviewData) -> dict[str, Any] | None:
+    """A2: the side-by-side panel. Dates relative to the sign-up, like everywhere else (B2)."""
+    cmp = data.ai_vs_basic()
+    if cmp is None:
+        return None
+
+    def notice(n: int) -> str:
+        return f"{n} day{'s' if n != 1 else ''}" if n else "not found"
+
+    return {**cmp, "ai_act_by": day_text(sub, cmp["ai_act_by_day"]),
+            "basic_act_by": day_text(sub, cmp["basic_act_by_day"]),
+            "ai_notice": notice(cmp["ai_notice_days"]), "basic_notice": notice(cmp["basic_notice_days"]),
+            "risky_labels": [TYPE_LABELS.get(t, t).lower() for t in cmp["ai_only_risky"]],
+            "notice_quote": next((c.quote for c in data.clauses if c.type == "NOTICE_PERIOD"), None),
+            "same": not cmp["ai_only"] and not cmp["basic_only"]
+            and cmp["ai_notice_days"] == cmp["basic_notice_days"]}
+
+
 @router.get("/subscriptions/{sub_id}", response_class=HTMLResponse)
 def subscription_page(
     request: Request, sub_id: str, user: str = "priya",
@@ -57,6 +77,7 @@ def subscription_page(
     d = review.data.deadlines if review else None
     ctx.update(act_by=sub_act_by(sub, d.real_cancel_deadline_day) if d else "",
                first_charge_on=day_text(sub, d.first_charge_day) if d else "")
+    ctx.update(ai_vs_basic=ai_vs_basic_view(sub, review.data) if review else None, type_labels=TYPE_LABELS)
     ctx.update(sub=sub, merchant=merchant, review=review, snap=snap, notice=notice, plans=plans,
                snap_year=svc.money(year_one_cost(snap.billing_cycles)) if snap else None, money=svc.money,
                evidence=sorted({c.evidence_testid for c in review.data.clauses if c.evidence_testid})

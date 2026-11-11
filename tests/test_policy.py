@@ -229,7 +229,7 @@ def test_layer2_merchant_flow(demo_client: TestClient) -> None:
     advance_to(c, 5)
     assert sub(c, main["id"])["status"] == "ACTIVE"  # SubGuard can't cancel for non-members
     alert = alerts(c, kind="action_needed")[0]
-    assert alert["level"] == "action_needed" and alert["actions"][0]["url"].startswith("https://www.sandbox.paypal.com")
+    assert alert["level"] == "action_needed" and alert["actions"][0]["url"] == "/demo/paypal-autopay"  # D-146
     assert c.get("/api/notices?user=priya").json()[0]["subscription_id"] == main["id"]
     advance_to(c, 10)
     assert alerts(c, kind="urgent")  # still ACTIVE 24 sim-hours before the charge

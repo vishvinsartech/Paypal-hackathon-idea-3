@@ -89,7 +89,7 @@ async def propose_cancel(svc: Services, user_id: str, sub_ids: list[str], reason
                        total_per_year=total, total_text=f"{svc.money(total)}/yr")
 
 
-async def layer2_handoff(svc: Services, sub: Subscription, why: str) -> None:
+async def layer2_handoff(svc: Services, sub: Subscription, why: str) -> str:
     merchant = svc.merchant(sub.merchant_id)
     notice = await create_draft(svc, sub, by_timer=True)
     await send_alert(
@@ -98,9 +98,10 @@ async def layer2_handoff(svc: Services, sub: Subscription, why: str) -> None:
         body=(f"{why} {merchant.name} isn't a Fair Trial merchant, so only you can stop it in PayPal. "
               f"Tap below, find {merchant.name} under Automatic payments and cancel it. "
               "Your cancellation email is ready to review and send."),
-        actions=[action("open_autopay", "Open PayPal Automatic payments", url=svc.settings.paypal_autopay_url),
+        actions=[action("open_autopay", "Open PayPal Automatic payments", url=svc.settings.autopay_link),
                  action("review_email", "Review email", notice_id=notice.id)],
-        subscription_id=sub.id, cta_url=svc.settings.paypal_autopay_url)
+        subscription_id=sub.id, cta_url=svc.settings.autopay_link)
+    return notice.id
 
 
 async def cancel_one(svc: Services, sub: Subscription, *, actor: str, rule_id: str, reason: str,
@@ -111,9 +112,10 @@ async def cancel_one(svc: Services, sub: Subscription, *, actor: str, rule_id: s
         return ItemResult(**base, ok=True, status="CANCELLED", outcome="already_cancelled",
                           message=f"{merchant.name} was already cancelled.")
     if not merchant.fair_trial_member:
-        await layer2_handoff(svc, sub, "You asked me to cancel it.")
-        return ItemResult(**base, ok=False, status=sub.status, outcome="action_needed",
-                          message=f"{merchant.name} must be cancelled by you in PayPal (link sent).")
+        notice_id = await layer2_handoff(svc, sub, "You asked me to cancel it.")
+        return ItemResult(**base, ok=False, status=sub.status, outcome="action_needed", notice_id=notice_id,
+                          message=f"{merchant.name} isn't a Fair Trial merchant, so you cancel it in PayPal: "
+                                  "see ACTION NEEDED.")
     blocked = svc.policy.take_write(svc.store, sub.owner_id, sub.id, actor)
     if blocked is not None:
         return ItemResult(**base, ok=False, status=sub.status, outcome="blocked", message=blocked.reason)

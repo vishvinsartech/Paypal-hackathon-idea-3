@@ -11,9 +11,12 @@ import asyncio
 import re
 import secrets
 import time
+from dataclasses import dataclass
+from decimal import Decimal
 from pathlib import Path
 
 from app.core.crosscheck import cross_check
+from app.core.durations import duration_days, mentions_duration
 from app.core.patterns import (
     drop_clear_terms_if_risky,
     fallback_extract,
@@ -30,12 +33,32 @@ from app.integrations.capture import PageCapture
 from app.integrations.paypal_types import PlanView, first_charge_day
 from app.llm.base import LLMError, LLMProvider
 from app.models import Merchant, Review
-from app.review_types import Clause, ReviewData, ReviewResult
+from app.review_types import (
+    BasicCheck,
+    Clause,
+    Deadlines,
+    PayPalCheckRow,
+    ReviewData,
+    ReviewResult,
+    RiskBreakdown,
+)
 from app.store import JsonStore, utcnow
 
 BASIC_LABEL = "basic check (AI unavailable)"
 NOTICE_DAYS_RE = re.compile(r"(\d+)\s+(?:calendar\s+|business\s+)?days?\b", re.I)
 PLAN_MONEY_TYPES = ("AUTO_RENEW", "INTRO_PRICE_STEP_UP")
+
+
+@dataclass
+class _Assembled:
+    clauses: list[Clause]
+    rows: list[PayPalCheckRow]
+    deadlines: Deadlines
+    risk: RiskBreakdown
+    signals: list[str]
+    matches: list[str]
+    year_one: Decimal
+    notice_source: str
 
 
 class Auditor:
@@ -93,20 +116,24 @@ class Auditor:
                       source="code", plain_english=f"Important terms are hard to see: {how}.")
 
     @staticmethod
-    def _notice_days(clauses: list[Clause], llm_value: int | None) -> int:
+    def _notice_days(clauses: list[Clause], llm_value: int | None) -> tuple[int, str]:
+        """A3: the notice period from a verified NOTICE_PERIOD quote. Code parses digits or words ("3 days",
+        "seventy-two hours" -> 3). When the quote states a duration code can't read, the AI's value is accepted.
+        No verified notice quote -> 0 (nothing to act on). Returns (days, source)."""
         for c in clauses:
-            if c.type == "NOTICE_PERIOD" and (m := NOTICE_DAYS_RE.search(c.quote)):
-                return int(m.group(1))
-        return max(0, llm_value or 0)
+            if c.type != "NOTICE_PERIOD":
+                continue
+            if (days := duration_days(c.quote)) is not None:
+                return days, "quote_digits" if NOTICE_DAYS_RE.search(c.quote) else "quote_words"
+            if llm_value is not None and mentions_duration(c.quote):
+                return max(0, llm_value), "ai"
+        return 0, "none"
 
-    async def review(self, capture: PageCapture, plan: PlanView, *, merchant: Merchant, plan_key: str | None,
-                     signup_day: int, user_id: str | None = None) -> ReviewData:
-        result, dropped = await self._ask(capture, user_id)
-        mode = "ai" if result is not None else "basic"
-        if result is None:
-            result = ReviewResult(clauses=fallback_extract(capture))
+    def _assemble(self, capture: PageCapture, plan: PlanView, result: ReviewResult, *, merchant: Merchant,
+                  signup_day: int) -> _Assembled:
+        """Code checks, deadlines and the score on top of one set of findings (AI or basic): the same steps for
+        both, so the A2 comparison shows only what the AI adds."""
         clauses = list(result.clauses)
-
         if not any(c.type == "PROMPT_INJECTION_ATTEMPT" for c in clauses):
             clauses += find_injections(capture)
         signals = style_signals(capture)
@@ -119,7 +146,7 @@ class Auditor:
         clauses = drop_clear_terms_if_risky(clauses)
 
         y1 = year_one_cost(plan.billing_cycles)
-        notice = self._notice_days(clauses, result.notice_days)
+        notice, source = self._notice_days(clauses, result.notice_days)
         deadlines = compute_deadlines(signup_day, first_charge_day(plan.billing_cycles, signup_day), notice,
                                       layer2=not merchant.fair_trial_member)
         for c in clauses:  # PayPal values win for all money maths; LLM money hints are discarded
@@ -132,13 +159,30 @@ class Auditor:
         label_similar(clauses, library)
         risk = score(clauses, signals, y1, library_bonus(matches))
         clauses.sort(key=lambda c: -c.severity)
+        return _Assembled(clauses, rows, deadlines, risk, signals, [e.id for e in matches], y1, source)
+
+    async def review(self, capture: PageCapture, plan: PlanView, *, merchant: Merchant, plan_key: str | None,
+                     signup_day: int, user_id: str | None = None) -> ReviewData:
+        result, dropped = await self._ask(capture, user_id)
+        mode = "ai" if result is not None else "basic"
+        basic_result = ReviewResult(clauses=fallback_extract(capture))  # A2: cheap, run with every review
+        if result is None:
+            result = basic_result
+        out = self._assemble(capture, plan, result, merchant=merchant, signup_day=signup_day)
+        base = out if mode == "basic" else self._assemble(capture, plan, basic_result.model_copy(deep=True),
+                                                          merchant=merchant, signup_day=signup_day)
+        basic = BasicCheck(types=[c.type for c in base.clauses], clauses=base.clauses,
+                           notice_days=base.deadlines.notice_days,
+                           real_cancel_deadline_day=base.deadlines.real_cancel_deadline_day,
+                           terms_last_day=base.deadlines.terms_last_day or 0, risk_score=base.risk.total)
         return ReviewData(
             merchant_id=merchant.id, page_url=capture.url, plan_id=plan.id, plan_key=plan_key, mode=mode,
             mode_label="AI review" if mode == "ai" else BASIC_LABEL, provider=self.provider.name,
-            model=self.provider.model, summary=result.summary, clauses=clauses, paypal_check=rows,
-            deadlines=deadlines, risk=risk, risk_score=risk.total, currency=plan.currency, year_one_cost=y1,
-            style_signals=signals, library_matches=[e.id for e in matches], dropped_quotes=dropped,
-            injection_flagged=any(c.type == "PROMPT_INJECTION_ATTEMPT" for c in clauses),
+            model=self.provider.model, summary=result.summary, clauses=out.clauses, paypal_check=out.rows,
+            deadlines=out.deadlines, risk=out.risk, risk_score=out.risk.total, currency=plan.currency,
+            year_one_cost=out.year_one, style_signals=out.signals, library_matches=out.matches,
+            dropped_quotes=dropped, injection_flagged=any(c.type == "PROMPT_INJECTION_ATTEMPT" for c in out.clauses),
+            notice_source=out.notice_source, basic=basic,  # type: ignore[arg-type]
         )
 
 

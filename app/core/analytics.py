@@ -43,8 +43,8 @@ def cost_curve(svc: Services, subs: list[Subscription]) -> dict[str, Any]:
         stopped = s.status == "CANCELLED" and s.cancelled_by in ("user", "timer")
         series.append({"label": svc.merchant(s.merchant_id).name, "stopped": stopped, "charges": charges})
     preview = not series
-    if preview:  # nothing signed up yet: show what the Penwright plan would cost
-        for m in svc.store.load("merchants").items:
+    if preview:  # nothing signed up yet: show what the Penwright plan would cost (the demo story's merchant)
+        for m in svc.store.load("merchants").items[:1]:
             for p in m.plans:
                 series.append({"label": f"{m.name} ({p.name})", "stopped": False,
                                "charges": first_year_charges(p.billing_cycles)})

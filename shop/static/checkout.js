@@ -30,7 +30,7 @@
 
   async function checkout() {
     btn.disabled = true;
-    status.textContent = "Mock PayPal approval…";
+    status.textContent = "PayPal approval (simulated)…";
     try {
       const merchantId = area.dataset.merchant;
       const main = await subscribe(merchantId, area.dataset.planKey);

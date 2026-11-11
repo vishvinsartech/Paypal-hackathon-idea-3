@@ -20,7 +20,8 @@ def test_missing_files_created_from_defaults_and_seeds(store: JsonStore) -> None
     store.ensure_all()
     assert all(store.path(name).exists() for name in store.files)
     merchants = {mc.id: mc for mc in store.load("merchants").items}
-    assert set(merchants) == {"penwright"}
+    assert set(merchants) == {"penwright", "quillnote"}
+    assert merchants["penwright"].fair_trial_member and not merchants["quillnote"].fair_trial_member
 
 
 def test_money_round_trips_as_string_decimal(store: JsonStore) -> None:

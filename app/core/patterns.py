@@ -64,8 +64,8 @@ def library_matches(capture: PageCapture, library: tuple[LibraryEntry, ...]) -> 
 
 
 def library_bonus(matches: list[LibraryEntry]) -> int:
-    """0-10: two points per distinct dark-pattern type the page text matches."""
-    return min(10, 2 * len({e.type for e in matches}))
+    """0-5: one point per distinct dark-pattern type the page text matches (A4)."""
+    return min(5, len({e.type for e in matches}))
 
 
 def label_similar(clauses: list[Clause], library: tuple[LibraryEntry, ...], threshold: float = 0.2) -> None:

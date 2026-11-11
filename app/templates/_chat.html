@@ -3,7 +3,7 @@
 <aside class="chat" id="chat" aria-label="Chat with SubGuard" hidden>
   <header class="chat-head">
     <strong>SubGuard chat</strong>
-    <span class="badge badge-llm" data-testid="chat-provider">{{ llm.name }} · {{ llm.model }}</span>
+    {% if settings.is_sandbox %}<span class="badge badge-llm" data-testid="chat-provider">{{ llm.model }}</span>{% endif %}
     <button class="btn btn-ghost btn-sm" id="chat-close" aria-label="Close chat" data-testid="chat-close">✕</button>
   </header>
   <div class="chat-log" id="chat-log" aria-live="polite"></div>

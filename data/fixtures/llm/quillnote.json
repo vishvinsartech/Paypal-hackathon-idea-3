@@ -1,0 +1,53 @@
+{
+  "summary": "A free trial that quietly becomes Quillnote Plus at {{q_intro}}/month, rises to {{q_step_up}}/month after {{q_intro_months_words}} paid months (only in the FAQ), needs written notice {{q_notice_words}} hours before renewal, and can only be cancelled through the account team.",
+  "first_charge_day": {{q_first_charge_day}},
+  "first_charge_amount": "{{q_intro_raw}}",
+  "notice_days": {{q_notice_days}},
+  "clauses": [
+    {
+      "type": "NOTICE_PERIOD",
+      "quote": "If you decide Quillnote isn't for you, we'll need to hear from you in writing no later than {{q_notice_words}} hours before your renewal.",
+      "plain_english": "You must tell them in writing {{q_notice_words}} hours ({{q_notice_days}} days) before the renewal, so the real deadline is earlier than the trial end.",
+      "money_impact_usd_year": null,
+      "deadline_day": null,
+      "severity": 5,
+      "evidence_testid": "tos-notice"
+    },
+    {
+      "type": "AUTO_RENEW",
+      "quote": "Once the trial wraps up, your Quillnote Plus membership simply carries on at {{q_intro}} a month, and we keep it going for you month after month so your notes are never interrupted.",
+      "plain_english": "The free trial turns into a paid membership at {{q_intro}} a month unless you cancel. It's worded so it doesn't sound like a charge.",
+      "money_impact_usd_year": null,
+      "deadline_day": null,
+      "severity": 4,
+      "evidence_testid": "shop-fineprint"
+    },
+    {
+      "type": "INTRO_PRICE_STEP_UP",
+      "quote": "Plus members enjoy our launch pricing for their first {{q_intro_months_words}} paid months; from then on the membership is {{q_step_up}} a month.",
+      "plain_english": "The price jumps to {{q_step_up}} a month after {{q_intro_months_words}} months. This is only mentioned in an FAQ answer.",
+      "money_impact_usd_year": null,
+      "deadline_day": null,
+      "severity": 4,
+      "evidence_testid": "shop-faq-price"
+    },
+    {
+      "type": "HARD_CANCEL",
+      "quote": "To close your membership, contact our account team at accounts@quillnote.example and they will take care of it for you.",
+      "plain_english": "There's no cancel button: you have to contact their account team.",
+      "money_impact_usd_year": null,
+      "deadline_day": null,
+      "severity": 4,
+      "evidence_testid": "shop-faq-leave"
+    },
+    {
+      "type": "HIDDEN_TEXT_STYLE",
+      "quote": "Once the trial wraps up, your Quillnote Plus membership simply carries on at {{q_intro}} a month",
+      "plain_english": "The price is in tiny 9px grey text under a headline that only says \"free\".",
+      "money_impact_usd_year": null,
+      "deadline_day": null,
+      "severity": 3,
+      "evidence_testid": "shop-fineprint"
+    }
+  ]
+}

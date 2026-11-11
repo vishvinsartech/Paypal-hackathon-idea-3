@@ -5,7 +5,8 @@
     {% if settings.is_sandbox %}
     <button type="button" class="paypal-btn" data-sandbox-start>Pay with PayPal (sandbox)</button>
     {% else %}
-    <button type="button" class="paypal-btn paypal-btn-mock" data-mock-approve>Mock PayPal approval (run in sandbox mode for the real PayPal window)</button>
+    <button type="button" class="paypal-btn paypal-btn-mock" data-mock-approve>PayPal</button>
+    <p class="demo-approval" data-testid="demo-approval-note">Demo: simulated PayPal approval</p>
     {% endif %}
   </div>
   <p class="companion-note" data-subguard-ignore data-testid="companion-note">&#128737; SubGuard companion active. Simulates the SubGuard browser extension.</p>

@@ -43,6 +43,21 @@
 {% if proof %}<section class="card proof-banner" data-testid="proof-banner" role="status"><strong>{{ proof }}</strong></section>{% endif %}
 </div>
 
+<div id="live-action" data-live>
+{% for h in action_needed %}{% set a = h.alert %}
+<section class="card action-needed" data-testid="action-needed" data-poll-sub="{{ a.subscription_id }}" aria-labelledby="an-{{ a.id }}">
+  <h2 id="an-{{ a.id }}">{{ a.title }}</h2>
+  <p>{{ a.body }}</p>
+  <div class="row">
+    <a class="btn btn-danger" href="{{ h.url }}" target="_blank" rel="noopener" data-testid="action-autopay">Open PayPal Automatic payments ↗</a>
+    {% if h.notice_id %}<button type="button" class="btn btn-ghost" data-email-open="{{ h.notice_id }}" data-testid="action-review-email">Review email</button>{% endif %}
+  </div>
+  <p class="muted small" data-testid="layer2-waiting"><span class="pulse-dot" aria-hidden="true"></span>
+    Waiting for PayPal to show {{ h.merchant }} as CANCELLED. SubGuard checks PayPal every few seconds.</p>
+</section>
+{% endfor %}
+</div>
+
 <section class="card email-ready" id="live-ready" data-live data-testid="user-email-ready" {% if not drafts %}hidden{% endif %}>
   {% for n in drafts %}<p><strong>Your cancellation email is ready to review and send.</strong>
     <button class="btn btn-sm" data-email-open="{{ n.id }}">Review email</button></p>{% endfor %}
@@ -177,7 +192,7 @@
   {% for n in notices %}
   <div class="notice" data-testid="cancellation-notice">
     <p><strong>{{ n.subject }}</strong> → {{ n.to }}<br>
-      <span class="small {{ 'ok' if n.status == 'sent' else 'muted' }}">{% if n.status == "sent" %}{{ "Opened in Gmail (demo)" if n.sent_via == "gmail_compose_link" else "Email sent (demo)" }} · edited: {{ "yes" if n.edited else "no" }}{% else %}Draft, not sent yet{% endif %} · drafted by {{ n.drafted_by }}</span></p>
+      <span class="small {{ 'ok' if n.status == 'sent' else 'muted' }}">{% if n.status == "sent" %}{{ "Opened in Gmail (demo)" if n.sent_via == "gmail_compose_link" else "Email sent (demo)" }} · edited: {{ "yes" if n.edited else "no" }}{% else %}Draft, not sent yet{% endif %} · drafted by {{ "AI" if n.draft_source == "llm" else "a standard template" }}</span></p>
     <button class="btn btn-sm" data-email-open="{{ n.id }}">{{ "View" if n.status == "sent" else "Review & send" }}</button>
   </div>
   {% else %}<p class="muted">None yet. SubGuard drafts one for you after a cancel in PayPal.</p>{% endfor %}

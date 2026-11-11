@@ -161,3 +161,16 @@ body, .card, .topbar, .tab, .btn { transition: background-color .25s, color .25s
   transform: translateX(-1px); transition: left .6s ease; }
 .t5-step { margin: 0 0 4px; }
 @media (prefers-reduced-motion: reduce) { .t5-today { transition: none; } }
+
+/* A5: Layer 2 ACTION NEEDED card (Priya cancels in PayPal; SubGuard watches PayPal until it shows CANCELLED) */
+.action-needed { border-color: var(--red); border-left: 4px solid var(--red); }
+.action-needed h2 { margin: 2px 0 6px; }
+.action-needed .eyebrow { color: var(--red); font-weight: 700; letter-spacing: .04em; }
+.pulse-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--amber);
+  margin-right: 6px; vertical-align: middle; animation: sg-pulse 1.4s ease-in-out infinite; }
+@keyframes sg-pulse { 50% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .pulse-dot { animation: none; } }
+
+/* A2: AI vs basic check */
+.avb-table td.bad { font-weight: 600; }
+.ai-vs-basic .table { margin-top: 8px; }

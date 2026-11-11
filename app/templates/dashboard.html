@@ -23,7 +23,7 @@
   <h1>Hi {{ current_user.name if current_user else "there" }}.</h1>
   <p class="lead">AI reads the fine print. PayPal enforces the outcome.</p>
   <p class="muted">Day <strong data-testid="sim-day" class="js-day">{{ sim_day }}</strong> of the demo ·
-    {{ "PayPal Sandbox" if settings.is_sandbox else "Mock mode (no keys needed)" }}</p>
+    {{ "PayPal Sandbox" if settings.is_sandbox else "Demo data (no keys needed)" }}</p>
 </section>
 
 <section class="card email-ready" id="email-ready" data-testid="email-ready" aria-live="polite" hidden></section>

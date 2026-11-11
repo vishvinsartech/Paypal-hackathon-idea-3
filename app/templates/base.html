@@ -18,11 +18,10 @@
       <img src="/static/shield.svg" alt="" width="28" height="28">
       <span>SubGuard</span>
     </a>
-    <span class="badge badge-mode" data-testid="mode-badge">
-      {{ "PayPal Sandbox" if settings.is_sandbox else "Mock mode" }}
-    </span>
-    <span class="badge badge-llm" data-testid="llm-badge" title="LLM provider">
-      AI: {{ settings.active_llm_provider }}{% if settings.is_sandbox %} · {{ settings.llm_model }}{% endif %}
+    {# A6: one status badge. The full detail (mode, providers, transports) is in /healthz and the audit log. #}
+    <span class="badge badge-mode" data-testid="mode-badge"
+          title="{{ 'Real PayPal sandbox and a real AI model' if settings.is_sandbox else 'Simulated PayPal and recorded AI answers: no keys needed' }}">
+      {{ ("PayPal Sandbox · " ~ settings.llm_model) if settings.is_sandbox else "Demo data" }}
     </span>
     {% set uid = current_user.id if current_user else 'priya' %}
     <nav class="tabs" aria-label="Pages" data-testid="nav-tabs">

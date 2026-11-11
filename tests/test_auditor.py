@@ -42,7 +42,7 @@ def test_honest_terms_score_low() -> None:
     """Corner case 28 (formula level): clear terms, plain styling, a modest price -> a low score."""
     clauses = [Clause(type="CLEAR_TERMS", quote="Cancel anytime in settings.", plain_english="Clear terms."),
                Clause(type="AUTO_RENEW", quote="Renews monthly.", plain_english="It renews monthly.")]
-    assert score(clauses, [], Decimal("240.00"), 0).total == 15
+    assert score(clauses, [], Decimal("240.00"), 0).total == 9  # AUTO_RENEW 4 + money 4.8 (A4)
 
 
 def test_injection_never_changes_the_score(settings: Settings, store: JsonStore) -> None:

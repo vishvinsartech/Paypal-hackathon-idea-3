@@ -7,13 +7,15 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from app.config import ROOT_DIR, Settings
+from app.core.durations import number_words
 from app.models import Merchant, UsageEvent
 from app.routes.deps import get_settings, get_store
 from app.store import JsonStore, utcnow
 
 router = APIRouter(prefix="/shop")
 templates = Jinja2Templates(directory=ROOT_DIR / "shop" / "templates")
-PAGES = {"penwright": "penwright.html"}
+PAGES = {"penwright": "penwright.html", "quillnote": "quillnote.html"}
+TERMS_PAGES = {"penwright": "penwright_tos.html", "quillnote": "quillnote_tos.html"}
 
 
 def _merchant(store: JsonStore, merchant_id: str) -> Merchant:
@@ -24,7 +26,8 @@ def _merchant(store: JsonStore, merchant_id: str) -> Merchant:
 
 
 def _render(request: Request, name: str, settings: Settings, **ctx: object) -> HTMLResponse:
-    return templates.TemplateResponse(request, name, {"settings": settings, "p": settings.pricing, **ctx})
+    return templates.TemplateResponse(request, name, {"settings": settings, "p": settings.pricing,
+                                                      "number_words": number_words, **ctx})
 
 
 @router.get("", response_class=HTMLResponse)
@@ -33,10 +36,12 @@ def index(request: Request, settings: Settings = Depends(get_settings),
     return _render(request, "index.html", settings, merchants=store.load("merchants").items)
 
 
-@router.get("/penwright/terms", response_class=HTMLResponse)
-def penwright_terms(request: Request, settings: Settings = Depends(get_settings),
-                    store: JsonStore = Depends(get_store)) -> HTMLResponse:
-    return _render(request, "penwright_tos.html", settings, merchant=_merchant(store, "penwright"))
+@router.get("/{merchant_id}/terms", response_class=HTMLResponse)
+def merchant_terms(request: Request, merchant_id: str, settings: Settings = Depends(get_settings),
+                   store: JsonStore = Depends(get_store)) -> HTMLResponse:
+    if merchant_id not in TERMS_PAGES:
+        raise HTTPException(status_code=404, detail="Unknown merchant")
+    return _render(request, TERMS_PAGES[merchant_id], settings, merchant=_merchant(store, merchant_id))
 
 
 async def _record(store: JsonStore, user: str, merchant_id: str, kind: str) -> tuple[int, int, int]:

@@ -4,7 +4,8 @@ Starts its own mock server on a free port with a throwaway DATA_DIR (unless --ba
 shop -> companion (risk ~87, summary, "I'll check with you...", Continue) -> timer shown -> Day 5 check-in toast ->
 Priya's dashboard (card, Day 10 vs Day 7, usage + advice, chat) -> Cancel -> confirm card $524.88/yr -> email preview
 (edit, empty To disables Send, Gmail link; no toasts) -> Day 11 blocked charge + proof banner -> charts, activity grid,
-theme toggle -> audit-log CSV export -> subscription page.
+theme toggle -> audit-log CSV export -> subscription page. Then Quillnote (Layer 2): AI vs basic check panel,
+Cancel -> email + ACTION NEEDED -> simulated PayPal Automatic payments -> polled until CANCELLED.
 Fails on any console error or page error.
 
 Usage: python scripts/ui_check.py [--base-url http://127.0.0.1:8000] [--headed] [--shots DIR]
@@ -340,6 +341,74 @@ def autoplay(base: str, headed: bool) -> None:
         browser.close()
 
 
+def layer2(base: str, headed: bool) -> None:
+    """A1/A2/A5: Quillnote (not a Fair Trial member). The AI finds the prose traps the basic check misses; Cancel
+    gives the email draft + ACTION NEEDED with the one-tap PayPal link; SubGuard polls PayPal until CANCELLED."""
+    httpx.post(f"{base}/api/demo/reset", timeout=30).raise_for_status()
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=not headed)
+        ctx = browser.new_context(viewport={"width": 1440, "height": 1000})
+        shop = watch(ctx.new_page())
+        shop.goto(f"{base}/shop/quillnote")
+        expect(shop.get_by_test_id("demo-approval-note")).to_have_text("Demo: simulated PayPal approval")  # A6
+        shop.get_by_test_id("shop-paypal-btn").click()
+        risk = shop.get_by_test_id("companion-risk")
+        expect(risk).to_be_visible(timeout=20000)
+        score = int(re.search(r"(\d+)/100", risk.inner_text()).group(1))  # type: ignore[union-attr]
+        assert 70 <= score <= 90, score
+        expect(shop.get_by_test_id("finding-NOTICE_PERIOD").first).to_be_visible()
+        expect(shop.get_by_test_id("companion-act-by")).to_have_text(f"Act by {on(4)} (the terms allow {on(5)})")
+        shop.get_by_test_id("companion-continue").click()
+        expect(shop.get_by_test_id("shop-open-subguard")).to_be_visible(timeout=15000)
+        step(f"Quillnote: companion risk {score}, notice in words read by the AI -> act by {on(4)}")
+
+        sub_id = next(s["id"] for s in httpx.get(f"{base}/api/subscriptions?user=priya").json()
+                      if s["plan_key"] == "quillnote-plus")
+        ev = watch(ctx.new_page())
+        ev.goto(f"{base}/subscriptions/{sub_id}?user=priya")
+        panel = ev.get_by_test_id("ai-vs-basic")
+        expect(panel).to_contain_text("Only the AI found")
+        expect(ev.get_by_test_id("avb-row-notice_period")).to_contain_text("✗ missed")
+        expect(ev.get_by_test_id("avb-act-by")).to_contain_text("(too late)")
+        shot(ev, "07_ai_vs_basic")
+        ev.close()
+        step("evidence page: AI vs basic check panel (notice period, step-up, hard cancel missed by the basic check)")
+
+        me = watch(ctx.new_page())
+        me.goto(f"{base}/me?user=priya")
+        expect(me.get_by_test_id("mode-badge")).to_contain_text("Demo data")
+        card = me.get_by_test_id("sub-card").filter(has=me.get_by_test_id("status-quillnote"))
+        card.get_by_test_id("sub-cancel").click()
+        me.locator("#confirm-dialog").get_by_test_id("confirm-button").click()
+        email = me.get_by_test_id("email-preview")
+        expect(email).to_contain_text("Quillnote's terms ask for written notice")
+        expect(email.get_by_test_id("email-paypal-done")).to_have_count(0)  # nothing was cancelled in PayPal yet
+        email.get_by_test_id("email-send").click()
+        expect(email.get_by_test_id("email-sent")).to_have_text("Email sent (demo)")
+        email.get_by_test_id("email-dismiss").click()
+        need = me.get_by_test_id("action-needed")
+        expect(need).to_contain_text("ACTION NEEDED: cancel Quillnote in PayPal", timeout=10000)
+        expect(need.get_by_test_id("layer2-waiting")).to_be_visible()
+        shot(me, "08_layer2_action_needed")
+        step("Cancel -> email draft (sent) -> ACTION NEEDED card with the one-tap PayPal link, waiting for PayPal")
+
+        with ctx.expect_page() as pp_info:
+            need.get_by_test_id("action-autopay").click()
+        pp = watch(pp_info.value)
+        pp.wait_for_load_state()
+        expect(pp.get_by_test_id("autopay-demo-note")).to_be_visible()
+        pp.get_by_test_id("autopay-row-quillnote").get_by_test_id("autopay-cancel").click()
+        expect(pp.get_by_test_id("autopay-cancelled")).to_be_visible()
+        pp.close()
+        me.bring_to_front()
+        expect(me.get_by_test_id("action-needed")).to_have_count(0, timeout=20000)
+        expect(card.get_by_test_id("status-quillnote")).to_have_text("CANCELLED", timeout=10000)
+        expect(me.get_by_test_id("toast-layer2").first).to_be_visible()
+        shot(me, "09_layer2_cancelled")
+        step("Priya cancels in (simulated) PayPal -> SubGuard's poll sees CANCELLED -> card closes")
+        browser.close()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--base-url")
@@ -359,6 +428,7 @@ def main() -> int:
         companion_in_view(base, args.headed)
         story(base, args.headed)
         autoplay(base, args.headed)
+        layer2(base, args.headed)
     finally:
         if proc is not None:
             proc.terminate()

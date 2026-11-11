@@ -15,7 +15,7 @@ def test_dashboard(client: TestClient) -> None:
     for testid in ("brand", "mode-badge", "view-shop", "kpi-protected"):
         assert f'data-testid="{testid}"' in r.text
     assert re.search(r'href="/shop"[^>]*target="_blank"[^>]*data-testid="view-shop"', r.text)
-    assert "Mock mode" in r.text
+    assert "Demo data" in r.text and "Mock mode" not in r.text and "AI: mock" not in r.text  # A6
 
 
 def test_dashboard_is_priyas_with_no_user_switcher(client: TestClient) -> None:
@@ -48,7 +48,7 @@ def test_penwright_checkout_traps(client: TestClient) -> None:
     # a trap merchant never shows "Protected by SubGuard: cancel anytime", even as a Fair Trial member
     assert 'data-testid="fair-trial-badge"' not in text and "cancel anytime" not in text
     assert "<details" in text and "<details open" not in text  # collapsed accordion
-    assert "Mock PayPal approval (run in sandbox mode for the real PayPal window)" in text
+    assert ">PayPal</button>" in text and "Demo: simulated PayPal approval" in text and "Mock" not in text  # A6
 
 
 def test_penwright_tos_has_all_clauses_and_hidden_injection(client: TestClient) -> None:

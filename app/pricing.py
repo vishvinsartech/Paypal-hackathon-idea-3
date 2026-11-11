@@ -8,6 +8,7 @@ from here, so the page text and the PayPal plan always agree. Money is Decimal w
 from __future__ import annotations
 
 import hashlib
+import math
 from decimal import Decimal
 from typing import Annotated
 
@@ -29,6 +30,14 @@ class PricingFields(BaseModel):
     penwright_notice_days: int = Field(3, ge=0, le=60)
     penwright_export_limit: int = Field(3, ge=1, le=100)
 
+    # Quillnote (A1): the second fictional merchant, not a Fair Trial member (Layer 2). Its terms state the notice
+    # period in words and hours ("seventy-two hours"), so only the AI review finds it.
+    quillnote_trial_days: int = Field(7, ge=1, le=90)
+    quillnote_intro_price: Price = Decimal("12.99")
+    quillnote_intro_months: int = Field(3, ge=1, le=24)
+    quillnote_step_up_price: Price = Decimal("27.99")
+    quillnote_notice_hours: int = Field(72, ge=0, le=99 * 24)
+
 
 class Pricing(PricingFields):
     """The resolved values, plus the plans and display helpers derived from them."""
@@ -36,6 +45,14 @@ class Pricing(PricingFields):
     @property
     def penwright_first_charge_day(self) -> int:
         return self.penwright_trial_days + 1
+
+    @property
+    def quillnote_first_charge_day(self) -> int:
+        return self.quillnote_trial_days + 1
+
+    @property
+    def quillnote_notice_days(self) -> int:
+        return math.ceil(self.quillnote_notice_hours / 24)
 
     def money(self, amount: Decimal | int | str, currency: str | None = None) -> str:
         """Short display: $20 for whole amounts, $24.99 otherwise. `currency` = the plan's (default: demo)."""
@@ -49,15 +66,24 @@ class Pricing(PricingFields):
         return hashlib.sha256(self.model_dump_json().encode()).hexdigest()[:16]
 
     def plans_for(self, merchant_id: str) -> list[PlanDef]:
-        if merchant_id != "penwright":
-            return []
+        if merchant_id == "penwright":
+            return [self._trial_plan("penwright-pro", "Penwright Pro", self.penwright_trial_days,
+                                     self.penwright_intro_price, self.penwright_intro_months,
+                                     self.penwright_step_up_price)]
+        if merchant_id == "quillnote":
+            return [self._trial_plan("quillnote-plus", "Quillnote Plus", self.quillnote_trial_days,
+                                     self.quillnote_intro_price, self.quillnote_intro_months,
+                                     self.quillnote_step_up_price)]
+        return []
+
+    def _trial_plan(self, key: str, name: str, trial_days: int, intro: Decimal, intro_months: int,
+                    step_up: Decimal) -> PlanDef:
         monthly = {"interval_unit": "MONTH", "interval_count": 1}
-        return [PlanDef(key="penwright-pro", name="Penwright Pro", currency=self.demo_currency, billing_cycles=[
+        return PlanDef(key=key, name=name, currency=self.demo_currency, billing_cycles=[
             BillingCycleDef(tenure_type="TRIAL", price=Decimal("0.00"), interval_unit="DAY",
-                            interval_count=self.penwright_trial_days, total_cycles=1),
+                            interval_count=trial_days, total_cycles=1),
             # PayPal allows one REGULAR cycle per plan, so the intro price is a paid TRIAL (D-031)
-            BillingCycleDef(tenure_type="TRIAL", price=self.penwright_intro_price,
-                            total_cycles=self.penwright_intro_months, **monthly),  # type: ignore[arg-type]
-            BillingCycleDef(tenure_type="REGULAR", price=self.penwright_step_up_price,
-                            total_cycles=0, **monthly),  # type: ignore[arg-type]
-        ])]
+            BillingCycleDef(tenure_type="TRIAL", price=intro, total_cycles=intro_months,
+                            **monthly),  # type: ignore[arg-type]
+            BillingCycleDef(tenure_type="REGULAR", price=step_up, total_cycles=0, **monthly),  # type: ignore[arg-type]
+        ])

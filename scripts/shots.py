@@ -136,7 +136,35 @@ def walk(base: str, folder: Path, size: tuple[int, int], headed: bool) -> None:
         if subs:
             nav(page, f"{base}/subscriptions/{subs[0]['id']}?user={uid}")
             shoot(page, "subscription_page", full=True)
+        quillnote(base, page, shoot, uid)
         browser.close()
+
+
+def quillnote(base: str, page: object, shoot: Shooter, uid: str) -> None:
+    """v3 Phase 2: Quillnote checkout + companion, the AI vs basic panel, and the Layer 2 ACTION NEEDED card."""
+    nav(page, f"{base}/shop/quillnote")  # type: ignore[arg-type]
+    shoot(page, "shop_quillnote", full=True)
+    if not attempt("quillnote companion", lambda: (click(page, "shop-paypal-btn"),  # type: ignore[arg-type]
+                                                   page.get_by_test_id("companion-risk").wait_for(timeout=20000))):  # type: ignore[attr-defined]
+        return
+    shoot(page, "quillnote_companion")
+    attempt("quillnote continue", lambda: (click(page, "companion-continue"),  # type: ignore[arg-type]
+                                           page.get_by_test_id("shop-open-subguard").wait_for(timeout=15000)))  # type: ignore[attr-defined]
+    sub = next((s for s in httpx.get(f"{base}/api/subscriptions", params={"user": uid}, timeout=10).json()
+                if s["plan_key"] == "quillnote-plus"), None)
+    if sub is None:
+        return
+    nav(page, f"{base}/subscriptions/{sub['id']}?user={uid}")  # type: ignore[arg-type]
+    shoot(page, "quillnote_ai_vs_basic", full=True)
+    nav(page, f"{base}/user")  # type: ignore[arg-type]
+    card = page.get_by_test_id("sub-card").filter(has=page.get_by_test_id("status-quillnote"))  # type: ignore[attr-defined]
+    if attempt("quillnote cancel", lambda: (card.get_by_test_id("sub-cancel").click(timeout=3000),
+                                            click(page, "confirm-button"),  # type: ignore[arg-type]
+                                            page.get_by_test_id("email-preview").wait_for(timeout=10000))):  # type: ignore[attr-defined]
+        shoot(page, "quillnote_email")
+        attempt("quillnote email close", lambda: click(page, "email-dismiss"))  # type: ignore[arg-type]
+        attempt("action needed", lambda: page.get_by_test_id("action-needed").wait_for(timeout=10000))  # type: ignore[attr-defined]
+        shoot(page, "quillnote_action_needed")
 
 
 def main() -> int:

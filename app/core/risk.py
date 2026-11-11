@@ -1,25 +1,32 @@
 """Deadline maths and the 0-100 risk score (spec 7.2 steps 3 and 5). Deterministic code, never the LLM.
 
 risk = min(100, Σ type weights (each type counted once)
-                + style penalties (font < 11px: +8, contrast < 3:1: +8, pre-ticked box: +10, hidden text: +6)
+                + hard-to-read terms +10, counted once (font < 11px, contrast < 3:1, hidden text or a
+                  HIDDEN_TEXT_STYLE finding: the same small grey text used to score three times, A4)
+                + pre-ticked box +10
                 + money factor min(15, year-one cost / 50)
-                + dark-pattern library bonus (0-10))
-PROMPT_INJECTION_ATTEMPT weighs 0: an injection is flagged but never moves the score (D-043).
+                + dark-pattern library bonus (1 per matched type, 0-5))
+AUTO_RENEW weighs 4: every subscription renews. PROMPT_INJECTION_ATTEMPT weighs 0: an injection is flagged but
+never moves the score (D-043), and hidden injection text doesn't count as hard-to-read either.
+Calibration (asserted in tests): Penwright 87, Quillnote 73, an honest monthly plan <= 25 (D-143).
 """
 
 from __future__ import annotations
 
 from decimal import ROUND_HALF_UP, Decimal
 
+from app.core.patterns import INJECTION_RE
 from app.integrations.capture import PageCapture
 from app.review_types import Clause, Deadlines, RiskBreakdown
 
 TYPE_WEIGHTS: dict[str, int] = {
-    "AUTO_RENEW": 10, "INTRO_PRICE_STEP_UP": 6, "PRECHECKED_ADDON": 3, "NOTICE_PERIOD": 12,
-    "EARLY_TRIAL_TERMINATION": 3, "HARD_CANCEL": 8, "HIDDEN_TEXT_STYLE": 1, "TERMS_MISMATCH": 4,
+    "AUTO_RENEW": 4, "INTRO_PRICE_STEP_UP": 10, "PRECHECKED_ADDON": 3, "NOTICE_PERIOD": 20,
+    "EARLY_TRIAL_TERMINATION": 4, "HARD_CANCEL": 14, "HIDDEN_TEXT_STYLE": 0, "TERMS_MISMATCH": 9,
     "PROMPT_INJECTION_ATTEMPT": 0, "CLEAR_TERMS": 0,
 }
-STYLE_PENALTIES = {"small_font": 8, "low_contrast": 8, "prechecked_box": 10, "hidden_text": 6}
+HARD_TO_READ = 10  # once, whatever the reason (A4)
+HARD_TO_READ_SIGNALS = frozenset({"small_font", "low_contrast", "hidden_text"})
+STYLE_PENALTIES = {"hard_to_read": HARD_TO_READ, "prechecked_box": 10}
 MIN_TERMS_LEN = 20  # ignore short UI labels when looking for tiny / grey / hidden terms
 
 
@@ -33,7 +40,7 @@ def style_signals(capture: PageCapture) -> list[str]:
         signals.append("low_contrast")
     if any(c.checked for c in capture.checkboxes):
         signals.append("prechecked_box")
-    if any(b.hidden and len(b.text) >= MIN_TERMS_LEN for b in capture.blocks):
+    if any(b.hidden and len(b.text) >= MIN_TERMS_LEN and not INJECTION_RE.search(b.text) for b in capture.blocks):
         signals.append("hidden_text")
     return signals
 
@@ -41,7 +48,11 @@ def style_signals(capture: PageCapture) -> list[str]:
 def score(clauses: list[Clause], signals: list[str], year_one: Decimal, bonus: int) -> RiskBreakdown:
     types = {c.type for c in clauses}
     type_points = {t: TYPE_WEIGHTS[t] for t in sorted(types) if TYPE_WEIGHTS[t]}
-    style_points = {s: STYLE_PENALTIES[s] for s in signals}
+    style_points: dict[str, int] = {}
+    if HARD_TO_READ_SIGNALS & set(signals) or "HIDDEN_TEXT_STYLE" in types:
+        style_points["hard_to_read"] = HARD_TO_READ
+    if "prechecked_box" in signals:
+        style_points["prechecked_box"] = STYLE_PENALTIES["prechecked_box"]
     money = min(Decimal("15"), year_one / Decimal("50")).quantize(Decimal("0.01"))
     raw = Decimal(sum(type_points.values()) + sum(style_points.values()) + bonus) + money
     total = min(100, int(raw.quantize(Decimal("1"), rounding=ROUND_HALF_UP)))

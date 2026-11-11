@@ -5,7 +5,8 @@ Decisions: `docs/DECISIONS.md`. Re-read the spec sections a milestone depends on
 
 SubGuard = AI helper that reads subscription fine print, checks it against the real PayPal plan,
 scores risk, checks in before the real deadline, and cancels trials through PayPal before it.
-Demo story (spec section 2): one persona (Priya), one merchant (Penwright Studio).
+Demo story (spec section 2): one persona (Priya), merchant Penwright Studio; second merchant Quillnote (v3 A1,
+Layer 2, traps in prose that only the AI finds: D-142).
 Tagline: "AI reads the fine print. PayPal enforces the outcome."
 
 ## Non-negotiable rules
@@ -73,13 +74,14 @@ to the audit log with its rule id. No suspend/pause anywhere in v1. The only Pay
 ### No real brands
 Never use real brands, logos or company names in the app, dummy shop or video. Every merchant page
 shows the banner "Fictional merchant for the SubGuard demo." Merchant: Penwright Studio (trap
-"free trial"). User: Priya. No other merchants, users, add-ons, price rises or renewal reminders (D-090).
+"free trial") and Quillnote (Layer 2, not Fair Trial: D-142). User: Priya. No other merchants, users, add-ons,
+price rises or renewal reminders (D-090).
 
 ## Key numbers (assert in tests, with the DEFAULT prices)
 Prices and terms are `.env` variables (`app/pricing.py`, DECISIONS D-015). Code reads them via
 `settings.pricing` / `store.pricing`; never hardcode a price, trial length or notice period.
 - Money protected KPI: **$524.88** (Penwright 3 x 24.99 + 9 x 49.99).
-- Risk: Penwright **87 +/- 5**.
+- Risk: Penwright **87 +/- 5**, Quillnote 70-90 (73), honest page <= 25 (D-143).
 - Penwright: 10-day trial, first charge Day 11, notice 3 days -> real deadline **Day 7** (11-3-1), timer Day 6,
   reminder Day 5. Proof (blocked charge) on Day 11.
 - Cancel = PayPal cancel FIRST, then an LLM-drafted cancellation email (validated, template fallback) that the

@@ -602,6 +602,57 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   (one shorter phrase in `03_companion` to stay within 125 wpm); Phase 5 rewrites the beats. **Deferred, as
   FIX_PLAN says:** B9 (mobile nav) goes with U10/U27 in Phase 3, and B12 (README facts) with S1 in Phase 4.
 
+- **D-142 Quillnote, the second fictional merchant (A1).** An AI notes app, `fair_trial_member: false` (Layer 2),
+  plan `quillnote-plus`: 7-day free trial, $12.99/month for 3 paid months, then $27.99/month, 72 hours' written
+  notice. All of it comes from `.env` (`QUILLNOTE_*`, `app/pricing.py`); the page renders numbers in words
+  (`app/core/durations.number_words`), so "seventy-two hours" follows the setting. Its traps are plain prose that the
+  regex rules don't match: indirect auto-renewal ("simply carries on at $12.99 a month"), the step-up only in an FAQ
+  answer, cancelling via "contact our account team", notice in words and hours. No hidden injection line. The headline
+  says "free" with no price, so the code's PayPal cross-check still flags a mismatch on both paths. Checkout, terms
+  page (`/shop/{merchant}/terms` is now one route), banner, and a plan in mock and in sandbox (`make seed` seeds
+  every merchant). This relaxes D-090's "one merchant" on FIX_PLAN's instruction; the persona is still only Priya.
+  First charge Day 8, terms' last day Day 5, act by Day 4, Layer 2 timer Day 2 (handoff, not a cancel).
+- **D-143 Score calibration (A4).** Small grey text used to score three times (small font 8 + low contrast 8 +
+  HIDDEN_TEXT_STYLE 1). Now "hard-to-read terms" is one +10, from any of: font < 11 px, contrast < 3:1, hidden text,
+  or a HIDDEN_TEXT_STYLE finding. Hidden text that is itself an injection doesn't count (injection stays 0, D-043).
+  AUTO_RENEW 10 -> 4 (every subscription renews). Library bonus 2 -> 1 point per matched type, max 5. To keep the
+  real traps on top: NOTICE_PERIOD 20, HARD_CANCEL 14, INTRO_PRICE_STEP_UP 10, TERMS_MISMATCH 9,
+  EARLY_TRIAL_TERMINATION 4, PRECHECKED_ADDON 3, HIDDEN_TEXT_STYLE 0 (it's the +10). Results: Penwright 86.5 -> 87
+  (unchanged), Quillnote 73 (basic check 25), `tests/fixtures/honest_terms.html` about 6. The "model obeys the
+  injection" floor is now 30 (was 40): code checks alone give 35.
+- **D-144 The basic check runs with every review (A2).** `Auditor._assemble` does the code steps (injection, style,
+  PayPal cross-check, deadlines, score) on one set of findings. `review()` runs it on the AI's findings and on
+  `fallback_extract`'s, and stores the second as `ReviewData.basic` (types, clauses, notice days, act-by day, risk).
+  The basic path gets no AI first-charge hints, so its cross-check has fewer rows. `ReviewData.ai_vs_basic()` lists
+  each type with where it was found; `ai_only_risky` leaves out AUTO_RENEW, CLEAR_TERMS and injection. The
+  subscription page shows the panel (`data-testid="ai-vs-basic"`) with notice period, act-by date (marked "too
+  late" when the basic one is later) and both scores. Reviews stored before this have no `basic` and no panel.
+- **D-145 Notice periods in words (A3).** `durations.duration_days` reads digits or number words (0-99) with hours,
+  days or weeks; hours round up to whole days (72 h -> 3). The notice comes from a verified NOTICE_PERIOD quote only:
+  code parses it; if the quote states a duration code can't read ("the third day before renewal"), the AI's
+  `notice_days` is accepted. No verified notice quote -> 0, even if the AI gave a number (it used to be trusted).
+  `ReviewData.notice_source` records which (`quote_digits` | `quote_words` | `ai` | `none`).
+- **D-146 Layer 2 beat (A5).** Cancel on a non-member: `cancel_one` makes no PayPal write and calls
+  `layer2_handoff`, which now returns the email draft's id, so the UI opens the email (without "Cancelled in
+  PayPal") and Priya's page shows an **ACTION NEEDED** card (`action-needed`): "Open PayPal Automatic payments",
+  "Review email", and "Waiting for PayPal to show … CANCELLED". While it's up, `user.js` calls
+  `POST /api/subscriptions/{id}/check-paypal` every 3 s: one read-only `gateway.verify` GET (R5: owner only),
+  `apply_status`, and on CANCELLED it acknowledges the handoff alerts, sends "PayPal shows Quillnote CANCELLED. You
+  won't be charged." and audits `layer2_cancel_seen` with PayPal's debug id. `Settings.autopay_link` is
+  `PAYPAL_AUTOPAY_URL` in sandbox and `/demo/paypal-autopay` in mock: a simulated Automatic payments page, labelled
+  "Demo: simulated PayPal Automatic payments page", whose Cancel changes only the mock PayPal state. That's Priya
+  acting in PayPal (audit actor `user`, `paypal_autopay_cancel`, decision n/a), not SubGuard, so no policy rule
+  applies, and SubGuard learns about it only by reading PayPal, as in sandbox. The cancel result says "isn't a Fair
+  Trial merchant, so you cancel it in PayPal: see ACTION NEEDED" and is no longer toasted as an error.
+- **D-147 No mock labels on user surfaces (A6).** The top bar has one badge: "Demo data" (mock) or "PayPal Sandbox ·
+  <model>" (sandbox); the separate "AI: mock" badge is gone. The chat drawer shows the model only in sandbox. The
+  companion and subscription page show "AI review" (plus the model in sandbox). Emails say "Drafted by AI" or "a
+  standard template" (`Notice.drafted_by` keeps the full label for the audit log; `Notice.merchant_name` is new, so
+  the email preview names the right merchant). The mock checkout button reads "PayPal" with a small "Demo:
+  simulated PayPal approval" note (the U21 wording, done now because the old text said "Mock"). The PayPal card
+  says "read from the demo PayPal" instead of "fetched live … via mock". `/healthz` and the audit log keep the
+  full detail. Delivery lines ("email: mocked") are U4, Phase 3.
+
 ## Not used in v1 (sponsor tools)
 
 - **Bryntum:** a CSS timeline is enough for a prototype.

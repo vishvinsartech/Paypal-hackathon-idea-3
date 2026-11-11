@@ -78,7 +78,7 @@
 
   function resultLines(out) {
     if (out.error) return [{ok: false, text: out.error}];
-    return out.results.map((r) => ({ok: r.ok, text: (r.ok ? "✓ " : "✗ ") + r.message, transport: r.transport, outcome: r.outcome}));
+    return out.results.map((r) => ({ok: r.ok || r.outcome === "action_needed", text: (r.ok ? "✓ " : r.outcome === "action_needed" ? "→ " : "✗ ") + r.message, transport: r.transport, outcome: r.outcome}));
   }
 
   // Modal variant used by alerts and the grid's Cancel button.
@@ -104,7 +104,8 @@
   // PayPal cancelled first; now show each cancellation email draft for Priya to review and send (D-104).
   async function openDrafts(out) {
     for (const r of (out && out.results) || []) {
-      if (r.notice_id && window.SG.openEmail) await window.SG.openEmail(r.notice_id, {justCancelled: true});
+      // Layer 2 (A5): no PayPal cancel happened, so don't say "Cancelled in PayPal"
+      if (r.notice_id && window.SG.openEmail) await window.SG.openEmail(r.notice_id, {justCancelled: r.ok});
     }
   }
 

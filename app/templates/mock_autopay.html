@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Automatic payments (simulated)</title>
+  <style>
+    body { margin: 0; font: 15px/1.5 system-ui, sans-serif; background: #f5f7fa; color: #1a1a1a; }
+    .demo { background: #fff4c2; color: #4a3b00; text-align: center; padding: 6px; font-weight: 600; font-size: 13px; }
+    header { background: #003087; color: #fff; padding: 14px 20px; font-weight: 700; }
+    main { max-width: 640px; margin: 0 auto; padding: 20px 16px; }
+    .row { background: #fff; border: 1px solid #dde3ea; border-radius: 10px; padding: 14px 16px; margin: 10px 0;
+           display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+    .muted { color: #5b6573; font-size: 13px; }
+    button { border: 0; border-radius: 20px; padding: 8px 18px; font: 600 14px system-ui, sans-serif; cursor: pointer;
+             background: #0070e0; color: #fff; }
+    button:disabled { opacity: .6; cursor: default; }
+    .done { color: #13703a; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="demo" role="note" data-testid="autopay-demo-note">Demo: simulated PayPal Automatic payments page. In sandbox mode the link opens PayPal's real page.</div>
+  <header>Automatic payments</header>
+  <main data-testid="mock-autopay">
+    <p class="muted">Merchants you've allowed to take payments from your PayPal account.</p>
+    {% for r in rows %}
+    <div class="row" data-testid="autopay-row-{{ r.merchant | lower | replace(' ', '-') }}">
+      <div><strong>{{ r.merchant }}</strong><br><span class="muted">{{ r.price }} · {{ r.paypal_id }}</span></div>
+      <button type="button" data-cancel="{{ r.id }}" data-testid="autopay-cancel">Cancel</button>
+    </div>
+    {% else %}
+    <p data-testid="autopay-empty">No active automatic payments.</p>
+    {% endfor %}
+  </main>
+  <script>
+  document.addEventListener("click", async (ev) => {
+    const btn = ev.target.closest("[data-cancel]");
+    if (!btn) return;
+    btn.disabled = true;
+    const res = await fetch("/api/demo/paypal-autopay/cancel", {method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({user_id: {{ user | tojson }}, subscription_id: btn.dataset.cancel})});
+    const out = await res.json().catch(() => ({}));
+    btn.outerHTML = res.ok ? `<span class="done" data-testid="autopay-cancelled">Cancelled</span>` : `<span>${(out.error || "Couldn't cancel").replace(/</g, "&lt;")}</span>`;
+  });
+  </script>
+</body>
+</html>

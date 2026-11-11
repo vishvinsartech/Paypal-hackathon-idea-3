@@ -3,9 +3,9 @@
 {% block content %}
 <section data-testid="shop-index">
   <h1>Demo shop</h1>
-  <p>The one fictional merchant used in the SubGuard demo. It isn't a real company.</p>
+  <p>The two fictional merchants used in the SubGuard demo. Neither is a real company.</p>
   <ul class="merchant-list">
-    {% for mch in merchants if mch.id == "penwright" %}
+    {% for mch in merchants if mch.id in ("penwright", "quillnote") %}
     <li data-testid="shop-merchant-{{ mch.id }}">
       <a href="/shop/{{ mch.id }}"><strong>{{ mch.name }}</strong></a>: {{ mch.tagline }}
     </li>
@@ -15,6 +15,8 @@
   <ul>
     <li><strong>Checkout:</strong> <a href="/shop/penwright">Start the Penwright free trial</a>.</li>
     <li><strong>Terms:</strong> <a href="/shop/penwright/terms">Penwright Terms of Service</a>.</li>
+    <li><strong>Second merchant:</strong> <a href="/shop/quillnote">Try Quillnote</a> ·
+      <a href="/shop/quillnote/terms">Quillnote membership terms</a>.</li>
     <li><strong>Pretend app:</strong> <a href="/shop/penwright/app">Open Penwright</a>.
       Opening it records a usage event for the current demo day.</li>
   </ul>

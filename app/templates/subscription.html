@@ -10,7 +10,7 @@
   <p>
     <span class="pill pill-{{ sub.status|lower }}" data-testid="status-{{ merchant.id }}">{{ sub.status }}</span>
     {% if review %}<span class="risk-big risk-{{ 'high' if review.risk_score >= 60 else ('mid' if review.risk_score >= 30 else 'low') }}" data-testid="risk-score">Risk {{ review.risk_score }}/100</span>{% endif %}
-    {% if review %}<span class="muted small">{{ review.data.mode_label }} · {{ review.data.provider }}{% if review.data.injection_flagged %} · hidden instructions to AI found and ignored{% endif %}</span>{% endif %}
+    {% if review %}<span class="muted small">{{ review.data.mode_label }}{% if review.data.provider != "mock" %} · {{ review.data.model }}{% endif %}{% if review.data.injection_flagged %} · hidden instructions to AI found and ignored{% endif %}</span>{% endif %}
   </p>
   <p class="muted">PayPal id <code>{{ sub.paypal_id }}</code> · signed up Day {{ sub.signup_day }}
     {% if sub.cancelled_day is not none %}· cancelled Day {{ sub.cancelled_day }} by {{ sub.cancelled_by }}{% endif %}
@@ -30,6 +30,33 @@
   <div id="findings-grid" class="grid" data-testid="findings-grid"></div>
   <script type="application/json" id="findings-data">{{ review.data.model_dump(mode="json")["clauses"] | tojson }}</script>
 </section>
+
+{% if ai_vs_basic %}{% set v = ai_vs_basic %}
+<section class="card ai-vs-basic" data-testid="ai-vs-basic" aria-labelledby="avb-h">
+  <h2 id="avb-h">AI vs basic check</h2>
+  {% if v.same %}
+  <p data-testid="avb-verdict">On this page the basic check (no AI) finds the same things as the AI review.
+    The code checks (PayPal plan, hard-to-read text, hidden instructions) run on both.</p>
+  {% else %}
+  <p data-testid="avb-verdict"><strong>Only the AI found {{ v.ai_only | length }} of these</strong>, including
+    {{ v.risky_labels | join(", ") or "nothing risky" }}.
+    The basic check (no AI, pattern rules only) misses terms written in plain prose.</p>
+  {% endif %}
+  <table class="table avb-table"><thead><tr><th>Finding</th><th>AI review</th><th>Basic check</th></tr></thead><tbody>
+    {% for r in v.rows %}
+    <tr data-testid="avb-row-{{ r.type | lower }}"><td>{{ type_labels.get(r.type, r.type) }}</td>
+      <td class="{{ 'ok' if r.ai else 'muted' }}">{{ "✓ found" if r.ai else "–" }}</td>
+      <td class="{{ 'ok' if r.basic else 'bad' }}">{{ "✓ found" if r.basic else "✗ missed" }}</td></tr>
+    {% endfor %}
+    <tr data-testid="avb-notice"><td>Notice period</td><td>{{ v.ai_notice }}</td><td class="{{ '' if v.basic_notice == v.ai_notice else 'bad' }}">{{ v.basic_notice }}</td></tr>
+    <tr data-testid="avb-act-by"><td>Act by</td><td><strong>{{ v.ai_act_by }}</strong></td><td class="{{ '' if v.basic_act_by == v.ai_act_by else 'bad' }}">{{ v.basic_act_by }}{% if v.basic_act_by != v.ai_act_by %} (too late){% endif %}</td></tr>
+    <tr data-testid="avb-risk"><td>Risk</td><td>{{ v.ai_risk }}/100</td><td>{{ v.basic_risk }}/100</td></tr>
+  </tbody></table>
+  {% if v.notice_quote and v.ai_notice != v.basic_notice %}
+  <p class="muted small" data-testid="avb-notice-quote">The deadline comes from the AI-read clause, checked word for word
+    against the page and converted by code: “{{ v.notice_quote }}”</p>{% endif %}
+</section>
+{% endif %}
 
 <div class="two-col">
   <section class="card">
@@ -81,7 +108,7 @@
       {% endif %}
       <p><strong>{{ notice.subject }}</strong> → {{ notice.to }}</p>
       <pre>{{ notice.body }}</pre>
-      <p class="small muted">Drafted by {{ notice.drafted_by }} · SHA-256: <code>{{ notice.sha256 }}</code></p>
+      <p class="small muted">Drafted by {{ "AI" if notice.draft_source == "llm" else "a standard template" }} · SHA-256: <code>{{ notice.sha256 }}</code></p>
       <button class="btn btn-sm" data-email-open="{{ notice.id }}" data-testid="email-review">{{ "View sent email" if notice.status == "sent" else "Review email" }}</button>
     </div>
     <p class="muted tiny">Demo only. Production would send from the user's own Gmail/Outlook with send-only permission.</p>

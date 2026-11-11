@@ -83,7 +83,7 @@ def test_pages_host_the_card_and_mock_label(client: TestClient) -> None:
         html = client.get(url).text
         assert host in html and "data-paypal-cards" in html and "/static/paypal-card.js" in html
     shop = client.get("/shop/penwright").text
-    assert "Mock PayPal approval (run in sandbox mode for the real PayPal window)" in shop
+    assert "Demo: simulated PayPal approval" in shop
     assert "/static/paypal-card.js" in shop
     js = client.get("/static/paypal-card.js").text
     for testid in ("paypal-subscribed", "paypal-status", "paypal-sub-id", "paypal-cycles", "paypal-autopay-link"):

@@ -102,7 +102,7 @@
       ? `<label class="sg-consent"><input type="checkbox" data-testid="companion-auto-send"> <span>If I don't answer, send the cancellation email for me.</span></label>` : "";
     open(`${head(`<span class="sg-risk ${level}" data-testid="companion-risk" aria-label="Risk ${r.risk_score} out of 100">Risk ${r.risk_score}/100</span>`)}
       <div class="sg-body">
-        <p class="sg-mode">${esc(r.mode_label)} · ${esc(r.provider)}${r.injection_flagged ? " · hidden instructions to AI were found and ignored" : ""}</p>
+        <p class="sg-mode">${esc(r.mode_label)}${r.provider === "mock" ? "" : ` · ${esc(r.model)}`}${r.injection_flagged ? " · hidden instructions to AI were found and ignored" : ""}</p>
         ${r.summary ? `<p data-testid="companion-summary">${esc(r.summary)}</p>` : ""}
         ${deadline}
         ${trap && d.auto_timer_allowed ?`<p data-testid="companion-promise"><strong>I'll check with you before your trial runs out.</strong></p>` : ""}

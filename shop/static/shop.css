@@ -30,9 +30,18 @@ a { color: #6b3fa0; }
 
 .theme-penwright .shop-header { background: #2a1440; }
 .theme-penwright .shop-home { color: #f3e9ff; }
+.theme-quillnote { font-family: "Trebuchet MS", system-ui, sans-serif; }
+.theme-quillnote .shop-header { background: #e9f5ec; border-bottom-color: #cfe6d5; }
+.theme-quillnote .shop-home { color: #1f5f3a; }
+.theme-quillnote a { color: #1f7a4a; }
+.faq { margin: 18px 0; }
+.faq h2 { font-size: 1.2rem; margin: 0 0 6px; }
+.faq h3 { font-size: 1rem; margin: 14px 0 2px; }
+.faq p { margin: 0; color: #444; }
 
 /* SubGuard companion note (simulated browser extension; not part of the merchant's page). */
 .companion-note { font: 13px/1.4 system-ui, sans-serif; color: #1d4f45; background: #e6f7f3; border-radius: 6px; padding: 4px 8px; display: inline-block; }
 .btn { padding: 8px 14px; border-radius: 6px; border: 1px solid #333; background: #fff; font: inherit; cursor: pointer; }
 .hidden-tricks { margin-top: 18px; border: 1px solid #ddd; border-radius: 8px; padding: 10px 14px; background: #fafafa; }
 .hidden-tricks summary { cursor: pointer; font-weight: 600; }
+.demo-approval { display: block; width: fit-content; margin: 6px 0 0; font: 12px/1.4 system-ui, sans-serif; color: #5b4a00; background: #fff4c2; border-radius: 4px; padding: 2px 8px; }

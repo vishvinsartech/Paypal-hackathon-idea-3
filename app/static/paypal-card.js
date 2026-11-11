@@ -55,7 +55,8 @@
   const pill = (c, testid = true) => `<span class="pp-status ${esc(c.status)}"${testid ? ' data-testid="paypal-status"' : ""}>${esc(c.status)}</span>`;
   const linkOf = (c) => c.autopay_url ? `<a class="pp-link" href="${esc(c.autopay_url)}" target="_blank" rel="noopener" data-testid="paypal-autopay-link">View in PayPal sandbox ↗</a>` : "";
   const mismatch = (c) => c.matches_local ? "" : `<p class="pp-warn">PayPal says ${esc(c.status)}; SubGuard's copy says ${esc(c.local_status)}. PayPal is the source of truth.</p>`;
-  const fetched = (c) => `fetched live from PayPal at ${esc((c.checked_at || "").replace("T", " ").slice(0, 19))} UTC via ${esc(c.transport)}`;
+  const fetched = (c) => c.transport === "mock" ? `read from the demo PayPal at ${esc((c.checked_at || "").replace("T", " ").slice(0, 19))} UTC`
+    : `fetched live from PayPal at ${esc((c.checked_at || "").replace("T", " ").slice(0, 19))} UTC via ${esc(c.transport)}`;
 
   // Started, how it was created and the cancel call's ids: the "proof" rows.
   function proofRows(c) {
@@ -63,7 +64,7 @@
     const created = c.created ? `<dt>Created</dt><dd>by SubGuard's server, PayPal-Request-Id <code>${esc(c.created.request_id)}</code></dd>` : "";
     // Over MCP the cancel is a tool call: our id is SubGuard's reference, not a PayPal-Request-Id header.
     const idLabel = c.cancel && c.cancel.transport === "mcp" ? "via the PayPal MCP tool, SubGuard ref" : "PayPal-Request-Id";
-    const cancel = c.cancel ? `<dt>Cancel call</dt><dd>${idLabel} <code>${esc(c.cancel.request_id)}</code>${c.cancel.debug_id ? ` · debug id <code>${esc(c.cancel.debug_id)}</code>` : ""}${c.cancel.transport === "mcp" ? "" : ` · via ${esc(c.cancel.transport)}`}</dd>` : "";
+    const cancel = c.cancel ? `<dt>Cancel call</dt><dd>${idLabel} <code>${esc(c.cancel.request_id)}</code>${c.cancel.debug_id ? ` · debug id <code>${esc(c.cancel.debug_id)}</code>` : ""}${c.cancel.transport === "mcp" || c.cancel.transport === "mock" ? "" : ` · via ${esc(c.cancel.transport)}`}</dd>` : "";
     return started + created + cancel;
   }
 

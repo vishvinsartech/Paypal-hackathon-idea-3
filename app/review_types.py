@@ -13,6 +13,13 @@ ClauseType = Literal[
 ]
 CLAUSE_TYPES: tuple[str, ...] = ClauseType.__args__  # type: ignore[attr-defined]
 ClauseSource = Literal["llm", "rules", "paypal_check", "code"]
+TYPE_LABELS: dict[str, str] = {  # plain labels for user surfaces (never the raw enum)
+    "AUTO_RENEW": "Turns into a paid plan", "INTRO_PRICE_STEP_UP": "Price goes up later",
+    "PRECHECKED_ADDON": "Add-on ticked for you", "NOTICE_PERIOD": "Notice needed before billing",
+    "EARLY_TRIAL_TERMINATION": "Trial can end early", "HARD_CANCEL": "Hard to cancel",
+    "HIDDEN_TEXT_STYLE": "Hard-to-read terms", "TERMS_MISMATCH": "Page and PayPal plan disagree",
+    "PROMPT_INJECTION_ATTEMPT": "Hidden instructions to AI", "CLEAR_TERMS": "Clear terms",
+}
 
 
 def _lenient_decimal(value: Any) -> Decimal | None:
@@ -128,6 +135,21 @@ class RiskBreakdown(BaseModel):
     total: int = 0
 
 
+class BasicCheck(BaseModel):
+    """A2: what the basic (regex, no-AI) check finds on the same page, stored with every review. The code checks
+    (PayPal cross-check, hard-to-read styling, injection) run on both paths, so the difference is the AI."""
+
+    types: list[str] = Field(default_factory=list)
+    clauses: list[Clause] = Field(default_factory=list)
+    notice_days: int = 0
+    real_cancel_deadline_day: int = 0
+    terms_last_day: int = 0
+    risk_score: int = 0
+
+
+RISKY_EXCLUDED = frozenset({"CLEAR_TERMS", "AUTO_RENEW", "PROMPT_INJECTION_ATTEMPT"})
+
+
 class ReviewData(BaseModel):
     """A finished review: findings + PayPal cross-check + deadlines + risk (stored in reviews.json)."""
 
@@ -151,6 +173,23 @@ class ReviewData(BaseModel):
     library_matches: list[str] = Field(default_factory=list)
     dropped_quotes: list[str] = Field(default_factory=list)
     injection_flagged: bool = False
+    notice_source: Literal["quote_digits", "quote_words", "ai", "none"] = "none"  # A3: where notice_days came from
+    basic: BasicCheck | None = None  # A2 (reviews stored before v3 Phase 2 don't have it)
 
     def types(self) -> list[str]:
         return [c.type for c in self.clauses]
+
+    def ai_vs_basic(self) -> dict[str, Any] | None:
+        """A2: which finding types each path found. `ai_only_risky` excludes types every subscription has."""
+        if self.basic is None or self.mode != "ai":
+            return None
+        ai, basic = set(self.types()), set(self.basic.types)
+        order = [*dict.fromkeys([*self.types(), *self.basic.types])]
+        return {"rows": [{"type": t, "ai": t in ai, "basic": t in basic} for t in order],
+                "ai_only": [t for t in order if t in ai - basic],
+                "ai_only_risky": [t for t in order if t in ai - basic and t not in RISKY_EXCLUDED],
+                "basic_only": [t for t in order if t in basic - ai],
+                "ai_risk": self.risk_score, "basic_risk": self.basic.risk_score,
+                "ai_notice_days": self.deadlines.notice_days, "basic_notice_days": self.basic.notice_days,
+                "ai_act_by_day": self.deadlines.real_cancel_deadline_day,
+                "basic_act_by_day": self.basic.real_cancel_deadline_day}

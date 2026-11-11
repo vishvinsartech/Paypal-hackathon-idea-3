@@ -36,7 +36,7 @@
     dlg.innerHTML = `<form method="dialog" class="email-card">
       ${justCancelled ? `<p class="email-ok" data-testid="email-paypal-done">Cancelled in PayPal. You won't be charged.</p>` : ""}
       <h3 id="email-title">Your cancellation email to ${esc(n.to)}</h3>
-      <p class="muted small">Penwright's terms ask for written notice by email. Check it, edit it, then send. Drafted by <span data-testid="email-drafted-by">${esc(n.drafted_by)}</span>.</p>
+      <p class="muted small">${esc(n.merchant_name || "The merchant")}'s terms ask for written notice. Check it, edit it, then send. Drafted by <span data-testid="email-drafted-by">${n.draft_source === "llm" ? "AI" : "a standard template"}</span>.</p>
       <label class="field">To<input type="email" data-testid="email-to" value="${esc(v.to)}" required></label>
       <label class="field">Subject<input data-testid="email-subject" value="${esc(v.subject)}"></label>
       <label class="field">Body<textarea rows="12" data-testid="email-body">${esc(v.body)}</textarea></label>

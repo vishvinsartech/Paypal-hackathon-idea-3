@@ -100,8 +100,8 @@ async def layer2_urgent(svc: Services, day: int) -> None:
                              title=f"URGENT: {name} charges you tomorrow",
                              body=f"{name} is still active in PayPal. Cancel it under Automatic payments today.",
                              actions=[action("open_autopay", "Open PayPal Automatic payments",
-                                             url=svc.settings.paypal_autopay_url)],
-                             subscription_id=sub.id, cta_url=svc.settings.paypal_autopay_url)
+                                             url=svc.settings.autopay_link)],
+                             subscription_id=sub.id, cta_url=svc.settings.autopay_link)
 
 
 PROOF_OK = "Checked PayPal: no active subscription, so no charge can be taken."

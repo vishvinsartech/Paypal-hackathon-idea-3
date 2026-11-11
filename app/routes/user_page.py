@@ -39,7 +39,7 @@ def card(svc: Services, sub: Subscription) -> dict[str, Any]:
     dates = key_dates(svc, sub, view, current_timer(timers, sub.id), deadline)
     next_charge = view["next_charge_text"]
     if sub.status != "ACTIVE" and sub.next_billing_day is not None:
-        next_charge = f"Day {sub.next_billing_day} · blocked (no active PayPal subscription)"
+        next_charge = f"{day_text(sub, sub.next_billing_day)} · blocked (no active PayPal subscription)"
     act_by = sub_act_by(sub, deadline) if deadline is not None else ""
     trial_end = day_text(sub, view["trial_end_day"]) if view.get("trial_end_day") is not None else ""
     return {**view, "deadline_day": deadline, "next_charge_text": next_charge, "dates": dates,

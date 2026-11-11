@@ -62,7 +62,7 @@ def test_card_reminder_and_proof(demo_client: TestClient) -> None:
     assert 'data-testid="sub-card"' in html and 'data-testid="status-penwright">ACTIVE<' in html
     assert re.search(r'data-testid="risk-score">Risk 8\d/100<', html)
     assert f'Site says: trial ends {on(10)} · <strong data-testid="act-by">{ACT_BY}.</strong>' in html
-    assert 'data-testid="next-charge">Day 11 · $24.99<' in html
+    assert f'data-testid="next-charge">{on(11)} · $24.99<' in html
     assert 'data-sub-keep="' in html and 'data-sub-cancel="' in html
     kd = re.search(r'<details class="kd-details"[^>]*>', html)  # key dates: closed until she opens them
     assert kd and " open" not in kd.group(0) and 'data-testid="key-dates"' in html
@@ -92,7 +92,7 @@ def test_card_reminder_and_proof(demo_client: TestClient) -> None:
     banner = re.search(r'data-testid="proof-banner"[^>]*><strong>([^<]+)</strong>', html)
     assert banner and banner.group(1) == ("First charge due today. Checked PayPal: no active subscription, "
                                           "so no charge can be taken.")
-    assert "Day 11 · blocked (no active PayPal subscription)" in html
+    assert f"{on(11)} · blocked (no active PayPal subscription)" in html
     assert re.search(r'data-testid="user-avoided">\$24\.99<', html)  # D10: Charges avoided
     assert 'data-testid="user-year-one">up to $524.88 in year one<' in html
     assert re.search(r'data-testid="user-cancelled">.*?>1<', html, re.S)
@@ -139,7 +139,7 @@ def test_subscription_history_grid_rows(demo_client: TestClient) -> None:
     (row,) = c.get("/api/subscription-history?user=priya").json()
     assert (row["id"], row["merchant"], row["status"]) == (main["id"], "Penwright Studio", "ACTIVE")
     assert (row["trial_end_day"], row["deadline_day"]) == (10, 7) and row["outcome"] == "Watching for you"
-    assert row["next_charge"] == "Day 11 · $24.99" and 82 <= row["risk"] <= 92
+    assert row["next_charge"] == f"{on(11)} · $24.99" and 82 <= row["risk"] <= 92
     assert row["subscribed_at"] and row["events"] == len(row["event_log"]) >= 1
     advance_to(c, 5)
     cancel_via_alert(c, alerts(c, kind="reminder")[0])

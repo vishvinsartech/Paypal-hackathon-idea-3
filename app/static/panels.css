@@ -139,7 +139,7 @@ body, .card, .topbar, .tab, .btn { transition: background-color .25s, color .25s
 }
 
 /* ---- B7: fixed Day 0-14 trial timeline, five labelled dots (timeline.js / user.html macro) ---- */
-.t5 { position: relative; margin: 34px 8px 34px; }
+.t5 { position: relative; margin: 44px 8px 50px; }
 .t5-track { list-style: none; margin: 0; padding: 0; position: relative; height: 4px; border-radius: 2px;
   background: var(--line); }
 .t5-dot { position: absolute; top: 50%; transform: translate(-50%, -50%); }

@@ -14,7 +14,7 @@
 
   const css = `
   .sg-backdrop{position:fixed;inset:0;background:rgba(6,16,33,.62);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px}
-  .sg-card{background:#0f1f3a;color:#e8eef8;font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;border-radius:16px;max-width:560px;width:100%;max-height:min(720px,90vh);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.45);border:1px solid #23406b}
+  .sg-card{background:#0f1f3a;color:#e8eef8;font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;border-radius:16px;max-width:560px;width:100%;max-height:min(720px,90vh);box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.45);border:1px solid #23406b}
   .sg-head{display:flex;gap:12px;align-items:center;padding:16px 20px;border-bottom:1px solid #23406b;flex:none}
   .sg-head img{width:28px;height:28px}.sg-head h2{font-size:17px;margin:0;flex:1}.sg-head h2:focus{outline:none}
   .sg-card>.sg-body{flex:1 1 auto;overflow-y:auto;overscroll-behavior:contain}

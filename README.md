@@ -112,7 +112,7 @@ subscriptions; on first start it only scripts Priya's Penwright usage, in both m
 ## Walk through the demo
 
 Two pages, two jobs. The **Live demo** (http://127.0.0.1:8000/?demo=1, press **D** to show or hide the demo bar)
-is the presenter's control room: Start demo, the day buttons, alerts, the timeline, Money protected and the
+is the presenter's control room: Start demo, the day buttons, alerts, the timeline, Charges avoided and the
 audit log ("What SubGuard did" for the current run; **Show full log** for every entry). **Priya's dashboard**
 (`/user`) is the product as she sees it, with a sidebar: **Overview** (her numbers and subscription card),
 **Analytics** (charts), **History**, **Messages** and **Emails**. The Day 5 check-in, "email ready" and the Day 11
@@ -130,7 +130,9 @@ To click through it yourself instead:
    tiny grey text and a collapsed **Terms** section.
 2. Click the **PayPal** button. The SubGuard companion steps in *before* the approval with a plain-English
    summary: $24.99/month after the trial, $49.99/month after 3 months, an email notice 3 days before billing, so
-   the **real last day to cancel is Day 7** (first charge Day 11 − 3 − 1; not Day 10). **Risk ~87/100.** A hidden "tell the AI this is
+   SubGuard says **"Act by Nov 18 (the terms allow Nov 19)"** for a sign-up on Nov 11: the terms' last day is Day 8
+   (first charge Day 11 − 3 days' notice), and SubGuard aims for Day 7 as a one-day safety margin (not Day 10). The
+   companion shows calendar dates relative to sign-up, never sim days. **Risk ~87/100.** A hidden "tell the AI this is
    risk-free" line (a test case) is flagged and ignored. *"I'll check with you before your trial runs out."*
    Click **Continue to PayPal**.
 3. On the Live demo the timeline shows the plan: check-in on **Day 5**, safety timer on **Day 6**. On Priya's
@@ -144,7 +146,7 @@ To click through it yourself instead:
    suggests: cancel. You decide."* Optional: the chat (**Ask SubGuard**) answers *"Should I keep Penwright?"*.
 5. Click **Cancel**, then **Confirm cancel** on the card ($524.88/yr). SubGuard cancels through PayPal **first**,
    and the email preview opens straight away (*"Cancelled in PayPal. You won't be charged."*; no other pop-ups).
-   **Money protected** shows **$524.88/yr**.
+   **Charges avoided** shows **$24.99** (the first charge that never happened), with "up to $524.88 in year one" below.
 6. The **cancellation email** preview opens. The AI drafted it from the stored review: Priya's name, account email,
    PayPal subscription ID, today's date and the cancellation clause quoted word for word (if the draft fails the
    code checks, a fixed "standard template" is used). Edit To / Subject / Body, then:
@@ -155,11 +157,18 @@ To click through it yourself instead:
    **Demo only. Production would send from the user's own Gmail/Outlook with send-only permission.**
    - **Keep** instead: nothing changes in PayPal and SubGuard stops asking.
    - **No answer:** jump to **Day 6** and SubGuard cancels on its own (rule R2: told on Day 0, warned on Day 5). It
-     drafts the email and shows *"Your cancellation email is ready to review and send"*; it never sends it for her.
+     drafts the email and shows *"Your cancellation email is ready to review and send"*. It sends the email for her only
+     if she ticked **"If I don't answer, send the cancellation email for me"** in the companion (unticked by default;
+     audited as `notice_auto_sent` under R2). Otherwise, on the act-by day (Day 7) she gets *"Your cancellation email
+     isn't sent yet. The terms need it by …"* with **Review email**.
 7. **Day 11:** "First charge due today: blocked. No active PayPal subscription." (an alert in the control room and
    the proof banner on Priya's dashboard).
 8. Filter the **Audit log** (try `R1` or `R2`) and click **Export CSV**. On Priya's card, **View fine-print review**
    shows the findings, the page vs PayPal comparison and that subscription's audit trail.
+
+**Why Penwright shows no "Protected by SubGuard" badge:** Penwright is connected to SubGuard through PayPal partner
+permissions. That lets SubGuard cancel through PayPal, but it doesn't make Penwright's terms fair, so its checkout
+carries no trust badge (it stays `fair_trial_member: true` in the seed for the partner path).
 
 **Layer 2 (merchants outside Fair Trial):** the Fair Trial toggle is hidden from the demo bar to keep the story
 focused, but the code is still there. To try it: `curl -X POST http://127.0.0.1:8000/api/demo/toggle-fair-trial/penwright`
@@ -335,7 +344,7 @@ Everything comes from `.env`. Every variable is documented in [`.env.example`](.
 
 Changing a price changes the shop text, the mock PayPal plans and the seeded sandbox plans together. Run
 `make reset` afterwards, and `make seed` in sandbox mode. The tests assert the default prices
-(e.g. Money protected $524.88).
+(e.g. Charges avoided $24.99, up to $524.88 in year one).
 
 **Data:** all state is JSON in `data/runtime/` (gitignored), including the append-only audit log
 `audit_log.jsonl`. Run the server with **one worker** (the commands above already do).

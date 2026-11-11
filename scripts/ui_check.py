@@ -21,6 +21,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import httpx
@@ -29,6 +30,16 @@ from playwright.sync_api import Page, expect, sync_playwright
 ROOT = Path(__file__).resolve().parent.parent
 errors: list[str] = []
 SHOTS: Path | None = None
+
+
+def on(days: int) -> str:
+    """Calendar date `days` after a sign-up made now, as SubGuard writes it ("Nov 18")."""
+    d = datetime.now(UTC) + timedelta(days=days)
+    return f"{d:%b} {d.day}"
+
+
+ACT_BY = f"Act by {on(7)} (the terms allow {on(8)})"  # D6
+PROOF = "Checked PayPal: no active subscription, so no charge can be taken."  # B8
 
 
 def shot(page: Page, name: str) -> None:
@@ -96,6 +107,8 @@ def story(base: str, headed: bool) -> None:
             expect(shop.get_by_test_id(f"finding-{t}").first).to_be_visible()
         expect(shop.get_by_test_id("companion-summary")).to_be_visible()
         expect(shop.get_by_test_id("companion-promise")).to_have_text("I'll check with you before your trial runs out.")
+        expect(shop.get_by_test_id("companion-act-by")).to_have_text(ACT_BY)  # B2/D6: dates, never "Day 7"
+        expect(shop.get_by_test_id("companion-auto-send")).not_to_be_checked()  # D7: opt-in, unticked
         shot(shop, "01_companion")
         shop.get_by_test_id("companion-continue").click()
         expect(shop.get_by_test_id("shop-open-subguard")).to_be_visible(timeout=15000)
@@ -105,43 +118,52 @@ def story(base: str, headed: bool) -> None:
         dash.reload()
         promise = "I'll check with you before your trial runs out."
         expect(dash.get_by_test_id("alert-timer-set")).to_contain_text(promise)
-        expect(dash.get_by_test_id("timer-chip")).to_contain_text("Check-in Day 5")
+        expect(dash.get_by_test_id("timer-chip")).to_contain_text(f"Check-in {on(5)}")
+        expect(dash.get_by_test_id("t5-act_by")).to_contain_text(on(7))  # B7: five labelled dots
+        expect(dash.get_by_test_id("step-up-line")).to_have_text("Then $49.99/month from month 4")
+        expect(dash.get_by_test_id("step-approve")).to_have_class(re.compile("is-done"))  # B4: ticks by hand
+        expect(dash.get_by_test_id("audit-summary-row").first).to_be_visible()  # B3: not empty after a manual run
+        expect(dash.locator(".topbar").get_by_test_id("chat-open")).to_be_visible()  # B6: in the top bar
         for gone in ("subs-grid", "chart-cost", "kpi-patterns", "kpi-cancelled", "kpi-watches"):
             expect(dash.get_by_test_id(gone)).to_have_count(0)
         expect(dash.get_by_test_id("layer2-controls")).to_be_hidden()
         expect(dash.locator(".topbar").get_by_test_id("health-dots")).to_have_count(0)
         dash.get_by_test_id("dev-menu").locator("summary").click()
         expect(dash.get_by_test_id("dev-docs")).to_be_visible()
-        step("Live demo = control room: timer shown, Money protected only, dev links in the footer menu")
+        step("Live demo = control room: timer shown, Charges avoided only, dev links in the footer menu")
 
         me = watch(ctx.new_page())  # Priya's dashboard in its own window, like a presenter would
         me.goto(f"{base}/user")
         card = me.get_by_test_id("sub-card")
         expect(card.get_by_test_id("status-penwright")).to_have_text("ACTIVE")
-        expect(card.get_by_test_id("deadline-line")).to_have_text(
-            "Site says: trial ends Day 10 · Real last day to cancel: Day 7.")
+        expect(card.get_by_test_id("deadline-line")).to_have_text(f"Site says: trial ends {on(10)} · {ACT_BY}.")
         expect(card.get_by_test_id("risk-score")).to_contain_text("/100")
         expect(card.get_by_test_id("view-review")).to_have_text("View fine-print review")
-        step("Priya's dashboard: subscription card with the Day 10 vs Day 7 line, risk, Keep / Cancel")
+        step("Priya's dashboard: subscription card with the act-by line, five-dot timeline, risk, Keep / Cancel")
 
         dash.bring_to_front()
         dash.get_by_test_id("sim-jump-5").click()
-        toast = dash.get_by_test_id("toast-alert").filter(has_text="Your Penwright trial ends on Day 10")
+        toast = dash.get_by_test_id("toast-alert").filter(has_text=f"Your Penwright trial ends on {on(10)}")
         expect(toast).to_be_visible()
+        box = toast.bounding_box()  # B5: top right, under the top bar
+        assert box and box["x"] > 1440 / 2 and box["y"] < 300, f"toast not top right: {box}"
         check = dash.get_by_test_id("alert-trial-check")
-        expect(check).to_contain_text("Your Penwright trial ends on Day 10, but your real last day to cancel is Day 7. "
-                                      "You've opened it twice. Do you want to keep it?")
+        expect(check).to_contain_text(f"Your Penwright trial ends on {on(10)}. {ACT_BY}. You've opened it twice")
+        expect(dash.get_by_test_id("step-ask")).to_have_class(re.compile("is-done"))
         step("Day 5 (control room): toast + check-in alert")
 
         me.bring_to_front()
         me.reload()
         reminder = me.get_by_test_id("user-reminder")
-        expect(reminder.get_by_test_id("reminder-usage")).to_contain_text("Opened twice in 5 days (last on Day 4).")
+        expect(reminder.get_by_test_id("reminder-usage")).to_contain_text(
+            f"Opened twice in 5 days, last on {on(4)} (from Penwright's app activity, simulated in this demo).")
         expect(reminder.get_by_test_id("reminder-advice")).to_contain_text("SubGuard suggests: cancel. You decide.")
         me.get_by_test_id("chat-open").click()
         me.get_by_test_id("chat-input").fill("Should I keep Penwright?")
         me.get_by_test_id("chat-send").click()
         expect(me.locator("#chat-log")).to_contain_text("the first paid year costs $524.88")
+        me.get_by_test_id("chat-chip-nothing").click()  # B11: chips with scripted answers
+        expect(me.locator("#chat-log")).to_contain_text(f"cancels Penwright Studio in PayPal on {on(6)}")
         shot(me, "02_checkin_and_chat")
         me.locator("#chat-close").click()
         step("Day 5 (Priya): usage summary, advice labelled 'You decide', chat answers with $524.88")
@@ -172,7 +194,8 @@ def story(base: str, headed: bool) -> None:
         expect(me.get_by_test_id("toast-result")).to_have_count(0)
         expect(card.get_by_test_id("status-penwright")).to_have_text("CANCELLED")
         expect(me.get_by_test_id("sub-cancel")).to_have_count(0)
-        expect(me.get_by_test_id("user-protected")).to_contain_text("$524.88/yr")
+        expect(me.get_by_test_id("user-avoided")).to_have_text("$24.99")  # D10: Charges avoided
+        expect(me.get_by_test_id("user-year-one")).to_have_text("up to $524.88 in year one")
         me.get_by_test_id("nav-emails").click()  # sidebar sections (D-122)
         expect(me.get_by_test_id("cancellation-notice").first).to_be_visible()
         expect(me.get_by_test_id("cancellation-notice").first).to_contain_text("edited: yes")
@@ -181,20 +204,21 @@ def story(base: str, headed: bool) -> None:
         me.get_by_test_id("nav-overview").click()
         expect(me.get_by_text("Restart trial")).to_have_count(0)
         shot(me, "03_cancelled")
-        step("Cancel: reminder -> confirmation card -> email preview (no toasts) -> CANCELLED, $524.88/yr")
+        step("Cancel: reminder -> confirmation card -> email preview (no toasts) -> CANCELLED, avoided $24.99")
 
         dash.bring_to_front()
-        expect(dash.locator("#kpi-protected")).to_have_text("$524.88/yr", timeout=12000)
+        expect(dash.locator("#kpi-protected")).to_have_text("$24.99", timeout=12000)
+        expect(dash.get_by_test_id("kpi-year-one")).to_have_text("up to $524.88 in year one")
         expect(dash.get_by_test_id("alert-done")).to_contain_text("Cancelled in PayPal. You won't be charged.")
         expect(dash.get_by_text("Restart trial")).to_have_count(0)
         dash.get_by_test_id("sim-jump-11").click()
-        expect(dash.get_by_test_id("blocked-charge").first).to_contain_text("First charge due today: blocked")
-        step("Day 11 (control room): blocked charge, Money protected $524.88/yr")
+        expect(dash.get_by_test_id("blocked-charge").first).to_contain_text(PROOF)
+        expect(dash.get_by_test_id("step-proof")).to_have_class(re.compile("is-done"))
+        step("Day 11 (control room): SubGuard checked PayPal, no charge; steps ticked by hand")
 
         me.bring_to_front()
         me.reload()
-        expect(me.get_by_test_id("proof-banner")).to_have_text(
-            "First charge due today: blocked. No active PayPal subscription.")
+        expect(me.get_by_test_id("proof-banner")).to_have_text(f"First charge due today. {PROOF}")
         me.get_by_test_id("nav-analytics").click()
         for chart in ("chart-cost", "chart-usage", "chart-risk"):
             expect(me.get_by_test_id(chart).locator("canvas").first).to_be_visible()
@@ -229,7 +253,7 @@ def story(base: str, headed: bool) -> None:
         expect(dash.get_by_test_id("audit-chain")).to_contain_text("chain verified")
         summary = dash.get_by_test_id("audit-summary")
         expect(summary).to_contain_text("Allowed the cancel")
-        expect(summary).to_contain_text("First charge due: blocked")
+        expect(summary).to_contain_text("Checked PayPal: no active subscription")
         expect(dash.get_by_test_id("audit-log-export")).to_be_hidden()  # full log folded away (D-121)
         dash.get_by_test_id("audit-full-toggle").click()
         with dash.expect_download() as dl_info:
@@ -254,6 +278,28 @@ def story(base: str, headed: bool) -> None:
         browser.close()
 
 
+def companion_in_view(base: str, headed: bool) -> None:
+    """B1: when the companion opens, its risk badge is inside the viewport (it used to open scrolled down)."""
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=not headed)
+        for w, h in ((1440, 900), (390, 844)):
+            page = watch(browser.new_page(viewport={"width": w, "height": h}))
+            page.goto(f"{base}/shop/penwright")
+            page.get_by_test_id("shop-paypal-btn").click()
+            risk = page.get_by_test_id("companion-risk")
+            expect(risk).to_be_visible(timeout=20000)
+            box = risk.bounding_box()
+            assert box and box["y"] >= 0 and box["y"] + box["height"] <= h, f"{w}x{h}: risk badge off screen {box}"
+            card = page.get_by_test_id("companion-overlay").bounding_box()
+            assert card and card["height"] <= min(720, h), f"{w}x{h}: companion taller than allowed {card}"
+            expect(page.get_by_test_id("companion-continue")).to_be_in_viewport()  # sticky footer
+            page.keyboard.press("Escape")
+            expect(page.get_by_test_id("companion-overlay")).to_have_count(0)
+            page.close()
+            step(f"companion at {w}x{h}: risk badge in view, footer buttons visible, Esc closes")
+        browser.close()
+
+
 def autoplay(base: str, headed: bool) -> None:
     """The "Start demo" button: runs to the check-in, pauses for Priya, then finishes. All three answers."""
     with sync_playwright() as p:
@@ -261,14 +307,14 @@ def autoplay(base: str, headed: bool) -> None:
         dash = watch(browser.new_page(viewport={"width": 1440, "height": 1000}))
         dash.goto(f"{base}/")
         start = dash.get_by_test_id("demo-start")
-        for answer, expected, outcome in (("cancel", "$524.88", "Cancelled Day 5"),
+        for answer, expected, outcome in (("cancel", "$24.99 charge never taken", f"Cancelled {on(5)}"),
                                           ("keep", "Kept on purpose", "Kept"),
-                                          ("skip", "$524.88", "Auto-cancelled Day 6 (R2)")):
+                                          ("skip", "$24.99 charge never taken", f"Auto-cancelled {on(6)} (R2)")):
             start.click()
             dlg = dash.get_by_test_id("decision-dialog")
             expect(dlg).to_be_visible(timeout=40000)
-            expect(dlg).to_contain_text("but your real last day to cancel is Day 7. You've opened it twice.")
-            expect(dash.get_by_test_id("step-read")).to_contain_text("Risk 87 · cancel by Day 7")
+            expect(dlg).to_contain_text(f"{ACT_BY}. You've opened it twice")
+            expect(dash.get_by_test_id("step-read")).to_contain_text(f"· act by {on(7)}")
             if answer == "cancel":
                 shot(dash, "05_autoplay_ask")
             dash.get_by_test_id(f"decision-{answer}").click()
@@ -285,7 +331,7 @@ def autoplay(base: str, headed: bool) -> None:
             expect(dash.get_by_test_id("step-outcome")).to_contain_text(outcome)
             expect(dash.get_by_test_id("demo-day")).to_have_text("11")
             if answer == "cancel":
-                expect(dash.locator("#kpi-protected")).to_have_text("$524.88/yr")
+                expect(dash.locator("#kpi-protected")).to_have_text("$24.99")
                 shot(dash, "06_autoplay_done")
             if answer == "skip":
                 expect(dash.get_by_test_id("email-ready")).to_contain_text("ready to review and send")
@@ -310,6 +356,7 @@ def main() -> int:
         proc, base, data = start_server()
     print(f"UI check against {base}")
     try:
+        companion_in_view(base, args.headed)
         story(base, args.headed)
         autoplay(base, args.headed)
     finally:

@@ -47,6 +47,15 @@ def attempt(label: str, fn: Callable[[], object]) -> bool:
         return False
 
 
+def nav(page: Page, url: str) -> None:
+    """Open a page without hanging on a slow CDN: DOM ready, then up to 10 s for the network to go quiet."""
+    page.goto(url, wait_until="domcontentloaded", timeout=60000)
+    try:
+        page.wait_for_load_state("networkidle", timeout=10000)
+    except PWError:
+        skipped.append(f"{url}: network not idle after 10 s (CDN?)")
+
+
 def click(page: Page, testid: str, timeout: int = 4000) -> None:
     page.get_by_test_id(testid).first.click(timeout=timeout)
 
@@ -70,14 +79,14 @@ def walk(base: str, folder: Path, size: tuple[int, int], headed: bool) -> None:
         ctx = browser.new_context(viewport={"width": size[0], "height": size[1]})
         page = ui_check.watch(ctx.new_page())
 
-        page.goto(f"{base}/?demo=1")
+        nav(page, f"{base}/?demo=1")
         shoot(page, "dashboard_day0_empty")
-        page.goto(f"{base}/user")
+        nav(page, f"{base}/user")
         shoot(page, "user_day0_empty")
 
-        page.goto(f"{base}/shop")
+        nav(page, f"{base}/shop")
         shoot(page, "shop_index", full=True)
-        page.goto(f"{base}/shop/penwright")
+        nav(page, f"{base}/shop/penwright")
         shoot(page, "shop_penwright", full=True)
         attempt("shop terms", lambda: click(page, "shop-terms-toggle"))
         attempt("shop terms shot", lambda: shoot(page, "shop_penwright_terms", full=True))
@@ -90,15 +99,15 @@ def walk(base: str, folder: Path, size: tuple[int, int], headed: bool) -> None:
                                                    page.get_by_test_id("shop-open-subguard").wait_for(timeout=15000)))
             shoot(page, "shop_subscribed", full=True)
 
-        page.goto(f"{base}/?demo=1")
+        nav(page, f"{base}/?demo=1")
         shoot(page, "dashboard_day0")
-        page.goto(f"{base}/user")
+        nav(page, f"{base}/user")
         shoot(page, "user_day0")
 
         advance(base, 5)
-        page.goto(f"{base}/?demo=1")
+        nav(page, f"{base}/?demo=1")
         shoot(page, "dashboard_day5")
-        page.goto(f"{base}/user")
+        nav(page, f"{base}/user")
         shoot(page, "user_day5")
         attempt("chat", lambda: (click(page, "chat-open"), shoot(page, "chat_open"),
                                  page.locator("#chat-close").click(timeout=2000)))
@@ -112,20 +121,20 @@ def walk(base: str, folder: Path, size: tuple[int, int], headed: bool) -> None:
         shoot(page, "user_day5_cancelled")
 
         advance(base, 11)
-        page.goto(f"{base}/?demo=1")
+        nav(page, f"{base}/?demo=1")
         shoot(page, "dashboard_day11")
         attempt("full log", lambda: (click(page, "audit-full-toggle", 2000), shoot(page, "dashboard_day11_log")))
-        page.goto(f"{base}/user")
+        nav(page, f"{base}/user")
         shoot(page, "user_day11")
         for sec in SECTIONS:
-            nav = page.get_by_test_id(f"nav-{sec}")
-            if nav.count() and attempt(f"section {sec}", lambda nav=nav: nav.first.click(timeout=2000)):
+            tab = page.get_by_test_id(f"nav-{sec}")
+            if tab.count() and attempt(f"section {sec}", lambda tab=tab: tab.first.click(timeout=2000)):
                 shoot(page, f"user_section_{sec}", full=True)
 
         uid = user_id(base)
         subs = httpx.get(f"{base}/api/subscriptions", params={"user": uid}, timeout=10).json()
         if subs:
-            page.goto(f"{base}/subscriptions/{subs[0]['id']}?user={uid}")
+            nav(page, f"{base}/subscriptions/{subs[0]['id']}?user={uid}")
             shoot(page, "subscription_page", full=True)
         browser.close()
 

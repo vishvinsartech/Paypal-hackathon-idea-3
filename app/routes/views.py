@@ -81,7 +81,7 @@ def sub_view(svc: Services, sub: Subscription, timers: list[Timer]) -> dict[str,
         "status": sub.status, "essential": sub.essential, "fair_trial": merchant.fair_trial_member,
         "signup_day": sub.signup_day, "next_billing_day": sub.next_billing_day,
         "price_text": f"{svc.money(snap.price)}/{_per(snap.billing_cycles)}" if snap else "",
-        "next_charge_text": (f"Day {sub.next_billing_day} · {svc.money(prices[0])}"
+        "next_charge_text": (f"{day_text(sub, sub.next_billing_day)} · {svc.money(prices[0])}"
                              if sub.next_billing_day is not None and prices and sub.status == "ACTIVE" else "—"),
         "risk": review.risk_score if review else None, "review_id": review.id if review else None,
         "last_used_day": last_open_day(svc.store, sub.owner_id, sub.merchant_id, svc.day),

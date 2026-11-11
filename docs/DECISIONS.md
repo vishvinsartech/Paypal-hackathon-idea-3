@@ -525,6 +525,83 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   and the charts/grid (ResizeObserver) are unchanged. `app/static/user-nav.js`. Video scene 09 clicks Analytics
   before highlighting the cost chart.
 
+## v3 Phase 1: correctness and story logic (2026-11-11, docs/FIX_PLAN.md)
+
+- **D-130 Persona Priya.** userA is now **Priya**, a freelance writer who pays for apps with PayPal: user id `priya`,
+  display name "Priya", and a new `User.full_name` ("Priya Sharma") that the cancellation email uses ("Name: Priya
+  Sharma"). Email `priya@subguard-demo.example`. `/me` is an alias of `/user`; `/user` keeps working. Route defaults
+  stay a literal (`user: str = "priya"`), as they were with `usera`, instead of a new constant: one sed, no new
+  imports. Old runtime data holds `usera`: run `make reset`.
+- **D-131 Users see calendar dates, never sim days (B2).** The companion builds its text from a code-made `display`
+  block in the `/api/review/preflight` response (`sub_dates.companion_display`): offsets from sign-up plus short
+  UTC dates from the real "now" ("Nov 18"). So opening the shop on Day 11 reads exactly like Day 0. Alerts,
+  Priya's card, the chat and the subscription page use `sub_dates.day_text(sub, day)` (`registered_at + (day -
+  signup_day)`, as in D-115). Cross-check rows say "11 days after you start". Absolute sim days stay internal
+  (timers, audit, presenter-only controls).
+- **D-132 Act by vs what the terms allow (D6).** `Deadlines.terms_last_day = first_charge - notice` (Penwright: 8),
+  filled by a validator for reviews stored before. `real_cancel_deadline_day` (7) keeps its meaning as "act by",
+  SubGuard's one-day margin. One wording everywhere, from `sub_dates.act_by_text`: "Act by Nov 18 (the terms allow
+  Nov 19)". For a subscription the terms' day is always act-by + 1.
+- **D-133 No answer -> written notice, only with an opt-in (D7; narrows D-104).** The companion shows an unticked
+  box "If I don't answer, send the cancellation email for me." On Continue it posts
+  `POST /api/reviews/{id}/consent` (allowed only while the review isn't linked to a subscription), and sign-up
+  copies it into `ConsentSnapshot.auto_send_notice`. Every sign-up path (shop, sandbox window, Start demo) passes
+  `review_id`, so one place covers them all. Ticked: when the timer cancels, the draft is finalised as written
+  (`sent_via = "auto_on_timer"`, demo outbox), audited `notice_auto_sent`, actor `timer`, rule R2, decision
+  allowed. D-104's "never sent without a click" still holds for every other case. Unticked: on the act-by day, a
+  cancelled subscription whose email is still a draft gets one `notice_unsent` alert: "Your cancellation email
+  isn't sent yet. The terms need it by <date>." with **Review email**. It also applies after a user-tap cancel
+  whose email was closed unsent. No new PayPal writes.
+- **D-134 The Day 11 proof is SubGuard's check (B8).** On the first-charge day SubGuard does a fresh
+  `gateway.verify()` (live GET through the full backend in sandbox, the mock state in mock mode). The
+  `charge_blocked` entry stores PayPal's status (`status_after`), `paypal_debug_id`, `result`
+  (`no_active_subscription` | `still_active` | `error: ...`) and `details.checked_by = "SubGuard"`. The audit actor
+  stays `system`, because the CLAUDE.md actor list has no SubGuard value; the activity feed shows "SubGuard". Text:
+  "Checked PayPal: no active subscription, so no charge can be taken." If the read fails it says it couldn't reach
+  PayPal and claims nothing (R7). If PayPal still shows ACTIVE, the alert is urgent.
+- **D-135 Charges avoided (D10).** `savings.charges_avoided` sums the first paid price (from the consent snapshot's
+  PayPal cycles) of each subscription SubGuard cancelled (user or timer): Penwright **$24.99**. It's the KPI's main
+  value, with "up to $524.88 in year one" (`money_protected`, unchanged) as the subtitle. `/api/kpis` returns both
+  plus `year_one_text`. The test ids are kept (`kpi-protected`, `user-protected`), and new ones added
+  (`kpi-year-one`, `user-avoided`, `user-year-one`). The confirmation card still shows $524.88/yr until U12.
+- **D-136 No "clear terms" next to dark patterns (B10).** `patterns.drop_clear_terms_if_risky` runs after both the
+  AI and the basic path. It drops `CLEAR_TERMS` when any type other than CLEAR_TERMS, AUTO_RENEW or
+  PROMPT_INJECTION_ATTEMPT is present. The score doesn't change, because CLEAR_TERMS weighs 0.
+- **D-137 "What SubGuard did" and the step tracker follow the data (B3, B4).** The summary table now draws as soon
+  as the page loads. Before, it waited for the next 5 s refresh because `audit-summary.js` registers after the
+  first refresh had already run, so it looked empty after a manual run and on mobile. The dashboard's first
+  refresh now runs on `DOMContentLoaded`. The 7 steps are derived server-side from the subscription's audit events
+  (`app/core/steps.py`) and ship with `GET /api/audit-log/summary` as `steps`. The page applies every non-pending
+  step on each refresh, so clicking through by hand ticks them. Start demo keeps its transient in-progress marks,
+  and its texts match the derived ones.
+- **D-138 Trial timeline: fixed Day 0-14 view, five dots (B7).** Signed up · Check-in · Act by · Trial ends · First
+  charge, each with its calendar date. Positions, states (done | today | upcoming | blocked) and alternating label
+  sides come from `sub_dates.trial_dots` in `/api/view/subscriptions`. `app/static/timeline.js` draws them on the
+  live demo, and a Jinja macro draws the same markup on Priya's card. The step-up is text built from the cycles:
+  "$49.99/month from month 4". The old Day 0-31 axis, its 8 px markers and the legend are gone. In Phase 3 (U7) it
+  moves onto the merged card.
+- **D-139 Toasts, chat entry, chat chips (B5, B6, B11).** Toasts stack top right at 72 px under the top bar,
+  auto-dismiss after 6 s, and keep `aria-live`. "Ask SubGuard" (icon + label, `data-testid="chat-open"` kept) is in
+  the top bar through a `topbar_actions` block on the pages that have the chat drawer; the floating button is gone.
+  The chat shows three chips that stay visible: "Should I keep it?", "What happens if I do nothing?", "Draft my
+  cancellation email". Mock scripts `do_nothing` and `draft_email` sit before `cancel`, so "cancellation email"
+  doesn't propose a cancel. Their numbers and dates come from `review_subscription` (now with `check_in_on`,
+  `auto_cancel_on`, `first_charge_on`, `act_by_text`, `terms_last_day`). `draft_email` explains when the draft
+  appears; there's no draft tool, so it doesn't pretend to draft one (R7). The fallback names the chips instead of
+  "switch to sandbox mode".
+- **D-140 Companion opens at the top (B1).** The card is `max-height: min(720px, 90vh)` (border-box), a flex column
+  with sticky header and footer and an internally scrolling middle. On open, focus goes to the title
+  (`tabindex=-1`, `preventScroll`) and `scrollTop = 0`; Tab is trapped in the dialog and Esc closes it.
+  `ui_check.py` asserts the risk badge is in view at 1440×900 and 390×844. The ≤ 640 px bottom sheet is U17
+  (Phase 3).
+- **D-141 Smaller Phase 1 calls.** The "Protected by SubGuard: cancel anytime" badge is removed for every merchant,
+  not only Penwright (Quillnote won't be a member anyway). It was also the "cancel anytime" sentence the basic
+  check had matched as CLEAR_TERMS. Penwright stays `fair_trial_member: true`. The subscription page
+  (`partner-note`) and the README explain the partner connection. Usage is labelled "(from Penwright's app
+  activity, simulated in this demo)" (D8), but not when there was no use. Narration got only the D6/B8/D10 wording
+  (one shorter phrase in `03_companion` to stay within 125 wpm); Phase 5 rewrites the beats. **Deferred, as
+  FIX_PLAN says:** B9 (mobile nav) goes with U10/U27 in Phase 3, and B12 (README facts) with S1 in Phase 4.
+
 ## Not used in v1 (sponsor tools)
 
 - **Bryntum:** a CSS timeline is enough for a prototype.

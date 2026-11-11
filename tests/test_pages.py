@@ -142,13 +142,13 @@ def test_dashboard_selector_contract(client: TestClient) -> None:
 def test_view_subscriptions(demo_client: TestClient) -> None:
     """The story starts empty: Priya approves the Penwright trial herself on Day 0."""
     assert demo_client.get("/api/view/subscriptions?user=priya").json()["rows"] == []
-    from tests.story_helpers import subscribe
+    from tests.story_helpers import on, subscribe
 
     subscribe(demo_client)
     rows = demo_client.get("/api/view/subscriptions?user=priya").json()["rows"]
     assert [(r["merchant"], r["status"], r["price_text"]) for r in rows] == [
         ("Penwright Studio", "ACTIVE", "$24.99/mo")]
-    assert rows[0]["next_charge_text"] == "Day 11 · $24.99"
+    assert rows[0]["next_charge_text"] == f"{on(11)} · $24.99"
 
 
 def test_view_penwright_timeline_fields(demo_client: TestClient) -> None:

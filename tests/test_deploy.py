@@ -16,13 +16,17 @@ def test_render_blueprint() -> None:
     bp = yaml.safe_load((ROOT_DIR / "render.yaml").read_text(encoding="utf-8"))
     (svc,) = bp["services"]
     assert svc["type"] == "web" and svc["runtime"] == "python" and svc["healthCheckPath"] == "/healthz"
-    assert svc["startCommand"] == "python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    # Last command: one uvicorn worker. Before it, sandbox mode seeds the PayPal plans (D-158).
+    assert svc["startCommand"].endswith("; python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT")
+    assert 'if [ "$APP_MODE" = "sandbox" ]; then python scripts/seed_sandbox.py' in svc["startCommand"]
+    assert svc["branch"] == "prototype-v3"
     assert "--reload" not in svc["startCommand"]
     assert "requirements.txt" in svc["buildCommand"]
     env = {e["key"]: e for e in svc["envVars"]}
     assert env["APP_MODE"]["value"] == "mock"
     assert env["WEB_CONCURRENCY"]["value"] == "1"  # one worker: uvicorn reads this as its default (D-020, D-100)
     for secret in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "PAYPAL_CLIENT_ID", "PAYPAL_CLIENT_SECRET",
+                   "PAYPAL_SANDBOX_BUYER_EMAIL", "PAYPAL_SANDBOX_BUYER_PASSWORD", "PAYPAL_WEBHOOK_ID",
                    "ZAPIER_CATCH_HOOK_URL"):
         assert env[secret] == {"key": secret, "sync": False}  # never a value in git
 

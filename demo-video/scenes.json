@@ -5,7 +5,7 @@
   "voice": "en-US-JennyNeural",
   "words_per_minute": 125,
   "max_total_seconds": 175,
-  "_actions": "Each action is {\"action\": goto|click|hover|type|press|wait_for|wait|scroll_to|highlight, ...}. Targets are data-testid values from the selector contract (docs/BUILD_PROMPT.md 7.5); goto takes a path, type takes text, press takes a key, wait takes seconds.",
+  "_actions": "Each action is {\"action\": goto|click|hover|type|press|wait_for|wait|scroll_to|highlight, ...}. Targets are data-testid values from the selector contract (docs/archive/BUILD_PROMPT.md 7.5); goto takes a path, type takes text, press takes a key, wait takes seconds.",
   "max_clip_seconds": 15,
   "_clips": "A scene with \"type\": \"clip\" is a manually recorded clip (demo-video/clips/, gitignored; see demo-video/README.md). build_video.py inserts it at that position, trimmed to its duration; it has no actions. check_scenes.py warns if the file is missing, and a mock build skips it.",
   "scenes": [

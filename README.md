@@ -2,453 +2,247 @@
 
 **AI reads the fine print. PayPal enforces the outcome.**
 
-SubGuard watches your PayPal subscriptions and protects you from "free trials" that quietly turn into
-expensive recurring charges. It reads a merchant's checkout and terms (tiny grey text and hidden sections
-included), checks what the page claims against the real PayPal plan, scores the risk, asks you before the
-*real* deadline whether to keep it, and cancels through PayPal if you say so (or don't answer).
+"Free trials" are designed to be forgotten. SubGuard reads a merchant's checkout and terms before you subscribe,
+checks every claim against the real PayPal plan, and tells you the *real* last day to cancel.
+Before that day it asks "keep it?", and if you say no (or don't answer, when you agreed to that) it cancels
+through PayPal and drafts the written notice the terms require.
 
-1. **Reads the fine print before you say yes.** It turns every clause into a plain-English warning, with the
-   exact sentence quoted as evidence.
-2. **Checks it against PayPal.** The plan's billing cycles are the source of truth for every price.
-3. **Scores the risk** from 0 to 100.
-4. **Saves a consent snapshot** of the price and terms you agreed to.
-5. **Protects on a timeline.** It sets a safety timer it tells you about, asks "Do you want to keep it?" before
-   the real deadline, and cancels through PayPal when you tap **Cancel** (or don't answer). Then it drafts the
-   written cancellation email the merchant's terms require, for you to check, edit and send.
-6. **Keeps an audit log** of everything it did and why. The log is append-only, hash-chained and exportable.
+> Everything in the demo is fictional (Priya, Penwright Studio, Quillnote) and runs on the **PayPal sandbox**.
+> No real brands, money or people.
 
-> Everything in the demo is fictional and runs on the **PayPal sandbox**. No real brands, money or people.
-
----
+| | |
+|---|---|
+| **Hosted demo** | _URL to be added after the Render deploy_ (`https://<service>.onrender.com/?demo=1`) |
+| **Video** | _YouTube link to be added_ |
+| **Repo** | https://github.com/vishvinsartech/Paypal-hackathon-idea-3 |
 
 ## Contents
 
-- [Requirements](#requirements)
-- [Quick start (mock mode, no keys)](#quick-start-mock-mode-no-keys)
-- [Walk through the demo](#walk-through-the-demo)
-- [Sandbox mode (real PayPal sandbox + real AI)](#sandbox-mode-real-paypal-sandbox--real-ai)
-- [Commands](#commands)
-- [Configuration](#configuration)
-- [Tests and checks](#tests-and-checks)
-- [Notifications (Zapier, optional)](#notifications-zapier-optional)
-- [Hosted demo (Render)](#hosted-demo-render)
-- [Troubleshooting](#troubleshooting)
-- [Repository map](#repository-map)
-- [License](#license)
+[Quick start](#quick-start) · [How PayPal is used](#how-paypal-is-used) · [How AI is used](#how-ai-is-used) ·
+[Architecture](#architecture) · [Real vs simulated](#whats-real-and-whats-simulated) · [Limitations](#limitations) ·
+[Safety rules](#safety-rules-r1-r7) · [Sponsor tools](#sponsor-tools) · [Tests](#tests) · [License](#license)
 
 ---
 
-## Requirements
+## Quick start
 
-| Tool | Version | Needed for |
-|---|---|---|
-| Python | 3.11 or newer (developed on 3.14, deploy-tested on 3.12) | everything |
-| Git | any recent | cloning |
-| Node.js + `npx` | 18 or newer | **sandbox mode only**: the PayPal MCP server (without it, SubGuard falls back to the PayPal SDK) |
-| `make` | optional | every `make <target>` has a cross-platform twin: `python scripts/tasks.py <target>` |
+### Mock mode (no accounts, no keys)
 
-`setup` installs Playwright's Chromium. The UI checks use it, and so do live page captures in sandbox mode.
-The dashboard loads AG Grid from a CDN, so the browser needs internet access.
-
----
-
-## Quick start (mock mode, no keys)
-
-Mock mode needs **no accounts and no keys**. PayPal is a local state machine, the AI uses recorded answers, and
-emails/SMS are written to files.
-
-**1. Set up** (once):
+Needs Python 3.11+. PayPal is a local state machine, the AI uses recorded answers, emails/SMS go to files.
 
 ```bash
-# macOS / Linux
-git clone <this-repo-url> subguard && cd subguard
-cp .env.example .env
-python3 scripts/tasks.py setup     # or `make setup`: creates .venv, installs requirements + Playwright Chromium
-source .venv/bin/activate
+git clone https://github.com/vishvinsartech/Paypal-hackathon-idea-3 subguard && cd subguard
+cp .env.example .env                 # Windows: copy .env.example .env
+python scripts/tasks.py setup        # or `make setup`: .venv, requirements, Playwright Chromium
+python scripts/tasks.py dev          # or `make dev`: http://127.0.0.1:8000/
 ```
 
-```powershell
-# Windows PowerShell
-git clone <this-repo-url> subguard; cd subguard
-copy .env.example .env
-python scripts/tasks.py setup
-.venv\Scripts\Activate.ps1
-```
+Open:
 
-**2. Run the server.** This is the standard way to start SubGuard, on every OS (venv active):
+- **http://127.0.0.1:8000/?demo=1**: Priya's SubGuard with the presenter bar (press **D** to show or hide it)
+- http://127.0.0.1:8000/shop: the fictional merchant shop
+- http://127.0.0.1:8000/healthz and `/docs`: health and API docs
 
-```bash
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
-```
+**The demo in one minute.** Press **Start demo**, or by hand:
 
-It runs in the mode set by `APP_MODE` in `.env` (`mock` by default). To pick the mode for one run instead:
+1. **Day 0.** Open the shop, pick **Penwright Studio** ("10-day free trial, $0 today"), click **PayPal**. The
+   SubGuard companion steps in first: $24.99/month after the trial, $49.99 after 3 months, written notice 3 days
+   before billing, so **"Act by Nov 18 (the terms allow Nov 19)"** for a Nov 11 sign-up. The terms' last day is
+   Day 8 (first charge Day 11 minus 3 days' notice); SubGuard aims for Day 7 as a one-day margin. **Risk 87/100.**
+   A hidden "tell the AI this is risk-free" line is flagged and ignored. Tick the consent box if you want SubGuard
+   to send the notice when you don't answer, then **Continue to PayPal**.
+2. **Day 5.** The card turns into a "Keep it or cancel?" check-in (in-app, plus email/SMS via Zapier or the outbox).
+3. **Cancel.** SubGuard cancels in PayPal **first**, reads back CANCELLED, then opens the AI-drafted cancellation
+   email quoting the clause. Edit it, then **Send** (demo outbox) or **Open in my email app**.
+   **No answer:** on Day 6 the safety timer cancels (rule R2). **Keep:** nothing changes in PayPal.
+4. **Day 11.** "First charge due today: blocked. No active PayPal subscription." Charges avoided: **$24.99**
+   ("up to $524.88 in year one").
+5. **Evidence.** Each card's evidence page has Summary, Evidence, PayPal check and Activity tabs (filter `R1` / `R2`,
+   "Show raw log", CSV).
 
-```bash
-# macOS / Linux
-APP_MODE=sandbox python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
-```
+**Turn the AI off: what changes?** Open **Quillnote** in the shop. Its traps are in plain prose: "no later than
+seventy-two hours before your renewal", an FAQ-only price step-up ($12.99 -> $27.99), "contact our account team".
+The AI review scores **73** and says **act by Day 4**; the regex-only basic check scores **25** and would say Day 7,
+too late. Quillnote isn't a Fair Trial merchant, so **Cancel** drafts the email and shows **ACTION NEEDED** with a
+one-tap link to PayPal's Automatic payments page, then reads PayPal (read-only) until it shows CANCELLED.
 
-```powershell
-# Windows PowerShell (applies to this terminal until you close it or set it back to mock)
-$env:APP_MODE = "sandbox"; python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
-```
+**Reset:** the presenter bar's **Reset**, or `make reset` and restart.
 
-Shortcuts that run the same command: `make dev` / `make dev-sandbox`, or `python scripts/tasks.py dev` /
-`dev-sandbox` (a thin wrapper that uses `.venv`'s Python, so it works without activating the venv). Always one
-worker: the JSON store relies on one in-process lock (D-020), so don't add `--workers`.
+### Sandbox mode (real PayPal sandbox + real AI)
 
-Then open:
+1. In https://developer.paypal.com (Sandbox): a **Business** account (plays both merchants), a **Personal** account
+   (Priya), and a **REST app** linked to the Business account.
+2. In `.env`: `APP_MODE=sandbox`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_SANDBOX_BUYER_EMAIL`,
+   `PAYPAL_SANDBOX_BUYER_PASSWORD`, `LLM_PROVIDER` (`anthropic` or `openai`) and that provider's key.
+3. `make seed` once (creates the Penwright and Quillnote products and plans; safe to re-run).
+4. `make dev-sandbox`, open http://127.0.0.1:8000/?demo=1, press **Start demo**, and approve in PayPal's own window.
 
-- **Live demo (presenter control room):** http://127.0.0.1:8000/?demo=1
-- **Priya's dashboard (the product):** http://127.0.0.1:8000/user
-- **Dummy merchant website:** http://127.0.0.1:8000/shop (also the **Shop ↗** tab in the top bar)
-- **Health:** http://127.0.0.1:8000/healthz · **API docs:** http://127.0.0.1:8000/docs (also in the footer's **Developer** menu)
+The top bar shows **PayPal Sandbox** and the model. There is no production mode: SubGuard refuses to start unless
+`PAYPAL_API_BASE` is `https://api-m.sandbox.paypal.com`. Step-by-step details, optional end-to-end checks and fixes:
+[`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md). Every variable: [`.env.example`](.env.example).
 
-The demo has one persona, **Priya**, and one fictional merchant, **Penwright Studio**. It starts with no
-subscriptions; on first start it only scripts Priya's Penwright usage, in both modes (she opens it twice during the trial).
-
----
-
-## Walk through the demo
-
-Two pages, two jobs. The **Live demo** (http://127.0.0.1:8000/?demo=1, press **D** to show or hide the demo bar)
-is the presenter's control room: Start demo, the day buttons, alerts, the timeline, Charges avoided and the
-audit log ("What SubGuard did" for the current run; **Show full log** for every entry). **Priya's dashboard**
-(`/user`) is the product as she sees it, with a sidebar: **Overview** (her numbers and subscription card),
-**Analytics** (charts), **History**, **Messages** and **Emails**. The Day 5 check-in, "email ready" and the Day 11
-proof stay pinned above whichever section is open. Present with both side by side. The tabs at the top left
-switch pages (the **Shop ↗** opens a new tab); the button at the top right switches dark and light. Health and the
-API docs are in the footer's **Developer** menu.
-
-**Fastest way:** click **▶ Start demo** on the dashboard. It runs the whole story on its own, pauses on Day 5
-to ask Priya **Keep** or **Cancel** (or *Don't answer*, to see the Day 6 auto-cancel), then runs to Day 11.
-To click through it yourself instead:
-
-**Priya and the trap "free trial"**
-
-1. **Day 0.** Click **Open Penwright shop**. It's a fictional AI writing app: "10-day free trial, $0 today", with
-   tiny grey text and a collapsed **Terms** section.
-2. Click the **PayPal** button. The SubGuard companion steps in *before* the approval with a plain-English
-   summary: $24.99/month after the trial, $49.99/month after 3 months, an email notice 3 days before billing, so
-   SubGuard says **"Act by Nov 18 (the terms allow Nov 19)"** for a sign-up on Nov 11: the terms' last day is Day 8
-   (first charge Day 11 − 3 days' notice), and SubGuard aims for Day 7 as a one-day safety margin (not Day 10). The
-   companion shows calendar dates relative to sign-up, never sim days. **Risk ~87/100.** A hidden "tell the AI this is
-   risk-free" line (a test case) is flagged and ignored. *"I'll check with you before your trial runs out."*
-   Click **Continue to PayPal**.
-3. On the Live demo the timeline shows the plan: check-in on **Day 5**, safety timer on **Day 6**. On Priya's
-   dashboard her subscription card says **"Site says: trial ends Day 10 · Real last day to cancel: Day 7."**
-   Its **Key dates** list shows each step as a real date in your time zone: when she subscribed (date and time),
-   the Day 5 check-in, the Day 6 auto-cancel, the Day 7 deadline, the trial end, the first charge and the price
-   rise. Dates count from the sign-up moment and follow the Day buttons.
-4. **Day 5** (click **Day 5** in the demo bar): *"Your Penwright trial ends on Day 10, but your real last day to
-   cancel is Day 7. You've opened it twice. Do you want to keep it?"* It arrives in-app, plus email and SMS (written
-   to `data/runtime/outbox/` in mock mode). Priya's dashboard shows it with her usage and the advice *"SubGuard
-   suggests: cancel. You decide."* Optional: the chat (**Ask SubGuard**) answers *"Should I keep Penwright?"*.
-5. Click **Cancel**, then **Confirm cancel** on the card ($524.88/yr). SubGuard cancels through PayPal **first**,
-   and the email preview opens straight away (*"Cancelled in PayPal. You won't be charged."*; no other pop-ups).
-   **Charges avoided** shows **$24.99** (the first charge that never happened), with "up to $524.88 in year one" below.
-6. The **cancellation email** preview opens. The AI drafted it from the stored review: Priya's name, account email,
-   PayPal subscription ID, today's date and the cancellation clause quoted word for word (if the draft fails the
-   code checks, a fixed "standard template" is used). Edit To / Subject / Body, then:
-   - **Send**: saved to `data/runtime/outbox/` and shown as *"Email sent (demo)"* (with edited yes/no and a SHA-256).
-   - **Open in Gmail**: opens a Gmail compose window with the edited text, for you to send yourself.
-   - **Close**: the draft is kept; reopen it from the dashboard or the subscription page.
-
-   **Demo only. Production would send from the user's own Gmail/Outlook with send-only permission.**
-   - **Keep** instead: nothing changes in PayPal and SubGuard stops asking.
-   - **No answer:** jump to **Day 6** and SubGuard cancels on its own (rule R2: told on Day 0, warned on Day 5). It
-     drafts the email and shows *"Your cancellation email is ready to review and send"*. It sends the email for her only
-     if she ticked **"If I don't answer, send the cancellation email for me"** in the companion (unticked by default;
-     audited as `notice_auto_sent` under R2). Otherwise, on the act-by day (Day 7) she gets *"Your cancellation email
-     isn't sent yet. The terms need it by …"* with **Review email**.
-7. **Day 11:** "First charge due today: blocked. No active PayPal subscription." (an alert in the control room and
-   the proof banner on Priya's dashboard).
-8. Filter the **Audit log** (try `R1` or `R2`) and click **Export CSV**. On Priya's card, **View fine-print review**
-   shows the findings, the page vs PayPal comparison and that subscription's audit trail.
-
-**Why Penwright shows no "Protected by SubGuard" badge:** Penwright is connected to SubGuard through PayPal partner
-permissions. That lets SubGuard cancel through PayPal, but it doesn't make Penwright's terms fair, so its checkout
-carries no trust badge (it stays `fair_trial_member: true` in the seed for the partner path).
-
-### Turn the AI off: what changes? (Quillnote)
-
-The demo shop has a second fictional merchant, **Quillnote** (an AI notes app, `/shop/quillnote`). Its catches are
-written in plain prose, so pattern rules can't see them: the notice period is in words ("no later than
-seventy-two hours before your renewal"), the auto-renewal is phrased indirectly, the price step-up ($12.99 ->
-$27.99/month) is only in an FAQ answer, and cancelling means "contact our account team".
-
-Every review also runs the **basic check** (regex rules, no AI) on the same page and stores the result. The
-subscription page's **AI vs basic check** panel lists what each found. On Quillnote the AI finds the notice period,
-the step-up and the hard cancel that the basic check misses, and the deadline comes from the AI-read clause
-(checked word for word against the page, then converted by code: 72 hours -> 3 days -> **act by Day 4**; the basic
-check would say Day 7, too late). Risk: AI **73**, basic check **25**. On Penwright both paths agree (87).
-
-**Layer 2 (merchants outside Fair Trial):** Quillnote isn't a Fair Trial member, so SubGuard can't cancel it in
-PayPal. **Cancel** drafts the cancellation email and shows an **ACTION NEEDED** card with a one-tap link to PayPal's
-Automatic payments page (`PAYPAL_AUTOPAY_URL`; in mock mode a clearly labelled simulated copy). SubGuard then reads
-PayPal every few seconds (read-only) until it shows CANCELLED, and closes the card. The demo-bar Fair Trial toggle
-still works for Penwright: `curl -X POST http://127.0.0.1:8000/api/demo/toggle-fair-trial/penwright`.
-
-### Risk score
-
-Code computes it, never the model (`app/core/risk.py`):
-`min(100, type weights + hard-to-read terms 10 (counted once) + pre-ticked box 10 + min(15, year-one cost / 50)
-+ library bonus (1 per matched dark-pattern type, max 5))`. Weights: notice period 20, hard to cancel 14, price
-step-up 10, page vs PayPal mismatch 9, auto-renew 4 (every subscription renews), trial ends early 4, add-on 3,
-hidden instructions to AI 0 (flagged, never scored). Penwright **87**, Quillnote **73**, an honest monthly plan
-with a cancel button about **6** (tests assert 80-92, 70-90 and <= 25).
-
-To start over, click **Reset** in the demo bar, or run `make reset` (`python scripts/tasks.py reset`).
-Then restart the server, which re-creates the demo data.
-
----
-
-## Sandbox mode (real PayPal sandbox + real AI)
-
-Sandbox mode talks to the **real PayPal sandbox** (through the official `paypal-server-sdk` and the PayPal MCP
-server) and to a **real AI model** (Anthropic or OpenAI). There is no production mode: SubGuard refuses to start
-if `PAYPAL_API_BASE` isn't `https://api-m.sandbox.paypal.com`.
-
-### 1. Create the PayPal sandbox accounts
-
-1. Sign in at https://developer.paypal.com and open **Sandbox**.
-2. Under **Sandbox → Accounts**, make sure you have one **Business** account (it owns the demo plans and plays
-   every merchant) and one **Personal** account (the buyer, "Priya").
-3. Under **Apps & Credentials** (Sandbox), create a **REST app** linked to the Business account. Copy its
-   **Client ID** and **Secret**.
-
-### 2. Fill in `.env`
-
-```dotenv
-APP_MODE=sandbox
-PAYPAL_CLIENT_ID=...                  # from the REST app
-PAYPAL_CLIENT_SECRET=...
-PAYPAL_SANDBOX_BUYER_EMAIL=...        # the Personal sandbox account (used to auto-approve demo subscriptions)
-PAYPAL_SANDBOX_BUYER_PASSWORD=...
-
-# Pick ONE AI provider and set its key (the model ids in .env.example are current defaults)
-LLM_PROVIDER=anthropic                # or: openai
-ANTHROPIC_API_KEY=...                 # if anthropic
-OPENAI_API_KEY=...                    # if openai
-```
-
-If a required value is missing, SubGuard won't start. It names the variable and suggests `APP_MODE=mock`.
-Leave `APP_MODE=mock` in `.env` if you'd rather choose the mode per command: `make dev-sandbox` sets it for you.
-
-### 3. Create the plans in your sandbox (once)
-
-```bash
-make seed                            # python scripts/tasks.py seed
-```
-
-This creates the Penwright product and the Penwright Pro plan (free trial, intro price, step-up)
-from the prices in `.env`, and saves their ids in `data/runtime/sandbox_ids.json`. Re-running it is safe: plans
-that still match are reused. Options: `make seed ARGS="--demo-subs"` (or `python scripts/tasks.py seed
---demo-subs`) also creates demo subscriptions and approves them as the sandbox buyer in a browser window;
-`--no-auto-approve` prints the approval links instead.
-
-### 4. Run
-
-```bash
-make dev-sandbox                     # = APP_MODE=sandbox python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
-```
-
-The top bar shows **PayPal Sandbox** and the AI provider + model. In the shop, click PayPal: the SubGuard companion
-reviews the fine print first, then **Continue to PayPal** shows the real PayPal **Subscribe** button. SubGuard's
-server creates the subscription on your seeded `penwright-pro` plan, and the button opens **PayPal's own approval
-window**: log in as your Personal sandbox account and agree. The shop then shows **"Subscribed via PayPal ✓"**:
-the PayPal subscription ID, its status (**ACTIVE**, read live from PayPal), the plan name and the billing cycles as
-PayPal returns them (10-day trial $0, 3 x $24.99, then $49.99). The same card is on both dashboards. After Cancel
-it shows **CANCELLED**, again read from PayPal, plus **View in PayPal sandbox**, a link to the buyer's Automatic
-payments page (`PAYPAL_AUTOPAY_URL`).
-
-**Live demo in sandbox mode:** open http://127.0.0.1:8000/?demo=1 and press **▶ Start demo**.
-1. Penwright opens in a new window (allow pop-ups for 127.0.0.1) and plays Priya. It opens the Terms and clicks
-   PayPal. The SubGuard companion's review (real AI) stays on screen for a few seconds, then it continues.
-2. Click **Subscribe with PayPal** in the Penwright window. PayPal's confirmation page opens in its own window,
-   **already logged in** as your Personal sandbox account (`PAYPAL_SANDBOX_BUYER_EMAIL` / `_PASSWORD`).
-3. Confirm it yourself: **Continue**, then **Agree & Subscribe**. The PayPal window closes, Penwright shows
-   "Subscribed via PayPal ✓" (ACTIVE) and closes too, and the live demo carries on: safety timer, the days,
-   the Day 5 **Keep / Cancel** question, then Day 11.
-
-If you close PayPal's window or choose "Cancel and return", nothing is set up; click Subscribe again.
-
-### What's real and what's simulated
-
-| Real in sandbox mode | Simulated (in every mode) |
+| `make` (or `python scripts/tasks.py …`) | What it does |
 |---|---|
-| The PayPal approval window and the buyer's consent | The **day-by-day timeline**: the Day buttons move SubGuard's sim clock (Day 5 check-in, Day 6 timer, Day 11 charge). PayPal sandbox time doesn't move, so no real charge happens on "Day 11". |
-| Creating and **cancelling** the subscription in PayPal (SDK / MCP, with `PayPal-Request-Id` and PayPal's debug ids in the audit log) | Priya's app usage (scripted opens) and the email/SMS channels (outbox files unless Zapier is set up) |
-| Every status, plan and billing cycle on the "Subscribed via PayPal" card (read live, never assumed) | The cancellation email to the merchant (demo outbox or a Gmail compose link) |
-
-In mock mode none of PayPal is real: the shop's button says **"Mock PayPal approval (run in sandbox mode for the
-real PayPal window)"** and a local state machine plays PayPal.
-
-### Switch the AI provider
-
-Set `LLM_PROVIDER=anthropic` or `LLM_PROVIDER=openai` in `.env` (with that provider's key and model) and
-restart. Mock mode always uses the recorded answers, whatever `LLM_PROVIDER` says.
-
-### Optional: rehearse the real approval end to end
-
-```bash
-python scripts/tasks.py sandbox-ui-check    # make sandbox-ui-check  (add --headed to watch)
-```
-
-It starts a sandbox server on throwaway data, clicks through the shop, approves in PayPal's real window as the
-sandbox buyer, checks the ACTIVE card on the shop and both dashboards, cancels on Priya's dashboard, checks the
-CANCELLED card, opens "View in PayPal sandbox" as the buyer, and finally cancels anything it created that is
-still ACTIVE. Without an LLM key it runs **PayPal-only**: the companion uses its basic, no-AI review (the real app
-still refuses to start without a key).
-
-### Optional: verify real cancels end to end
-
-```bash
-python scripts/tasks.py sandbox-check    # make sandbox-check
-```
-
-It creates two subscriptions on a seeded plan, approves them as the buyer, cancels one through the SDK and one
-through the PayPal MCP server, and reads both back as `CANCELLED`.
-
-### Good to know
-
-- **PayPal sandbox time doesn't move 10 days.** The demo's sim clock (the Day buttons) drives SubGuard's logic;
-  the PayPal statuses and cancels are real.
-- **Webhooks need a public URL.** Locally, SubGuard polls PayPal every 10 seconds instead. To use webhooks,
-  expose the app (for example with ngrok), create a sandbox webhook pointing to `/webhooks/paypal`, and set
-  `PAYPAL_WEBHOOK_ID`.
-- **Claude Code / MCP (development only):** `.mcp.json` starts the PayPal MCP server through
-  `scripts/mcp_paypal.mjs`, which reads the client id and secret from `.env`, gets a fresh sandbox token and runs
-  `npx -y @paypal/mcp --tools=all`. Nothing to export; if a token expires, reconnect it with `/mcp`.
-  The running app gets its own token, so it doesn't need this either.
+| `setup` / `dev` / `dev-sandbox` | Install; run in mock / sandbox mode (always one worker) |
+| `seed` | Create the sandbox products and plans |
+| `test` / `lint` / `ui-check` | Tests, ruff, the demo story in headless Chromium |
+| `sandbox-check` / `sandbox-ui-check` | Real cancels via SDK + MCP; the real approval window end to end |
+| `shots` | Screenshots of every screen at 1440×900 and 390×844 |
+| `reset` | Wipe `data/runtime/` (keeps `sandbox_ids.json`, archives the audit log) |
+| `zapier-check` | Send one test notification to your Zapier hook |
 
 ---
 
-## Commands
+## How PayPal is used
 
-| `make` | Without `make` | What it does |
+| PayPal API / tool | What SubGuard does with it | File |
 |---|---|---|
-| `make setup` | `python scripts/tasks.py setup` | Create `.venv`, install requirements, install Playwright Chromium |
-| `make dev` | `python scripts/tasks.py dev` | `python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload` (mode from `.env`, default **mock**) |
-| `make dev-sandbox` | `python scripts/tasks.py dev-sandbox` | Same with `APP_MODE=sandbox` |
-| `make seed` | `python scripts/tasks.py seed [--demo-subs]` | Create the sandbox products and plans |
-| `make sandbox-check` | `python scripts/tasks.py sandbox-check` | Real cancel via SDK + MCP in the sandbox |
-| `make reset` | `python scripts/tasks.py reset` | Wipe `data/runtime/` (keeps `sandbox_ids.json`; the old audit log is archived) |
-| `make test` | `python scripts/tasks.py test` | Run the test suite (mock mode, no network) |
-| `make lint` | `python scripts/tasks.py lint` | `ruff check .` |
-| `make ui-check` | `python scripts/tasks.py ui-check` | Run the demo story in a real browser (starts its own server) |
-| `make zapier-check` | `python scripts/tasks.py zapier-check` | Send one test notification to your Zapier hook |
-| `make demo-video-check` / `make demo-video` | `python scripts/tasks.py demo-video-check` / `demo-video` | Demo-video tooling (not built yet; see `docs/PROGRESS.md`) |
+| **Subscriptions API** via **`paypal-server-sdk`** (APIMatic-generated) | Create plans (trial, intro price, step-up), create subscriptions, get plan and subscription (the source of truth for every price and status) | `app/integrations/paypal_sdk.py`, `paypal_seed.py` |
+| Subscriptions API: **cancel** | The only write on a user's subscription. Sent with a `PayPal-Request-Id`, audited with PayPal's debug id | `paypal_gateway.py`, `paypal_rest.py` (SDK path), `paypal_mcp.py` (MCP path) |
+| Subscriptions API: **update pricing** | Merchant side, demo only | `paypal_gateway.py`, `paypal_rest.py` |
+| Catalog Products API | Create the demo products (no SDK controller, so httpx) | `paypal_rest.py`, `paypal_seed.py` |
+| **PayPal JS SDK** Subscribe button | The real approval window in the shop (sandbox mode) | `shop/static/checkout_sandbox.js` |
+| **PayPal MCP server** (`@paypal/mcp`) | Reads and cancels subscriptions (`show_subscription_details`, `cancel_subscription`); falls back to the SDK if unavailable. Also used by Claude Code during development | `app/integrations/paypal_mcp.py`, `scripts/mcp_paypal.mjs` |
+| **Webhooks** + verify-webhook-signature | Status updates, each event verified (`PAYPAL_WEBHOOK_ID`); polling every 10 s when there's no public URL | `app/routes/webhooks.py`, `paypal_rest.py` |
+| **Automatic payments** page link | The one-tap cancel for merchants SubGuard can't cancel itself (Layer 2) | `PAYPAL_AUTOPAY_URL`, `app/core/layer2.py` |
+| Partner permissions (experimental) | `PayPal-Auth-Assertion` per merchant (`PAYPAL_MERCHANT_MODE=partner`) | `paypal_rest.py` |
 
-On macOS/Linux, `make dev` uses `.venv/bin/python` if it exists (else `python`); the other targets use `python3`
-by default (override with `make test PYTHON=python`).
+Where the SDK lacks something (request ids on cancel, auth assertion, products, webhook verification) SubGuard
+uses httpx directly; each case is recorded in [`docs/DECISIONS.md`](docs/DECISIONS.md) (D-010).
 
----
+## How AI is used
 
-## Configuration
+**Provider and model:** Anthropic (default, `ANTHROPIC_MODEL`, `claude-opus-5-5` in `.env.example`) or OpenAI
+(`OPENAI_MODEL`), switched with `LLM_PROVIDER`. One interface, `app/llm/base.py`; tools defined once in
+`app/llm/tools_schema.py`. Mock mode replays recorded answers from `data/fixtures/`.
 
-Everything comes from `.env`. Every variable is documented in [`.env.example`](.env.example).
+**Three AI jobs:**
 
-| Variable | Default | Meaning |
+1. **Fine-print review** (`extract_findings`): reads the captured checkout and terms (text, plus styling such as
+   tiny grey text and hidden sections) and returns structured findings with quotes.
+2. **Chat agent** (`chat_step`, **Ask SubGuard**): answers "Should I keep Penwright?" using tools (list, usage,
+   savings estimate, review, propose cancel, keep, reminder).
+3. **Cancellation email** (`draft_cancellation_notice`): drafts the written notice the terms require, with the
+   clause quoted, Priya's details and the PayPal subscription id.
+
+**Guardrails (in code, not the prompt):**
+
+- Every quote must be a **verbatim substring** of the page, or the finding is dropped.
+- Merchant text is data: instructions in it are **ignored** and flagged `PROMPT_INJECTION_ATTEMPT`, scored 0.
+- **Code does the maths:** prices from the PayPal plan, money as `Decimal`, dates and the risk score in
+  `app/core/risk.py`, notice periods in words converted by `app/core/durations.py`.
+- **The AI only proposes.** Cancels go through `app/core/policy.py` (rules R1-R7). The email draft is validated
+  (required facts and the exact clause) and replaced by a standard template if it fails; nothing is sent without a
+  click.
+
+**AI vs basic check.** Every review also runs a regex-only basic check and stores both
+(`tests/test_ai_value.py`):
+
+| Merchant | AI review | Basic check |
 |---|---|---|
-| `APP_MODE` | `mock` | `mock` (no keys) or `sandbox` |
-| `LLM_PROVIDER` | `anthropic` | `anthropic` or `openai` (sandbox mode) |
-| `ANTHROPIC_API_KEY` / `ANTHROPIC_MODEL` | – / current id | Anthropic key and model |
-| `OPENAI_API_KEY` / `OPENAI_MODEL` | – / current id | OpenAI key and model |
-| `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET` | – | Sandbox REST app credentials |
-| `PAYPAL_API_BASE` | sandbox URL | Must stay `https://api-m.sandbox.paypal.com` |
-| `PAYPAL_TRANSPORT` | `mcp` | `mcp` or `sdk` for reads and cancels |
-| `PAYPAL_MERCHANT_MODE` | `single` | `single`, or `partner` (experimental) |
-| `PAYPAL_SANDBOX_BUYER_EMAIL` / `_PASSWORD` | – | Personal sandbox account for auto-approval |
-| `PAYPAL_WEBHOOK_ID` | – | Optional webhook signature verification |
-| `ZAPIER_CATCH_HOOK_URL` | – | Optional; empty means notifications go to `data/runtime/outbox/` |
-| `LOG_ALL_REQUESTS` | `false` | `true` prints every request in the terminal; by default background polling (successful GETs to `/api/*`, static files, `/healthz`) is hidden, and page loads, POSTs and errors still show |
-| `DEMO_SEED` | `true` | On first start / reset (both modes): script Priya's Penwright usage (opened twice) |
-| `PENWRIGHT_*`, `DEMO_CURRENCY` | spec values | Demo prices and terms |
+| Penwright (traps in styling and keywords) | 87, act by Day 7 | 87, act by Day 7 |
+| Quillnote (traps in prose) | **73, act by Day 4** (notice, step-up, hard cancel found) | 25, Day 7 (too late) |
 
-Changing a price changes the shop text, the mock PayPal plans and the seeded sandbox plans together. Run
-`make reset` afterwards, and `make seed` in sandbox mode. The tests assert the default prices
-(e.g. Charges avoided $24.99, up to $524.88 in year one).
+**Built with Claude Code.** The whole project was built with Claude Code, using the PayPal MCP server and the
+APIMatic PayPal SDK context during development.
 
-**Data:** all state is JSON in `data/runtime/` (gitignored), including the append-only audit log
-`audit_log.jsonl`. Run the server with **one worker** (the commands above already do).
+## Architecture
 
----
-
-## Tests and checks
-
-```bash
-make test            # ~190 tests, mock mode, no network or keys
-make lint
-make ui-check        # the demo story in headless Chromium; fails on any console error (needs the AG Grid CDN)
+```mermaid
+flowchart LR
+    Shop[Merchant shop] --> Companion[SubGuard companion]
+    Companion --> Review["Review: capture -> AI -> verify -> code checks -> PayPal cross-check -> risk"]
+    Review --> Companion
+    Companion -->|approve| PayPal[(PayPal Sandbox)]
+    Home["Priya's SubGuard + chat"] --> Policy{{Policy R1-R7}}
+    Timers[Timers / escalation] --> Policy
+    Timers --> Notify[Zapier or outbox]
+    Policy --> Gateway["Gateway: SDK / MCP / REST"] --> PayPal
+    Policy --> Audit[(JSON store + hash-chained audit log)]
+    Review --> Audit
 ```
 
-- Optional real-sandbox smoke test (read-only): `python -m pytest -m sandbox`. It skips itself without
-  credentials or seeded plans. Plain `pytest` never calls PayPal or an AI provider.
-- `python scripts/ui_check.py --headed` watches the browser run; `--shots <folder>` saves screenshots.
-- Every corner case from the spec maps to its code and tests in
-  [`docs/CORNER_CASES.md`](docs/CORNER_CASES.md).
+Full diagram, code map and trust boundaries: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
----
+## What's real and what's simulated
 
-## Notifications (Zapier, optional)
-
-In sandbox mode with `ZAPIER_CATCH_HOOK_URL` set, reminders and alerts go to a Zapier Catch Hook, which forwards them as email and SMS. Otherwise, and always in mock mode, they
-are written to `data/runtime/outbox/` as JSON files. Step-by-step setup: [`docs/ZAPIER_SETUP.md`](docs/ZAPIER_SETUP.md).
-Test it with `make zapier-check`.
-
----
-
-## Hosted demo (Render)
-
-**Hosted URL:** _not deployed yet._
-
-The hosted copy runs in **mock mode** (no keys), from [`render.yaml`](render.yaml). Its JSON files live on
-Render's temporary disk, so every restart or deploy starts a fresh demo. On the free plan the first request after
-a quiet period is slow while the service wakes up.
-
-To deploy:
-1. Push the repo to GitHub. Render must be able to read it: make the repo public, or connect GitHub in Render.
-2. In the Render dashboard click **New → Blueprint** and pick the repo. `render.yaml` deploys branch `main`;
-   edit it if you deploy another branch.
-3. Click **Apply**. Render installs `requirements.txt`, starts
-   `python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT` (no `--reload`; `WEB_CONCURRENCY=1` keeps one
-   worker), and checks `/healthz`.
-4. Open `https://<service>.onrender.com/?demo=1` and put that URL above.
-
----
-
-## Troubleshooting
-
-| Problem | Fix |
+| Real (sandbox mode) | Simulated (every mode) |
 |---|---|
-| `SubGuard can't start: ... is required in sandbox mode` | Fill in the named variable in `.env`, or run in mock mode (`make dev`). |
-| Review says "basic check (AI unavailable)"; audit log shows `OpenAI API error 404: Your organization must be verified` | Verify the organization at platform.openai.com (Settings → General), or set `OPENAI_MODEL` to a model your key can use now (for example `gpt-5.4`), then restart. |
-| `PAYPAL_API_BASE must be https://api-m.sandbox.paypal.com` | SubGuard is sandbox-only; restore the default value. |
-| Port 8000 is already in use | Stop the other server, or run `.venv/bin/python -m uvicorn app.main:app --port 8001 --workers 1` (Windows: `.venv\Scripts\python`). |
-| The grids are empty or look unstyled | The browser can't reach `cdn.jsdelivr.net` (AG Grid). Check your network or proxy. |
-| A health dot is red / `PayPal MCP unavailable, using SDK` | Node/`npx` missing or the MCP server failed to start. Everything still works through the SDK. |
-| `No sandbox plan for '...'. Run make seed first.` | Run `make seed` once (sandbox mode). |
-| The demo state looks odd after many runs | Click **Reset** in the demo bar, or `make reset` and restart. |
-| `make` isn't available (Windows) | Use `python scripts/tasks.py <target>`. |
+| The PayPal approval window and the buyer's consent | The day-by-day clock (presenter bar); PayPal sandbox time doesn't move |
+| Creating, reading and **cancelling** subscriptions (SDK / MCP, request ids, debug ids in the audit log) | Priya's app usage (scripted opens) |
+| Every status, plan and billing cycle shown (read live) | Email/SMS (outbox files unless Zapier is set up) |
+| The AI review, chat and email draft (real model) | The cancellation email "Send" (outbox); the companion simulates a browser extension |
 
----
+In mock mode PayPal is a local state machine and the AI replays recorded answers.
+
+## Limitations
+
+- **One sandbox Business account plays both merchants.** Penwright and Quillnote are plans on the same account.
+- **The sim clock.** Days move in SubGuard only; no real charge happens on "Day 11".
+- **Partner mode is experimental** (`PAYPAL_MERCHANT_MODE=partner`); the demo runs in single-merchant mode.
+- **The companion simulates a browser extension**: it's an overlay on our own shop, not an installed extension.
+- **Usage is simulated** (scripted app opens).
+- **JSON storage, one worker.** Fine for a prototype; a real service needs a database.
+- The cancellation email is never really sent to a merchant (outbox, or your own email app).
+
+## Safety rules (R1-R7)
+
+Enforced in `app/core/policy.py`; every decision, allowed or blocked, is audited with its rule id.
+
+| Rule | What it means |
+|---|---|
+| **R1 consent** | A cancel needs a confirmation token from a user tap, or a safety timer that meets R2. |
+| **R2 safety timer** | Auto-cancel only if the timer was shown at sign-up, a warning was delivered ≥ 24 sim-hours before, the user didn't tap Keep, and it's a trial before its first charge. |
+| **R3 confirmation token** | Single-use, 5 minutes, bound to the user and the exact list of subscription ids. |
+| **R4 rate limits** | ≤ 5 PayPal writes per minute per user; ≤ 10 subscriptions per command. |
+| **R5 ownership** | Only the current user's subscriptions. |
+| **R6 essential** | Never auto-cancel a subscription tagged essential. |
+| **R7 no fake claims** | Say an action happened only if a tool result confirms it; money figures come from code. |
+
+No suspend/pause anywhere. The audit log (`data/runtime/audit_log.jsonl`) is append-only and SHA-256 hash-chained
+(`GET /api/audit-log/verify`), with secrets masked.
+
+## Sponsor tools
+
+| Tool | Use |
+|---|---|
+| **APIMatic** | `paypal-server-sdk` (APIMatic-generated) and the APIMatic PayPal context plugin while coding |
+| **AG Grid / AG Charts** (Community) | Findings, activity and audit grids; the "Why SubGuard flagged it" charts (vendored, MIT) |
+| **Zapier** | Catch Hook forwards check-ins and alerts as email/SMS ([`docs/ZAPIER_SETUP.md`](docs/ZAPIER_SETUP.md)) |
+| **Render** | Hosted demo from [`render.yaml`](render.yaml) |
+
+### Hosted demo (Render)
+
+`render.yaml` deploys branch `prototype-v3` (switch to `main` after the merge) in **mock mode** by default: no keys,
+a fresh demo on every restart (temporary disk). For a **sandbox-mode** hosted demo, set in the Render dashboard:
+`APP_MODE=sandbox`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `ANTHROPIC_API_KEY` (or `LLM_PROVIDER=openai` +
+`OPENAI_API_KEY`), `PAYPAL_SANDBOX_BUYER_EMAIL`, `PAYPAL_SANDBOX_BUYER_PASSWORD`; optional `ZAPIER_CATCH_HOOK_URL`
+and `PAYPAL_WEBHOOK_ID`. In sandbox mode the start command seeds the plans first (reusing matching ones). If a key is
+missing the app won't start and names it; set `APP_MODE=mock` to fall back.
+
+## Tests
+
+```bash
+make test       # 317 passed (mock mode, no network or keys); sandbox tests are opt-in: pytest -m sandbox
+make lint       # ruff
+make ui-check   # the full story in headless Chromium at 1440×900 and 390×844, fails on any console error
+```
+
+Every corner case maps to code and tests in [`docs/CORNER_CASES.md`](docs/CORNER_CASES.md). Decisions:
+[`docs/DECISIONS.md`](docs/DECISIONS.md).
 
 ## Repository map
 
 ```
-app/            FastAPI app: config, JSON store, routes, core logic (policy, timers, escalation, review, chat),
-                integrations (PayPal SDK / MCP / mock, capture, notifications), LLM providers, templates, static JS/CSS
-shop/           the fictional merchant website served at /shop
-data/seed/      merchants, users, dark-pattern library     data/fixtures/  recorded AI answers for mock mode
-data/runtime/   all runtime JSON + audit log (gitignored)
-scripts/        tasks.py (cross-platform runner), seed_sandbox.py, sandbox checks, ui_check.py, zapier_check.py
-tests/          pytest suite (mock mode); test_scenario.py runs both stories end to end
-docs/           DECISIONS.md, CORNER_CASES.md, ZAPIER_SETUP.md, PAYPAL_SDK_NOTES.md, PAYPAL_TOOLS.md, PROGRESS.md
-render.yaml     Render Blueprint for the hosted mock demo
+app/            FastAPI app: config, JSON store, routes, core logic (policy, timers, review, chat),
+                integrations (PayPal SDK / MCP / REST / mock, capture, notify), LLM providers, templates, static
+shop/           the fictional merchant shop (/shop)
+data/seed/      merchants, users, dark-pattern library      data/fixtures/  recorded AI answers (mock mode)
+scripts/        tasks.py, seed_sandbox.py, sandbox checks, ui_check.py, shots.py, zapier_check.py
+tests/          pytest suite (mock mode)
+docs/           ARCHITECTURE, SUBMISSION, TROUBLESHOOTING, DECISIONS, CORNER_CASES, PAYPAL_*; archive/
+demo-video/     scenes and video tooling
 ```
-
----
 
 ## License
 

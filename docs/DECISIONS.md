@@ -720,6 +720,26 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   36.2.0 and AG Charts 14.2.0 are vendored in `app/static/vendor/` with their MIT licence files
   (`vendor/README.md`), and ui-check fails on any CDN request.
 
+## v3 Phase 4: submission docs (2026-11-11, docs/FIX_PLAN.md)
+
+- **D-158 Render: branch and sandbox-mode hosting (S5).** `render.yaml` deploys `prototype-v3` until the merge to
+  `main`. Mock stays the default (`APP_MODE=mock`). For a sandbox-mode hosted demo, set `APP_MODE=sandbox` in the
+  dashboard plus the secrets listed there (all `sync: false`, never in git): PayPal client id and secret, the LLM
+  key, the sandbox buyer email and password, and optionally `PAYPAL_WEBHOOK_ID` and `ZAPIER_CATCH_HOOK_URL`. Render's
+  disk is temporary, so `sandbox_ids.json` is lost on every start. In sandbox mode the start command runs
+  `scripts/seed_sandbox.py` first. It's idempotent, because request ids come from the content and matching plans are
+  reused. A failed seed is logged and the server still starts, so the error is visible in the app. Render has no
+  `npx`, so the MCP transport falls back to the SDK (logged, as designed). Chromium isn't installed either, so live
+  capture falls back to the static capture.
+- **D-159 Docs layout (S1-S4).** The README covers the pitch, links, quick start, PayPal and AI usage, the
+  architecture, real vs simulated, limitations, R1-R7, sponsor tools, tests and the licence. Troubleshooting and
+  the step-by-step sandbox walkthrough moved to `docs/TROUBLESHOOTING.md`. The new docs are `docs/ARCHITECTURE.md`
+  (flow, code map, trust boundaries) and `docs/SUBMISSION.md` (form text). The original spec moved to
+  `docs/archive/BUILD_PROMPT.md`, and the v1-v2 milestone history and session notes to
+  `docs/archive/PROGRESS_v1_v2.md`. `docs/PROGRESS.md` keeps only v3. `CLAUDE.md` points to `FIX_PLAN.md` as the
+  current plan. Hosted-demo and video links stay placeholders until the human tasks are done. `LICENSE` is the
+  standard MIT text, unchanged.
+
 ## Not used in v1 (sponsor tools)
 
 - **Bryntum:** a CSS timeline is enough for a prototype.

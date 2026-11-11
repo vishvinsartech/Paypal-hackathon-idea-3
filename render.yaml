@@ -1,18 +1,25 @@
-# Render Blueprint: the hosted SubGuard demo (mock mode, no keys needed). DECISIONS D-080.
+# Render Blueprint: the hosted SubGuard demo. DECISIONS D-080, D-158.
 # Render dashboard -> New -> Blueprint -> pick this repo. Data lives on Render's temporary disk:
-# every restart or deploy starts a fresh demo (the demo seed runs at startup), which is fine for mock mode.
+# every restart or deploy starts a fresh demo (the demo seed runs at startup).
+# Default: APP_MODE=mock (no keys). For a sandbox-mode demo, set APP_MODE=sandbox in the dashboard and fill the
+# secrets marked "sandbox" below (see README "Hosted demo"). If a sandbox key is missing the app refuses to start
+# and names it: set APP_MODE back to mock to fall back.
 services:
   - type: web
     name: subguard-demo
     runtime: python
     plan: free
-    branch: main
+    branch: prototype-v3   # switch to main once prototype-v3 is merged
     autoDeploy: true
     # Mock mode reviews pages with the static HTML capture, so no Playwright browser download is needed.
     buildCommand: pip install --upgrade pip && pip install -r requirements.txt
     # JSON storage needs exactly one worker (one process-wide lock, D-020). Uvicorn's default is 1 worker unless
     # WEB_CONCURRENCY says otherwise, so it's pinned to 1 below (D-100).
-    startCommand: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    # In sandbox mode, seed the PayPal plans first (idempotent: matching plans are reused, D-158); the disk is
+    # temporary, so sandbox_ids.json is rebuilt on every start.
+    startCommand: >-
+      if [ "$APP_MODE" = "sandbox" ]; then python scripts/seed_sandbox.py || echo "seed failed: see logs"; fi;
+      python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /healthz
     envVars:
       - key: PYTHON_VERSION
@@ -25,14 +32,20 @@ services:
         value: "true"
       - key: LLM_PROVIDER
         value: anthropic
-      # Secrets: never in git. Only needed if you switch the hosted copy to sandbox mode.
-      - key: ANTHROPIC_API_KEY
+      # Secrets: never in git. Set them in the Render dashboard; only needed for APP_MODE=sandbox.
+      - key: ANTHROPIC_API_KEY          # sandbox: the key for LLM_PROVIDER=anthropic
         sync: false
-      - key: OPENAI_API_KEY
+      - key: OPENAI_API_KEY             # sandbox: only if LLM_PROVIDER=openai
         sync: false
-      - key: PAYPAL_CLIENT_ID
+      - key: PAYPAL_CLIENT_ID           # sandbox: REST app linked to the sandbox Business account
         sync: false
-      - key: PAYPAL_CLIENT_SECRET
+      - key: PAYPAL_CLIENT_SECRET       # sandbox
         sync: false
-      - key: ZAPIER_CATCH_HOOK_URL
+      - key: PAYPAL_SANDBOX_BUYER_EMAIL     # sandbox: the Personal sandbox account (Priya)
+        sync: false
+      - key: PAYPAL_SANDBOX_BUYER_PASSWORD  # sandbox
+        sync: false
+      - key: PAYPAL_WEBHOOK_ID          # optional: verify PayPal webhooks sent to /webhooks/paypal
+        sync: false
+      - key: ZAPIER_CATCH_HOOK_URL      # optional: email/SMS through Zapier (else the outbox)
         sync: false

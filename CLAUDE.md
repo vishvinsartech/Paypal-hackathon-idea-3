@@ -1,12 +1,17 @@
 # SubGuard: project memory for Claude Code
 
-Full spec: `docs/BUILD_PROMPT.md` (source of truth). Progress: `docs/PROGRESS.md`.
-Decisions: `docs/DECISIONS.md`. Re-read the spec sections a milestone depends on before coding it.
+Current plan: `docs/FIX_PLAN.md` (v3 phases). Progress: `docs/PROGRESS.md`. Decisions: `docs/DECISIONS.md`
+(newer decisions override the spec). Original spec and v1-v2 history: `docs/archive/BUILD_PROMPT.md`,
+`docs/archive/PROGRESS_v1_v2.md`. Architecture: `docs/ARCHITECTURE.md`. Submission text: `docs/SUBMISSION.md`.
 
 SubGuard = AI helper that reads subscription fine print, checks it against the real PayPal plan,
 scores risk, checks in before the real deadline, and cancels trials through PayPal before it.
-Demo story (spec section 2): one persona (Priya), merchant Penwright Studio; second merchant Quillnote (v3 A1,
-Layer 2, traps in prose that only the AI finds: D-142).
+Demo story: one persona, **Priya** (id `priya`, D-130). `/` is her SubGuard; presenter controls behind `?demo=1` / D.
+- **Penwright Studio** (Fair Trial member, Layer 1): SubGuard cancels in PayPal. Terms' last day is **Day 8**
+  (first charge Day 11 - 3 days' notice); SubGuard says **act by Day 7** (one-day margin, `terms_last_day`, D-132),
+  e.g. "Act by Nov 18 (the terms allow Nov 19)". Optional consent box sends the email if she doesn't answer (D-133).
+- **Quillnote** (Layer 2, not Fair Trial, D-142): traps in prose only the AI finds (72 hours -> act by Day 4; basic
+  check says Day 7). Cancel = email + ACTION NEEDED one-tap link to PayPal Automatic payments, then read-only polling.
 Tagline: "AI reads the fine print. PayPal enforces the outcome."
 
 ## Non-negotiable rules
@@ -101,7 +106,7 @@ Prices and terms are `.env` variables (`app/pricing.py`, DECISIONS D-015). Code 
 `make` targets (Windows without make: `python scripts/tasks.py <target>`):
 - `setup` venv + deps + `playwright install chromium`
 - `dev` -> http://127.0.0.1:8000/ (mock), `dev-sandbox`
-- `test`, `lint`, `seed`, `reset`, `demo-video-check`, `demo-video`
+- `test`, `lint`, `ui-check`, `shots`, `seed`, `sandbox-check`, `sandbox-ui-check`, `reset`, `demo-video-check`, `demo-video`
 - Demo: `http://127.0.0.1:8000/?demo=1`; dummy shop at `/shop`.
 
 ## MCP notes
@@ -111,5 +116,5 @@ Prices and terms are `.env` variables (`app/pricing.py`, DECISIONS D-015). Code 
 - Exact PayPal MCP tool names: `docs/PAYPAL_TOOLS.md`.
 
 ## Workflow
-Follow milestones in spec section 12 in order. Run each milestone's check, commit, then update
-`docs/PROGRESS.md`. Ambiguity -> simplest option, record it in `docs/DECISIONS.md`.
+Follow the phases in `docs/FIX_PLAN.md` in order. Run each phase's checks, commit (`v3: Phase X ...`), tick the
+FIX_PLAN coverage checklist with the hash, then update `docs/PROGRESS.md`. Ambiguity -> simplest option, record it in `docs/DECISIONS.md`.

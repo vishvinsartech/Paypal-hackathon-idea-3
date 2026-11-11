@@ -61,7 +61,10 @@ def start_server() -> tuple[subprocess.Popen[bytes], str]:
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
         port = s.getsockname()[1]
-    env = {**os.environ, "APP_MODE": "sandbox", "DATA_DIR": str(data), "DEMO_SEED": "true"}
+    # The served page must show PayPal's own JS SDK button: with the buyer in the server's settings it shows the
+    # server-driven "Subscribe with PayPal" button instead (D-120). This script keeps the buyer for the pop-up login.
+    env = {**os.environ, "APP_MODE": "sandbox", "DATA_DIR": str(data), "DEMO_SEED": "true",
+           "PAYPAL_SANDBOX_BUYER_EMAIL": "", "PAYPAL_SANDBOX_BUYER_PASSWORD": ""}
     log = open(data / "server.log", "wb")  # noqa: SIM115 - kept open for the server's lifetime
     cmd = [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", str(port)]
     if not llm_key_set():

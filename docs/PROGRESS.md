@@ -43,3 +43,10 @@ The v1-v2 milestone history (from the original spec, now `docs/archive/BUILD_PRO
   passed against the real PayPal sandbox (commit `74010ed`; the check was stale since D-120 and now serves the SDK
   button path). Left for Phase 5: the
   video narration still says "Day 7"; scenes.json only has its targets updated.
+
+- [x] **Phase 4. Submission docs** (2026-11-11, commit `268d9e5`). Done: S1-S6 and B12 (DECISIONS D-158, D-159).
+  README restructured (scannable; links are placeholders until the deploy and video). New `docs/SUBMISSION.md`,
+  `docs/ARCHITECTURE.md` and `docs/TROUBLESHOOTING.md`. The spec and the v1-v2 history moved to `docs/archive/`.
+  `render.yaml` deploys `prototype-v3`, mock by default; sandbox mode seeds the plans at start. LICENSE is the
+  standard MIT text. `make test`: **317 passed**, 2 deselected. `make lint`: clean. `make ui-check`: passed.
+  No UI changes, so no new screenshots.

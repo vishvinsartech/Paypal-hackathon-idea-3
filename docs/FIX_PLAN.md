@@ -271,7 +271,7 @@ Demo controls become an overlay. Colours and fonts mostly stay (dark navy, teal 
 | B9 mobile nav | [x] | 7b39592 | bottom tab bar at <= 640 px, checked at 390x844 in ui-check (D-157) |
 | B10 CLEAR_TERMS | [x] | b76a096 | both paths + tests (D-136) |
 | B11 chat chips | [x] | 514dce0 | 3 chips, scripted answers from tool results (D-139) |
-| B12 README facts | [ ] | | Phase 4 (S1), as the item says |
+| B12 README facts | [x] | 268d9e5 | README says 317 tests, hosted URL + video are labelled placeholders, render.yaml deploys `prototype-v3` (D-158) |
 | D6 Day 8 vs act-by Day 7 | [x] | b76a096 | `terms_last_day`; one wording in companion, alerts, card, chat, sub page, narration (D-132) |
 | D7 consent / Day 7 reminder | [x] | 7104e36 | opt-in box -> `notice_auto_sent` (R2); else Day 7 reminder (D-133) |
 | D8 usage label | [x] | b76a096 | |
@@ -290,5 +290,5 @@ Demo controls become an overlay. Colours and fonts mostly stay (dark navy, teal 
 | U19–U22 shop | [x] | 7b39592 | product cards, SaaS checkout, gold PayPal button, welcome only; scores 87 / 73 kept (D-153) |
 | U23–U26 evidence page | [x] | 7b39592 | 4 tabs, plain labels, charts in 4 categories, routine reads hidden (D-154, D-155) |
 | U27–U30 mobile/a11y/vendor | [x] | 7b39592 | 390 px checks, ARIA tabs, data-ready, vendored AG Grid 36.2.0 / Charts 14.2.0 (D-157) |
-| S1–S6 docs | [ ] | | |
+| S1–S6 docs | [x] | 268d9e5 | README restructured + TROUBLESHOOTING; SUBMISSION (148-word description); ARCHITECTURE (flow, code map, trust boundaries); spec + v1-v2 history in `docs/archive/`, CLAUDE.md story; render.yaml branch + sandbox secrets + seed at start; LICENSE is standard MIT, unchanged (D-158, D-159) |
 | V1–V3 video tooling | [ ] | | |

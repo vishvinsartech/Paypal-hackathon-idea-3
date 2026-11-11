@@ -278,12 +278,12 @@ Demo controls become an overlay. Colours and fonts mostly stay (dark navy, teal 
 | D10 charges avoided | [x] | 181397d | $24.99 + "up to $524.88 in year one"; confirm card still /yr until U12 (D-135) |
 | Persona Priya | [x] | a1ff74b | id `priya`, `full_name` Priya Sharma, `/me` (D-130) |
 | Fair Trial badge | [x] | 514dce0 | badge gone, member kept, partner note on evidence page + README (D-141) |
-| A1 Quillnote | [ ] | | |
-| A2 AI vs basic | [ ] | | |
-| A3 notice in words | [ ] | | |
-| A4 calibration | [ ] | | |
-| A5 Layer 2 beat | [ ] | | |
-| A6 mock labels | [ ] | | |
+| A1 Quillnote | [x] | e93912d | Layer 2 merchant, prose traps, `.env` prices, seeded in mock + `make seed` (D-142) |
+| A2 AI vs basic | [x] | e93912d | basic check stored with every review; panel on the evidence page; `tests/test_ai_value.py` (D-144) |
+| A3 notice in words | [x] | e93912d | `app/core/durations.py`: 72 h -> 3 days from the verified quote (D-145) |
+| A4 calibration | [x] | e93912d | hard-to-read once, AUTO_RENEW 4: Penwright 87, Quillnote 73, honest ~6 (D-143) |
+| A5 Layer 2 beat | [x] | e93912d | email + ACTION NEEDED + read-only polling; simulated Automatic payments page in mock; in ui-check (D-146) |
+| A6 mock labels | [x] | e93912d | one "Demo data" / "PayPal Sandbox · model" badge; delivery lines left for U4 (D-147) |
 | U1–U4 global | [ ] | | |
 | U5–U13 product view | [ ] | | |
 | U14–U18 companion | [ ] | | |

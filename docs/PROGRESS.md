@@ -24,6 +24,17 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
   top bar). Seen for later phases: the mobile top bar wraps onto three lines (U27), and the KPI count-up can still
   be running when a screenshot is taken (U29).
 
+- [x] **Phase 2. Make the AI matter** (2026-11-11, commit `e93912d`). Done: A1-A6 (DECISIONS D-142..D-147).
+  Quillnote (Layer 2, prose traps): AI risk 73 vs basic check 25; the AI finds the notice period, the step-up and
+  the hard cancel the basic check misses, and "seventy-two hours" -> act by Day 4 (basic: Day 7, too late).
+  Penwright still 87 on both paths. `make test`: **310 passed** (was 298), 2 deselected. `make lint`: clean.
+  `make ui-check`: passed, now with the Quillnote path (companion 73, AI vs basic panel, Cancel -> email + ACTION
+  NEEDED -> simulated PayPal Automatic payments -> polled until CANCELLED). Two of four ui-check runs timed out on a
+  page `load` (server answered in < 1 s throughout; most likely the AG Grid/Charts CDN): U30 vendoring fixes that.
+  Screenshots: `docs/img/v3/p2/` (looked at: Quillnote checkout, companion, AI vs basic panel, ACTION NEEDED card).
+  Seen for Phase 3: raw enums and `llm` source strings in the findings grid (U24), the delivery lines (U4), and
+  the Quillnote card still offering Keep/Cancel plus a "cancel Nov 13" timer text while the handoff is open.
+
 ## v1-v2 milestones (history)
 
 - [x] **1. Preflight.** Run `claude mcp list`; check Python >= 3.11, Node >= 18 and `npx`; install the APIMatic PayPal context plugin; write `docs/PAYPAL_TOOLS.md` and `docs/PAYPAL_SDK_NOTES.md`; create `docs/DECISIONS.md`.

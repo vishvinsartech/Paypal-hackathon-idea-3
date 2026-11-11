@@ -268,7 +268,7 @@ Demo controls become an overlay. Colours and fonts mostly stay (dark navy, teal 
 | B6 chat button | [x] | 514dce0 | in the top bar (D-139) |
 | B7 timeline | [x] | 514dce0 | fixed Day 0-14, five dots; U7 moves it onto the merged card (D-138) |
 | B8 Day 11 actor | [x] | 181397d | fresh GET, status + debug id stored; audit actor stays `system` (D-134) |
-| B9 mobile nav | [ ] | | deferred to Phase 3 with U10/U27, as the item says |
+| B9 mobile nav | [x] | 7b39592 | bottom tab bar at <= 640 px, checked at 390x844 in ui-check (D-157) |
 | B10 CLEAR_TERMS | [x] | b76a096 | both paths + tests (D-136) |
 | B11 chat chips | [x] | 514dce0 | 3 chips, scripted answers from tool results (D-139) |
 | B12 README facts | [ ] | | Phase 4 (S1), as the item says |
@@ -284,11 +284,11 @@ Demo controls become an overlay. Colours and fonts mostly stay (dark navy, teal 
 | A4 calibration | [x] | e93912d | hard-to-read once, AUTO_RENEW 4: Penwright 87, Quillnote 73, honest ~6 (D-143) |
 | A5 Layer 2 beat | [x] | e93912d | email + ACTION NEEDED + read-only polling; simulated Automatic payments page in mock; in ui-check (D-146) |
 | A6 mock labels | [x] | e93912d | one "Demo data" / "PayPal Sandbox · model" badge; delivery lines left for U4 (D-147) |
-| U1–U4 global | [ ] | | |
-| U5–U13 product view | [ ] | | |
-| U14–U18 companion | [ ] | | |
-| U19–U22 shop | [ ] | | |
-| U23–U26 evidence page | [ ] | | |
-| U27–U30 mobile/a11y/vendor | [ ] | | |
+| U1–U4 global | [x] | 7b39592 | top bar (badge, Ask, theme icon, avatar), footer, delivery icons, no mock/debug strings (D-156) |
+| U5–U13 product view | [x] | 7b39592 | `/` = Priya's SubGuard, merged card, check-in band, right column, 3 sections, presenter bar, U12 card, U13 mailto + highlight (D-148..D-152) |
+| U14–U18 companion | [x] | 7b39592 | verdict + 3 things + PayPal check, evidence folded, fail row first, bottom sheet, shield note (D-150) |
+| U19–U22 shop | [x] | 7b39592 | product cards, SaaS checkout, gold PayPal button, welcome only; scores 87 / 73 kept (D-153) |
+| U23–U26 evidence page | [x] | 7b39592 | 4 tabs, plain labels, charts in 4 categories, routine reads hidden (D-154, D-155) |
+| U27–U30 mobile/a11y/vendor | [x] | 7b39592 | 390 px checks, ARIA tabs, data-ready, vendored AG Grid 36.2.0 / Charts 14.2.0 (D-157) |
 | S1–S6 docs | [ ] | | |
 | V1–V3 video tooling | [ ] | | |

@@ -35,6 +35,17 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
   Seen for Phase 3: raw enums and `llm` source strings in the findings grid (U24), the delivery lines (U4), and
   the Quillnote card still offering Keep/Cancel plus a "cancel Nov 13" timer text while the handoff is open.
 
+- [x] **Phase 3. UI restructure** (2026-11-11, commit `7b39592`). Done: U1-U30 and B9 (DECISIONS D-148..D-157).
+  `/` is Priya's product view (`/user`, `/me` redirect); demo controls are a presenter bar behind `?demo=1` / D;
+  companion, shop and evidence page restructured; AG Grid / Charts vendored. `make test`: **317 passed** (was 310),
+  2 deselected. `make lint`: clean. `make ui-check`: passed (empty state, D key, companion order, welcome-only shop,
+  merged card, one Keep / Cancel pair, U12 card, clause highlight, audit drawer with routine hidden, evidence tabs,
+  390 px layout + bottom sheet, Start demo with all three answers on the card, Quillnote; no CDN requests).
+  Penwright still 87, Quillnote 73. Screenshots: `docs/img/v3/p3/` (looked at: companion desktop + mobile sheet,
+  Day 5 card with band, Day 11 with presenter bar, email modal with highlight, evidence summary, shop). Not run:
+  `scripts/sandbox_ui_check.py` (needs sandbox credentials; updated for the new selectors). Left for Phase 5: the
+  video narration still says "Day 7"; scenes.json only has its targets updated.
+
 ## v1-v2 milestones (history)
 
 - [x] **1. Preflight.** Run `claude mcp list`; check Python >= 3.11, Node >= 18 and `npx`; install the APIMatic PayPal context plugin; write `docs/PAYPAL_TOOLS.md` and `docs/PAYPAL_SDK_NOTES.md`; create `docs/DECISIONS.md`.

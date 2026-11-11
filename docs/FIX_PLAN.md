@@ -291,4 +291,4 @@ Demo controls become an overlay. Colours and fonts mostly stay (dark navy, teal 
 | U23–U26 evidence page | [x] | 7b39592 | 4 tabs, plain labels, charts in 4 categories, routine reads hidden (D-154, D-155) |
 | U27–U30 mobile/a11y/vendor | [x] | 7b39592 | 390 px checks, ARIA tabs, data-ready, vendored AG Grid 36.2.0 / Charts 14.2.0 (D-157) |
 | S1–S6 docs | [x] | 268d9e5 | README restructured + TROUBLESHOOTING; SUBMISSION (148-word description); ARCHITECTURE (flow, code map, trust boundaries); spec + v1-v2 history in `docs/archive/`, CLAUDE.md story; render.yaml branch + sandbox secrets + seed at start; LICENSE is standard MIT, unchanged (D-158, D-159) |
-| V1–V3 video tooling | [ ] | | |
+| V1–V3 video tooling | [x] | 83e3e19 | 10 beats, 170 s with clip (155 s without); recorder (mock + sandbox pre-approved subs), voice-over, ffprobe < 180 s; check passes, clip is a human task (D-160..D-164) |

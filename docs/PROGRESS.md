@@ -51,7 +51,7 @@ The v1-v2 milestone history (from the original spec, now `docs/archive/BUILD_PRO
   standard MIT text. `make test`: **317 passed**, 2 deselected. `make lint`: clean. `make ui-check`: passed.
   No UI changes, so no new screenshots.
 
-- [x] **Phase 5. Video tooling** (2026-11-11, commit `PHASE5`). Done: V1-V3 (DECISIONS D-160..D-164).
+- [x] **Phase 5. Video tooling** (2026-11-11, commit `83e3e19`). Done: V1-V3 (DECISIONS D-160..D-164).
   `scenes.json` has the ten v3 beats, 170 s with the PayPal clip (155 s without), cap 175 s; dates are `{on:N}`
   placeholders so the narration says "Act by Nov 18 (the terms allow Nov 19)" on any recording day. New
   `record_demo.py` (Playwright; mock or sandbox with pre-approved subscriptions from `make seed ARGS=--demo-subs`,

@@ -70,7 +70,7 @@ def test_custom_prices_flow_to_plans_shop_and_checkout(custom_client: TestClient
     assert "Penwright Pro at $29.99/month, with the first charge on day 11" in pen
     assert "becomes $59/month" in pen and "at least 5 days before" in pen
     assert "$24.99" not in pen and "$49.99" not in pen
-    assert "so the real deadline is Day 5." in c.get("/shop").text  # 11 - 5 - 1, inside "Show what's hidden"
+    assert "at least 5 days before the next billing date" in c.get("/shop/penwright/terms").text  # U19: no spoiler
 
     created = c.post("/api/checkout/create", json={"merchant_id": "penwright", "plan_key": "penwright-pro"}).json()
     c.post("/api/checkout/mock-approve", json={"paypal_id": created["paypal_id"]})

@@ -98,7 +98,7 @@ async def card_says(page: Page, scope: str, status: str) -> None:
     await expect(card.get_by_test_id("paypal-status")).to_have_text(status, timeout=60000)
     for text in CYCLES:
         await expect(card.get_by_test_id("paypal-cycles")).to_contain_text(text)
-    await expect(card).to_contain_text("fetched live from PayPal")
+    await expect(card).to_contain_text(re.compile("(fetched|read) live from PayPal"))
 
 
 async def run(base: str, headed: bool, shots: Path | None) -> None:
@@ -166,33 +166,32 @@ async def run(base: str, headed: bool, shots: Path | None) -> None:
         step("buyer logged in and agreed in PayPal's window; pop-up closed")
 
         await expect(shop.get_by_test_id("shop-open-subguard")).to_be_visible(timeout=90000)
-        await card_says(shop, "[data-testid=shop-paypal-card]", "ACTIVE")
-        sub_id_text = await shop.get_by_test_id("paypal-sub-id").first.inner_text()
-        step(f"shop: 'Subscribed via PayPal ✓' {sub_id_text} ACTIVE (live), cycles {', '.join(CYCLES)}")
+        # U22: the merchant page shows only its welcome; the PayPal proof is on SubGuard's pages.
+        await expect(shop.get_by_test_id("shop-welcome")).to_have_attribute("data-paypal-status", "ACTIVE")
         await shot(shop, "s3_shop_subscribed")
 
-        demo = watch(await ctx.new_page())
-        await demo.goto(f"{base}/?demo=1")
-        await card_says(demo, "#pp-demo", "ACTIVE")
         me = watch(await ctx.new_page())
-        await me.goto(f"{base}/user")
-        await card_says(me, "#pp-user", "ACTIVE")
-        assert await me.locator("#pp-user").get_by_test_id("paypal-sub-id").inner_text() == sub_id_text
-        step("both dashboards show the same card, ACTIVE read live from PayPal")
+        await me.goto(f"{base}/?demo=1")
+        foot = me.get_by_test_id("paypal-verified").first  # U7: the card's quiet footer (lite, no ids)
+        sub_id_text = await foot.get_by_test_id("paypal-sub-id").inner_text()
+        await foot.locator("summary").click()
+        await card_says(me, "[data-testid=paypal-verified]", "ACTIVE")
+        step(f"Priya's card: Verified with PayPal ✓ {sub_id_text} ACTIVE (read live), cycles {', '.join(CYCLES)}")
 
         await me.get_by_test_id("sub-cancel").click()
         await me.get_by_test_id("confirm-card").get_by_test_id("confirm-button").click()
         await expect(me.get_by_test_id("email-preview")).to_be_visible(timeout=60000)
         await me.get_by_test_id("email-dismiss").click()
-        await card_says(me, "#pp-user", "CANCELLED")
-        user_card = me.locator("#pp-user").get_by_test_id("paypal-subscribed")
+        sub_id = next(x["id"] for x in httpx.get(f"{base}/api/subscriptions?user=priya", timeout=10).json()
+                      if x["paypal_id"] == sub_id_text)
+        await me.goto(f"{base}/subscriptions/{sub_id}?user=priya#paypal")  # U23: the PayPal tab, every id
+        await card_says(me, "[data-testid=ev-paypal-card]", "CANCELLED")
+        user_card = me.get_by_test_id("ev-paypal-card").get_by_test_id("paypal-subscribed")
         await expect(user_card).to_contain_text("PayPal-Request-Id")
         link = user_card.get_by_test_id("paypal-autopay-link")
         href = await link.get_attribute("href")
         await shot(me, "s4_user_cancelled")
         step(f"Priya cancelled: same {sub_id_text}, CANCELLED read live from PayPal, link {href}")
-        await card_says(demo, "#pp-demo", "CANCELLED")
-        step("control room card also shows CANCELLED from PayPal")
 
         auto = await ctx.new_page()  # the buyer's PayPal session from the pop-up is in this context
         await auto.goto(href or "", wait_until="domcontentloaded", timeout=60000)

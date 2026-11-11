@@ -53,8 +53,8 @@
       return {
         data: a.risk.parts,
         series: [{type: "bar", direction: "horizontal", xKey: "label", yKey: "points", yName: "Risk points",
-                  itemStyler: (p) => ({fill: {"Fine print": c.red, "Hidden styling": c.amber, Money: c.blue, Library: c.grey}[p.datum.group] || c.teal}),
-                  label: {enabled: true, placement: "outside-end", formatter: (p) => String(p.value)}}],
+                  itemStyler: (p) => ({fill: {"Hidden deadline": c.red, "Price jumps": c.amber, "Hard to cancel": c.blue, "Hard-to-read terms": c.grey}[p.datum.group] || c.teal}),
+                  label: {enabled: true, placement: "outside-end", formatter: (p) => String(Math.round(p.value))}}],
         legend: {enabled: false},
       };
     },
@@ -106,7 +106,8 @@
   }
 
   async function load(force) {
-    const a = await api(`/api/analytics?user=${user}`);
+    const scope = els[0].closest("[data-analytics-sub]");  // the evidence page scopes the charts to one subscription
+    const a = await api(`/api/analytics?user=${user}` + (scope ? `&subscription_id=${encodeURIComponent(scope.dataset.analyticsSub)}` : ""));
     const json = JSON.stringify(a);
     if (!force && json === lastJson) return; // nothing changed: don't re-animate
     last = a;

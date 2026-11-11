@@ -1,18 +1,17 @@
 // "Start demo": runs Priya's story through the same APIs the UI uses, with an animated stepper. Mock mode does
 // steps 1-2 here; sandbox mode opens a real Penwright window for them (autoplay_sandbox.js, D-116).
 // Day 0 review -> PayPal approval -> safety timer -> days pass -> PAUSE at the check-in for Priya's choice
-// (Keep / Cancel / don't answer) -> the rest of the timeline to the first charge day.
+// (Keep / Cancel on her card, or "Don't answer" in the presenter bar) -> the rest of the timeline to the first charge day.
 // A cancel still needs the confirmation card's tap (R1/R3); nothing here bypasses the policy.
 (function () {
   "use strict";
   const btn = document.getElementById("demo-start");
   if (!btn || btn.disabled || !window.SG) return;
-  const {user, esc, api, toast, refresh, confirmInDialog} = window.SG;
+  const {user, esc, api, toast, refresh} = window.SG;
   const steps = Array.from(document.querySelectorAll("#pipeline-steps .step"));
   const statusEl = document.getElementById("pipe-status");
   const fill = document.getElementById("pipe-fill");
   const doneBox = document.getElementById("pipe-done");
-  const dlg = document.getElementById("decision-dialog");
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const sleep = (ms) => new Promise((r) => setTimeout(r, reduce ? Math.min(ms, 120) : ms));
   const post = (path, body) => api(path, {method: "POST", body});
@@ -52,40 +51,33 @@
   const openCheckin = async (id) => (await api(`/api/alerts?user=${user}`))
     .find((a) => a.kind === "reminder" && a.subscription_id === id && !a.acknowledged_at);
 
-  // ---- Priya's choice --------------------------------------------------------------------------
-  function ask(alert, fireDay) {
-    document.getElementById("decision-title").textContent = alert.title;
-    document.getElementById("decision-body").textContent = alert.body;
-    dlg.querySelector("[data-choice=skip]").textContent = `Don't answer (SubGuard acts on Day ${fireDay})`;
-    dlg.showModal();
-    dlg.querySelector("[data-choice=keep]").focus();
-    return new Promise((resolve) => {
-      const onClick = (ev) => {
-        const b = ev.target.closest("[data-choice]");
-        if (!b) return;
-        dlg.removeEventListener("click", onClick);
-        dlg.close();
-        resolve(b.dataset.choice);
-      };
-      dlg.addEventListener("click", onClick);
-    });
-  }
-  dlg.addEventListener("cancel", (ev) => ev.preventDefault()); // Escape doesn't count as an answer
-
-  async function decide(alert, fireDay) {
-    for (;;) {
-      const choice = await ask(alert, fireDay);
-      if (choice === "skip") return "skip";
-      if (choice === "keep") {
-        const out = await post(`/api/alerts/${alert.id}/act`, {user_id: user, action: "keep"});
-        toast(out.message);
-        return "keep";
+  // ---- Priya's choice (U8): she answers on her card's "Keep it or cancel?" band, the only Keep / Cancel on
+  // screen. The presenter bar offers "Don't answer". We wait for the answer to land (and any dialog to close).
+  const skipBtn = document.getElementById("decision-skip");
+  async function decide(alert, fireText) {
+    skipBtn.textContent = `Don't answer (SubGuard acts on ${fireText})`;
+    skipBtn.hidden = false;
+    let skipped = false;
+    const onSkip = () => { skipped = true; };
+    skipBtn.addEventListener("click", onSkip, {once: true});
+    const band = document.querySelector("[data-testid=user-reminder]");
+    if (band) band.scrollIntoView({block: "center", behavior: reduce ? "auto" : "smooth"});
+    try {
+      for (;;) {
+        await sleep(400);
+        if (document.querySelector("dialog[open]:not(#audit-drawer)")) continue;  // confirmation / email open
+        if (skipped) return "skip";
+        const a = (await api(`/api/alerts?user=${user}`)).find((x) => x.id === alert.id);
+        if (a && a.acknowledged_at) {
+          const s = await subNow(alert.subscription_id);
+          if (s.status === "CANCELLED") return "cancel";
+          if (s.kept_day != null) return "keep";
+          return "cancel_failed"; // PayPal didn't confirm: shown as a toast, the timer stays in charge
+        }
       }
-      const out = await post(`/api/alerts/${alert.id}/act`, {user_id: user, action: "cancel"});
-      const res = out.confirm ? await confirmInDialog(out.confirm) : null;
-      if (res && res.all_ok) return "cancel";
-      if (res) return "cancel_failed"; // PayPal didn't confirm: shown as a toast, the timer stays in charge
-      // "Not now" on the confirmation card: ask again
+    } finally {
+      skipBtn.hidden = true;
+      skipBtn.removeEventListener("click", onSkip);
     }
   }
 
@@ -146,9 +138,10 @@
     let choice = "none";
     if (alert) {
       mark("ask", "active", `Day ${alert.sim_day}`);
-      say(`<strong>Day ${alert.sim_day}.</strong> SubGuard asks Priya by email, SMS and in-app. Waiting for her answer…`);
+      say(`<strong>Day ${alert.sim_day}.</strong> SubGuard asks Priya by email, SMS and in-app. She answers on her card: <strong>Keep</strong> or <strong>Cancel trial</strong>.`);
       await sleep(700);
-      choice = await decide(alert, fireDay);
+      const row = (await api(`/api/view/subscriptions?user=${user}`)).rows.find((r) => r.id === sub.id);
+      choice = await decide(alert, row && row.timer ? row.timer.fire_text : `Day ${fireDay}`);
       const said = {keep: "Priya: Keep", cancel: "Priya: Cancel", cancel_failed: "Cancel failed", skip: "No answer"}[choice];
       mark("ask", choice === "cancel_failed" ? "warn" : "done", null);
       say(esc(said));

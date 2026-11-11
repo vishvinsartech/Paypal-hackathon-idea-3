@@ -28,7 +28,7 @@ MAX_WORDS = 120
 GMAIL_MAX_URL = 1800
 GMAIL_BASE = "https://mail.google.com/mail/?view=cm&fs=1"
 TEMPLATE_LABEL = "standard template"
-SentVia = Literal["demo_outbox", "gmail_compose_link", "auto_on_timer"]
+SentVia = Literal["demo_outbox", "gmail_compose_link", "mailto", "auto_on_timer"]
 
 
 def word_count(text: str) -> int:
@@ -112,7 +112,7 @@ async def create_draft(svc: Services, sub: Subscription, *, by_timer: bool = Fal
                     subject=draft.subject, body=draft.body,
                     sha256=hashlib.sha256(draft.body.encode("utf-8")).hexdigest(), drafted_by=label,
                     draft_source=source, draft_problems=problems, draft_to=ctx.to, draft_subject=draft.subject,
-                    draft_body=draft.body, created_at=utcnow(), by_timer=by_timer)
+                    draft_body=draft.body, created_at=utcnow(), by_timer=by_timer, clause=ctx.clause)
     async with svc.store.aedit("notices") as notices:
         if (existing := next((n for n in notices.items if n.subscription_id == sub.id), None)) is not None:
             return existing
@@ -186,8 +186,9 @@ async def finalize(svc: Services, user_id: str, notice_id: str, email: EmailIn,
                                reason="No answer, and you asked SubGuard to send the cancellation email for you",
                                details={**details, "consent": "consent_snapshot.auto_send_notice"})
     else:
-        svc.store.audit.append(actor="user", event="cancellation_email_sent" if via == "demo_outbox"
-                               else "cancellation_email_gmail_opened", user_id=user_id,
+        event = {"demo_outbox": "cancellation_email_sent", "mailto": "cancellation_email_app_opened"}.get(
+            via, "cancellation_email_gmail_opened")
+        svc.store.audit.append(actor="user", event=event, user_id=user_id,
                                subscription_id=notice.subscription_id, result=via, details=details)
     return FinalizeResult(notice=notice, url=url)
 

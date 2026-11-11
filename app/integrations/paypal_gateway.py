@@ -61,6 +61,9 @@ class CancelOutcome(BaseModel):
     debug_id: str | None = None
 
 
+READ_OPS = {"get_subscription", "verify_subscription", "verify_plan", "get_plan"}
+
+
 class PayPalGateway:
     def __init__(self, settings: Settings, store: JsonStore, *, mock: MockPayPal | None = None,
                  sdk: FullBackend | None = None, mcp: PayPalBackend | None = None,
@@ -108,10 +111,14 @@ class PayPalGateway:
     def _audit(self, op: str, ctx: Ctx, *, transport: str, result: str, request_id: str | None = None,
                debug_id: str | None = None, before: str | None = None, after: str | None = None,
                **details: Any) -> None:
+        # U26: successful reads (the poller, live status re-reads, plan fetches) are routine: still hash-chained,
+        # hidden by default in the grids and summaries. Writes and errors are never routine.
+        tag = {"routine": True} if op in READ_OPS and result == "ok" else {}
         self.store.audit.append(
             actor=ctx.actor, event="paypal_call", user_id=ctx.user_id, subscription_id=ctx.subscription_id,  # type: ignore[arg-type]
             rule_id=ctx.rule_id, transport=transport, paypal_request_id=request_id, paypal_debug_id=debug_id,
-            status_before=before, status_after=after, result=result, details={"op": op, **ctx.extra, **details},
+            status_before=before, status_after=after, result=result,
+            details={"op": op, **ctx.extra, **details, **tag},
         )
 
     async def _call(self, op: str, ctx: Ctx, backend: PayPalBackend, fn: Callable[[], Awaitable[T]], *,

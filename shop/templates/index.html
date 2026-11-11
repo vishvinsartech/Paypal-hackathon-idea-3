@@ -1,36 +1,20 @@
 {% extends "shop_base.html" %}
-{% block title %}Demo shop: Penwright Studio{% endblock %}
+{% block title %}Demo shop{% endblock %}
 {% block content %}
+{# U19: two product cards, no spoilers. What each page hides is for SubGuard (and the evidence page) to show. #}
 <section data-testid="shop-index">
   <h1>Demo shop</h1>
   <p>The two fictional merchants used in the SubGuard demo. Neither is a real company.</p>
-  <ul class="merchant-list">
+  {% set pitch = {"penwright": "An AI writing studio for drafts, outlines and rewrites.",
+                  "quillnote": "Turns meeting scribbles into tidy, searchable notes."} %}
+  <div class="shop-cards">
     {% for mch in merchants if mch.id in ("penwright", "quillnote") %}
-    <li data-testid="shop-merchant-{{ mch.id }}">
-      <a href="/shop/{{ mch.id }}"><strong>{{ mch.name }}</strong></a>: {{ mch.tagline }}
-    </li>
+    <article class="shop-card" data-testid="shop-merchant-{{ mch.id }}">
+      <h2>{{ mch.name }}</h2>
+      <p>{{ pitch[mch.id] }}</p>
+      <a class="btn" href="/shop/{{ mch.id }}">Start the free trial</a>
+    </article>
     {% endfor %}
-  </ul>
-  <h2>Pages</h2>
-  <ul>
-    <li><strong>Checkout:</strong> <a href="/shop/penwright">Start the Penwright free trial</a>.</li>
-    <li><strong>Terms:</strong> <a href="/shop/penwright/terms">Penwright Terms of Service</a>.</li>
-    <li><strong>Second merchant:</strong> <a href="/shop/quillnote">Try Quillnote</a> ·
-      <a href="/shop/quillnote/terms">Quillnote membership terms</a>.</li>
-    <li><strong>Pretend app:</strong> <a href="/shop/penwright/app">Open Penwright</a>.
-      Opening it records a usage event for the current demo day.</li>
-  </ul>
-  <details class="hidden-tricks" data-testid="shop-hidden">
-    <summary data-testid="shop-hidden-toggle">Show what's hidden</summary>
-    <p>The tricks Penwright hides:</p>
-    <ul>
-      <li>Auto-conversion to {{ p.money(p.penwright_intro_price) }}/month after the {{ p.penwright_trial_days }}-day trial (first charge Day {{ p.penwright_first_charge_day }}).</li>
-      <li>A later step-up to {{ p.money(p.penwright_step_up_price) }}/month after {{ p.penwright_intro_months }} paid months.</li>
-      <li>{{ p.penwright_notice_days }} days' written notice to cancel, so the real deadline is Day {{ p.penwright_first_charge_day - p.penwright_notice_days - 1 }}.</li>
-      <li>The trial ends early after {{ p.penwright_export_limit }} exports.</li>
-      <li>No cancel button: email, or a weekday-only phone line.</li>
-      <li>A hidden instruction aimed at AI assistants (a test case SubGuard must flag and ignore).</li>
-    </ul>
-  </details>
+  </div>
 </section>
 {% endblock %}

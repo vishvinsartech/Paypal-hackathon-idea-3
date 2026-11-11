@@ -10,8 +10,10 @@ from fastapi.templating import Jinja2Templates
 
 from app.config import ROOT_DIR, Settings
 from app.core import timers as tm
+from app.core.activity import activity_for
 from app.core.savings import year_one_cost
 from app.core.sub_dates import day_text, sub_act_by
+from app.core.verdict import verdict
 from app.models import Subscription
 from app.review_types import TYPE_LABELS, ReviewData
 from app.routes.actions import get_services
@@ -19,9 +21,10 @@ from app.routes.deps import get_settings, get_store
 from app.store import JsonStore
 
 router = APIRouter()
+SOURCE_LABELS = {"llm": "AI", "paypal_check": "PayPal", "code": "Code check", "rules": "Code check"}  # U24
 templates = Jinja2Templates(directory=ROOT_DIR / "app" / "templates")
-AG_GRID_URL = "https://cdn.jsdelivr.net/npm/ag-grid-community@36.2.0/dist/ag-grid-community.min.js"
-AG_CHARTS_URL = "https://cdn.jsdelivr.net/npm/ag-charts-community@14.2.0/dist/umd/ag-charts-community.min.js"  # D-108
+AG_GRID_URL = "/static/vendor/ag-grid-community-36.2.0.min.js"  # U30: vendored, no CDN at runtime (D-108)
+AG_CHARTS_URL = "/static/vendor/ag-charts-community-14.2.0.min.js"
 
 
 def _base(request: Request, user: str, settings: Settings, store: JsonStore) -> dict[str, Any]:
@@ -29,16 +32,6 @@ def _base(request: Request, user: str, settings: Settings, store: JsonStore) -> 
     current = next((u for u in users if u.id == user), users[0] if users else None)
     return {"settings": settings, "users": users, "current_user": current, "sim_day": store.load("state").sim_day,
             "ag_grid_url": AG_GRID_URL, "ag_charts_url": AG_CHARTS_URL, "llm": request.app.state.llm}
-
-
-@router.get("/", response_class=HTMLResponse)
-def dashboard(
-    request: Request, user: str = "priya", demo: int = 0,
-    settings: Settings = Depends(get_settings), store: JsonStore = Depends(get_store),
-) -> HTMLResponse:
-    ctx = _base(request, user, settings, store)
-    ctx.update(demo=bool(demo), merchants=store.load("merchants").items, active_tab="demo")
-    return templates.TemplateResponse(request, "dashboard.html", ctx)
 
 
 def ai_vs_basic_view(sub: Subscription, data: ReviewData) -> dict[str, Any] | None:
@@ -78,6 +71,15 @@ def subscription_page(
     ctx.update(act_by=sub_act_by(sub, d.real_cancel_deadline_day) if d else "",
                first_charge_on=day_text(sub, d.first_charge_day) if d else "")
     ctx.update(ai_vs_basic=ai_vs_basic_view(sub, review.data) if review else None, type_labels=TYPE_LABELS)
+    if review:  # U14/U23: the same verdict the companion showed, from the agreed PayPal cycles
+        cycles = snap.billing_cycles if snap else []
+        first = day_text(sub, d.first_charge_day) if d else None
+        ctx.update(verdict=verdict(cycles, svc.money, first, review.data.clauses, review.data.paypal_check),
+                   findings=[{**c.model_dump(mode="json"), "label": TYPE_LABELS.get(c.type, c.type),
+                              "source_label": SOURCE_LABELS.get(c.source, "Code check")} for c in review.data.clauses],
+                   trial_end_on=day_text(sub, d.first_charge_day - 1) if d else "")
+    acts = [a for a in activity_for(svc, user) if a.subscription_id == sub.id]
+    ctx.update(acts=[{**a.model_dump(), "when": day_text(sub, a.day)} for a in reversed(acts)])
     ctx.update(sub=sub, merchant=merchant, review=review, snap=snap, notice=notice, plans=plans,
                snap_year=svc.money(year_one_cost(snap.billing_cycles)) if snap else None, money=svc.money,
                evidence=sorted({c.evidence_testid for c in review.data.clauses if c.evidence_testid})

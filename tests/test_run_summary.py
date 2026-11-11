@@ -73,14 +73,13 @@ def test_blocked_decisions_are_always_shown(demo_client: TestClient) -> None:
 
 
 def test_live_demo_page_has_summary_and_folded_full_log(client: TestClient) -> None:
+    """U9: "What SubGuard did" (5 rows) on the right; "Show all" opens the audit drawer with the full grid."""
     html = client.get("/?demo=1").text
-    for t in ("audit-summary", "audit-full-toggle", "audit-log-grid", "audit-log-export", "audit-chain"):
+    for t in ("audit-summary", "audit-full-toggle", "audit-log-grid", "audit-log-export", "audit-chain",
+              "audit-drawer", "audit-routine", "presenter-audit"):
         assert f'data-testid="{t}"' in html, t
-    assert 'id="audit-full" class="audit-full" hidden' in html and "/static/audit-summary.js" in html
-    pipeline = html.split('id="pipeline"', 1)[1].split("</section>", 1)[0]
-    assert 'id="pp-demo"' in pipeline  # PayPal strip lives inside the step-by-step card
-    js = client.get("/static/paypal-card.js").text
-    assert '"strip"' in js and "paypal-earlier" in js and "earlier run" in js
+    assert '<dialog id="audit-drawer"' in html and html.count("data-open-audit") >= 3
+    assert "/static/presenter.js" in html  # the step indicator reads /api/audit-log/summary
 
 
 # ---- v3 B3 / B4: built from Priya's subscriptions, steps derived from events (no Start demo needed) -------------

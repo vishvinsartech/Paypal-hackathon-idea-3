@@ -45,14 +45,18 @@
   }
 
   // ---- confirmation card (chat + alerts + grid) ----------------------------------------------
+  // U12: "Cancel Penwright trial? You won't be charged $24.99 on Nov 22." No repeated year figure, no scare line.
   function cardHtml(card) {
-    const rows = card.items.map((i) => `<li><strong>${esc(i.merchant)}</strong> · ${esc(i.plan)} <span class="money">${esc(i.per_year_text)}</span></li>`).join("");
-    return `<div class="confirm-card" data-testid="confirm-card" role="group" aria-label="Confirm cancellation">
-      <h3 id="confirm-title">Cancel ${card.items.length === 1 ? esc(card.items[0].merchant) : card.items.length + " subscriptions"}?</h3>
-      <ul class="plain">${rows}</ul>
-      <p>Money at stake: <strong class="money" data-testid="confirm-total">${esc(card.total_text)}</strong></p>
-      <p class="muted small">${esc(card.reason)}</p>
-      <p class="warn small">${esc(card.warning)}</p>
+    const one = card.items.length === 1 ? card.items[0] : null;
+    const what = (i) => (i.trial ? "trial" : "subscription");
+    const charge = (i) => i.next_charge_text
+      ? `You won't be charged <strong class="money" data-testid="confirm-total">${esc(i.next_charge_text.split(" on ")[0])}</strong> on ${esc(i.next_charge_text.split(" on ").slice(1).join(" on "))}.`
+      : "SubGuard cancels it in PayPal now.";
+    const title = one ? `Cancel ${esc(one.short_name || one.merchant)} ${what(one)}?` : `Cancel ${card.items.length} subscriptions?`;
+    const body = one ? `<p data-testid="confirm-charge">${charge(one)}</p>`
+      : `<ul class="plain">${card.items.map((i) => `<li><strong>${esc(i.merchant)}</strong>: ${charge(i).replace(' data-testid="confirm-total"', "")}</li>`).join("")}</ul>`;
+    return `<div class="confirm-card" data-testid="confirm-card" role="group" aria-labelledby="confirm-title">
+      <h3 id="confirm-title">${title}</h3>${body}
       <div class="row"><button class="btn btn-danger" data-testid="confirm-button">Confirm cancel</button>
       <button class="btn btn-ghost" data-role="dismiss">Not now</button></div></div>`;
   }
@@ -145,8 +149,10 @@
     const btn = document.getElementById("theme-toggle");
     if (!btn) return;
     const t = theme();
-    btn.querySelector(".theme-label").textContent = t === "light" ? "Light" : "Dark";
-    btn.setAttribute("aria-label", t === "light" ? "Switch to dark theme" : "Switch to light theme");
+    const label = t === "light" ? "Switch to dark theme" : "Switch to light theme";  // U1: icon + tooltip, no text
+    btn.setAttribute("aria-label", label);
+    btn.title = label;
+    btn.dataset.mode = t;
   }
   function setTheme(t) {
     const root = document.documentElement;

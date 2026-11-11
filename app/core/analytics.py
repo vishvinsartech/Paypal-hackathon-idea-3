@@ -62,6 +62,13 @@ def cost_curve(svc: Services, subs: list[Subscription]) -> dict[str, Any]:
             "protected_text": svc.money(kept - pays)}
 
 
+CATEGORIES = ("Hidden deadline", "Price jumps", "Hard to cancel", "Hard-to-read terms")
+TYPE_CATEGORY = {"NOTICE_PERIOD": "Hidden deadline", "EARLY_TRIAL_TERMINATION": "Hidden deadline",
+                 "AUTO_RENEW": "Hidden deadline", "INTRO_PRICE_STEP_UP": "Price jumps", "TERMS_MISMATCH": "Price jumps",
+                 "PRECHECKED_ADDON": "Price jumps", "HARD_CANCEL": "Hard to cancel",
+                 "HIDDEN_TEXT_STYLE": "Hard-to-read terms", "PROMPT_INJECTION_ATTEMPT": "Hard-to-read terms"}
+
+
 def risk_breakdown(svc: Services, subs: list[Subscription]) -> dict[str, Any] | None:
     reviews = [r for s in subs if (r := tm.review_for(svc, s)) is not None]
     if not reviews:
@@ -70,20 +77,24 @@ def risk_breakdown(svc: Services, subs: list[Subscription]) -> dict[str, Any] | 
         return None
     r = reviews[-1]
     risk = r.data.risk
-    parts = [{"label": k.replace("_", " ").title(), "points": v, "group": "Fine print"}
-             for k, v in risk.type_points.items() if v]
-    parts += [{"label": k.replace("_", " ").title(), "points": v, "group": "Hidden styling"}
-              for k, v in risk.style_points.items() if v]
+    # U25: "Why SubGuard flagged it" in four plain categories (points from code; same total as the score)
+    cats: dict[str, float] = {c: 0.0 for c in CATEGORIES}
+    for k, v in risk.type_points.items():
+        cats[TYPE_CATEGORY.get(k, "Hard-to-read terms")] += v
+    for _k, v in risk.style_points.items():
+        cats["Hard-to-read terms"] += v
     if risk.money_factor:
-        parts.append({"label": RISK_LABELS["money_factor"], "points": float(risk.money_factor), "group": "Money"})
+        cats["Price jumps"] += float(risk.money_factor)
     if risk.library_bonus:
-        parts.append({"label": RISK_LABELS["library_bonus"], "points": risk.library_bonus, "group": "Library"})
+        cats["Hard-to-read terms"] += risk.library_bonus
+    parts = [{"label": c, "points": round(v, 2), "group": c} for c, v in cats.items() if v]
     parts.sort(key=lambda p: -p["points"])
     return {"merchant": svc.merchant(r.merchant_id).name, "score": r.risk_score, "parts": parts}
 
 
-def usage(svc: Services, user_id: str, subs: list[Subscription]) -> dict[str, Any]:
-    opens = Counter(u.day for u in svc.store.load("usage").items if u.user_id == user_id and u.kind == "open")
+def usage(svc: Services, user_id: str, subs: list[Subscription], merchant: str | None = None) -> dict[str, Any]:
+    opens = Counter(u.day for u in svc.store.load("usage").items if u.user_id == user_id and u.kind == "open"
+                    and (merchant is None or u.merchant_id == merchant))
     first = next((s for s in subs if s.next_billing_day is not None), None)
     end = max([svc.day, first.next_billing_day if first and first.next_billing_day else 0, *opens])
     deadline = None
@@ -94,8 +105,10 @@ def usage(svc: Services, user_id: str, subs: list[Subscription]) -> dict[str, An
             "first_charge_day": first.next_billing_day if first else None}
 
 
-def analytics(svc: Services, user_id: str) -> dict[str, Any]:
+def analytics(svc: Services, user_id: str, subscription_id: str | None = None) -> dict[str, Any]:
+    """Priya's charts; with `subscription_id`, scoped to that one subscription (the evidence page, U25)."""
     subs = [s for s in svc.store.load("subscriptions").items
-            if s.owner_id == user_id and s.status != "APPROVAL_PENDING"]
+            if s.owner_id == user_id and s.status != "APPROVAL_PENDING"
+            and (subscription_id is None or s.id == subscription_id)]
     return {"today": svc.day, "cost": cost_curve(svc, subs), "risk": risk_breakdown(svc, subs),
-            "usage": usage(svc, user_id, subs)}
+            "usage": usage(svc, user_id, subs, subs[0].merchant_id if subscription_id and subs else None)}

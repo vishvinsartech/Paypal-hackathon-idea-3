@@ -120,17 +120,14 @@
     }
   });
 
+  // U22: only the merchant's welcome + "Open SubGuard" here; PayPal ids live on SubGuard's evidence page.
   function done(sub) {
     slot.innerHTML = "";
-    status.innerHTML = "Subscribed. ";
-    const link = document.createElement("a");
-    link.href = "/?user=" + encodeURIComponent(user);
-    link.textContent = "Open SubGuard";
-    link.dataset.testid = "shop-open-subguard";
-    status.appendChild(link);
-    const card = document.createElement("div");
-    card.dataset.testid = "shop-paypal-card";
-    area.appendChild(card);
-    window.PayPalCard.mount(card, sub.id, user);  // status re-read live from PayPal, not assumed
+    const product = area.closest(".product") || area;
+    const name = (area.dataset.welcome || "us").replace(/[<>&"]/g, "");
+    product.innerHTML = `<div class="welcome" data-testid="shop-welcome" role="status" data-paypal-status="${String(sub.status || "").replace(/[^A-Z_]/g, "")}">
+      <h1 class="welcome-title">You're subscribed. Welcome to ${name}.</h1>
+      <p class="companion-note" data-subguard-ignore>&#128737; SubGuard is watching this trial for you.
+        <a href="/?user=${encodeURIComponent(user)}" target="_blank" rel="noopener" data-testid="shop-open-subguard">Open SubGuard ↗</a></p></div>`;
   }
 })();

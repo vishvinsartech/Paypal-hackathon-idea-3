@@ -55,7 +55,7 @@
   const pill = (c, testid = true) => `<span class="pp-status ${esc(c.status)}"${testid ? ' data-testid="paypal-status"' : ""}>${esc(c.status)}</span>`;
   const linkOf = (c) => c.autopay_url ? `<a class="pp-link" href="${esc(c.autopay_url)}" target="_blank" rel="noopener" data-testid="paypal-autopay-link">View in PayPal sandbox ↗</a>` : "";
   const mismatch = (c) => c.matches_local ? "" : `<p class="pp-warn">PayPal says ${esc(c.status)}; SubGuard's copy says ${esc(c.local_status)}. PayPal is the source of truth.</p>`;
-  const fetched = (c) => c.transport === "mock" ? `read from the demo PayPal at ${esc((c.checked_at || "").replace("T", " ").slice(0, 19))} UTC`
+  const fetched = (c) => c.transport === "mock" ? `read from PayPal (demo data) at ${esc((c.checked_at || "").replace("T", " ").slice(0, 19))} UTC`
     : `fetched live from PayPal at ${esc((c.checked_at || "").replace("T", " ").slice(0, 19))} UTC via ${esc(c.transport)}`;
 
   // Started, how it was created and the cancel call's ids: the "proof" rows.
@@ -75,10 +75,20 @@
         <p class="pp-meta">Subscription <code data-testid="paypal-sub-id">${esc(c.paypal_id)}</code></p></section>`;
   }
 
-  // mode: "full" (shop), "strip" (latest run on a dashboard), "line" (an earlier run, folded away).
+  // mode: "full" (evidence page PayPal tab: every id), "lite" (the card footer on `/`: no request or debug ids,
+  // U4), "strip" / "line" (older dashboard layouts).
   function html(c, mode = "full") {
-    if (!c.ok) return errorHtml(c, mode);
+    if (!c.ok) return errorHtml(c, mode === "lite" ? "full" : mode);
     const cancelled = c.status === "CANCELLED";
+    if (mode === "lite") {
+      const started = c.start_time ? `<dt>Started</dt><dd data-testid="paypal-start-time">${local(c.start_time)}</dd>` : "";
+      return `<div class="pp-card pp-lite${cancelled ? " pp-cancelled" : ""}" data-testid="paypal-subscribed" data-status="${esc(c.status)}">
+        <div class="pp-head"><span class="pp-mark">PayPal</span><span class="pp-title">${titleOf(c)}</span>${pill(c)}${linkOf(c)}</div>
+        <dl class="pp-grid"><dt>Plan</dt><dd>${esc(c.plan_name)}</dd>
+          <dt>Billing</dt><dd data-testid="paypal-cycles">${c.cycles.map((x) => esc(x.text)).join(" → ")}</dd>${started}</dl>
+        <p class="pp-meta">Status, plan and billing ${c.transport === "mock" ? "read from PayPal (demo data)" : "read live from PayPal"} at ${esc((c.checked_at || "").replace("T", " ").slice(11, 16))} UTC · ids on the evidence page</p>
+        ${mismatch(c)}</div>`;
+    }
     if (mode === "line") {
       return `<div class="pp-row" data-status="${esc(c.status)}"><span class="pp-mark">PayPal</span><code>${esc(c.paypal_id)}</code>${pill(c, false)}
         <span class="pp-meta">${esc(c.plan_name)}${c.start_time ? " · started " + local(c.start_time) : ""}</span>

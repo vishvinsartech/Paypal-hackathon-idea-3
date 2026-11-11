@@ -13,6 +13,8 @@ from pydantic import BaseModel
 
 from app.core.audit_log import AuditEntry
 from app.core.services import Services
+from app.core.sub_dates import day_text
+from app.models import Subscription
 
 Who = str  # "You" | "SubGuard" | "PayPal" | "Safety timer"
 
@@ -77,10 +79,12 @@ EVENTS: dict[str, Describe] = {
     "timer_fired": lambda e: ("Safety timer", "timer", "You didn't answer, so your safety timer fired "
                               "(allowed by rule R2: you were told on Day 0 and warned before)."),
     "paypal_cancel": _cancel,
-    "cancellation_email_drafted": lambda e: ("SubGuard", "guard", f"Drafted the cancellation email the merchant's "
-                                             f"terms require ({_d(e, 'drafted_by')}). It waits for you to send it."),
+    "cancellation_email_drafted": lambda e: ("SubGuard", "guard", "Drafted the cancellation email the merchant's "
+                                             "terms require. It waits for you to send it."),  # U4: no "mock" label
     "cancellation_email_sent": lambda e: ("You", "you", f"You sent the cancellation email (demo outbox, edited: "
                                           f"{_edited(e)})."),
+    "cancellation_email_app_opened": lambda e: ("You", "you", f"You opened the cancellation email in your email "
+                                                f"app (edited: {_edited(e)})."),
     "cancellation_email_gmail_opened": lambda e: ("You", "you", f"You opened the cancellation email in Gmail "
                                                   f"(edited: {_edited(e)})."),
     "notice_auto_sent": lambda e: ("SubGuard", "guard", "Sent your cancellation email for you, as you asked at "
@@ -93,8 +97,18 @@ EVENTS: dict[str, Describe] = {
 }
 
 
+def _timer_text(e: AuditEntry, sub: Subscription) -> str:
+    """timer_created with calendar dates (B2): "check in on Nov 16, cancel on Nov 17 if you don't answer"."""
+    def on(key: str) -> str:
+        day = _d(e, key, None)
+        return day_text(sub, int(day)) if isinstance(day, int) else "?"
+    return (f"Set a safety timer and told you about it: check in on {on('reminder_day')}, cancel on {on('fire_day')} "
+            f"if you don't answer (act by {on('deadline_day')}).")
+
+
 def activity_for(svc: Services, user_id: str) -> list[Activity]:
-    mine = {s.id for s in svc.store.load("subscriptions").items if s.owner_id == user_id}
+    subs = {s.id: s for s in svc.store.load("subscriptions").items}
+    mine = {sid for sid, s in subs.items() if s.owner_id == user_id}
     out = []
     for e in svc.store.audit.entries():
         if e.user_id != user_id and e.subscription_id not in mine:
@@ -106,6 +120,8 @@ def activity_for(svc: Services, user_id: str) -> list[Activity]:
         if res is None:
             continue
         who, kind, text = res
+        if e.event == "timer_created" and (sub := subs.get(e.subscription_id or "")) is not None:
+            text = _timer_text(e, sub)
         out.append(Activity(day=e.sim_day, seq=e.seq, who=who, kind=kind, text=text, rule_id=e.rule_id,
                             subscription_id=e.subscription_id))
     return out

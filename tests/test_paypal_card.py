@@ -79,13 +79,21 @@ def test_paypal_error_gives_a_friendly_card(demo_client: TestClient) -> None:
 
 
 def test_pages_host_the_card_and_mock_label(client: TestClient) -> None:
-    for url, host in (("/?demo=1", 'id="pp-demo"'), ("/user", 'id="pp-user"')):
-        html = client.get(url).text
-        assert host in html and "data-paypal-cards" in html and "/static/paypal-card.js" in html
+    """U7: a quiet "Verified with PayPal" footer on each card (lite: no ids); U23: the full card with every id on the
+    evidence page's PayPal tab; U22: nothing PayPal-debug on the merchant's page."""
+    from tests.story_helpers import subscribe
+
+    main = subscribe(client)
+    html = client.get("/").text
+    assert f'data-pp-sub="{main["id"]}"' in html and "status read live" in html and "/static/paypal-card.js" in html
+    ev = client.get(f"/subscriptions/{main['id']}?user=priya").text
+    assert f'data-pp-full="{main["id"]}"' in ev and "PayPal-Request-Id" in ev
     shop = client.get("/shop/penwright").text
     assert "Demo: simulated PayPal approval" in shop
-    assert "/static/paypal-card.js" in shop
+    assert "/static/paypal-card.js" not in shop and "debug" not in shop.lower()
+    assert "PayPalCard" not in client.get("/shop/static/checkout.js").text
     js = client.get("/static/paypal-card.js").text
+    assert '"lite"' in js and "ids on the evidence page" in js
     for testid in ("paypal-subscribed", "paypal-status", "paypal-sub-id", "paypal-cycles", "paypal-autopay-link"):
         assert testid in js, testid
     assert "Subscribed via PayPal ✓" in js and "View in PayPal sandbox" in js

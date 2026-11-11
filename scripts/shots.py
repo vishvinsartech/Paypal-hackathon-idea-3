@@ -1,4 +1,4 @@
-"""Screenshots of every demo screen at desktop and phone size (FIX_PLAN Phase 0).
+"""Screenshots of every demo screen at desktop and phone size (FIX_PLAN Phase 0; Phase 3 screens).
 
 Starts a mock server on throwaway data (reusing ui_check.start_server), walks the demo once per viewport and saves
 PNGs to <out>/<phase>/<viewport>/NN_<name>.png. Steps are forgiving: if a selector is missing (the UI changes
@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ui_check  # noqa: E402  (reuse the server starter and console watcher)
 
 VIEWPORTS = {"desktop": (1440, 900), "mobile": (390, 844)}
-SECTIONS = ("overview", "activity", "analytics", "history", "messages", "emails")
+SECTIONS = ("overview", "activity", "emails")
 skipped: list[str] = []
 
 
@@ -34,7 +34,11 @@ class Shooter:
 
     def __call__(self, page: Page, name: str, full: bool = False) -> None:
         self.n += 1
-        page.wait_for_timeout(700)  # entrance / count-up animations settle
+        page.wait_for_timeout(700)  # entrance animations settle
+        try:  # U29: the count-up has finished (pages without it never set data-ready; that's fine)
+            page.wait_for_selector("html[data-ready='1']", state="attached", timeout=3000)
+        except PWError:
+            pass
         page.screenshot(path=str(self.folder / f"{self.n:02d}_{name}.png"), full_page=full)
 
 
@@ -65,13 +69,14 @@ def advance(base: str, day: int) -> None:
 
 
 def user_id(base: str) -> str:
-    page = httpx.get(f"{base}/user", timeout=10).text
+    page = httpx.get(f"{base}/", timeout=10).text
     marker = 'data-user="'
     i = page.find(marker)
     return page[i + len(marker):page.find('"', i + len(marker))] if i >= 0 else "priya"
 
 
 def walk(base: str, folder: Path, size: tuple[int, int], headed: bool) -> None:
+    """Phase 3: one product view at `/` (presenter bar via ?demo=1), the shop, the companion, the evidence tabs."""
     httpx.post(f"{base}/api/demo/reset", timeout=60).raise_for_status()
     shoot = Shooter(folder)
     with sync_playwright() as p:
@@ -79,36 +84,34 @@ def walk(base: str, folder: Path, size: tuple[int, int], headed: bool) -> None:
         ctx = browser.new_context(viewport={"width": size[0], "height": size[1]})
         page = ui_check.watch(ctx.new_page())
 
-        nav(page, f"{base}/?demo=1")
-        shoot(page, "dashboard_day0_empty")
-        nav(page, f"{base}/user")
-        shoot(page, "user_day0_empty")
-
+        nav(page, f"{base}/")
+        shoot(page, "home_day0_empty")
         nav(page, f"{base}/shop")
         shoot(page, "shop_index", full=True)
         nav(page, f"{base}/shop/penwright")
         shoot(page, "shop_penwright", full=True)
         attempt("shop terms", lambda: click(page, "shop-terms-toggle"))
-        attempt("shop terms shot", lambda: shoot(page, "shop_penwright_terms", full=True))
         if attempt("companion open", lambda: (click(page, "shop-paypal-btn"),
                                               page.get_by_test_id("companion-risk").wait_for(timeout=20000))):
             shoot(page, "companion")  # viewport only: shows what is visible when it opens (B1)
-            attempt("companion evidence", lambda: page.get_by_test_id("companion-evidence").first.click(timeout=1500))
-            shoot(page, "companion_scrolled", full=True)
+            attempt("companion evidence", lambda: page.get_by_test_id("companion-evidence").locator("summary").click(
+                timeout=1500))
+            shoot(page, "companion_evidence")
             attempt("companion continue", lambda: (click(page, "companion-continue"),
                                                    page.get_by_test_id("shop-open-subguard").wait_for(timeout=15000)))
             shoot(page, "shop_subscribed", full=True)
 
         nav(page, f"{base}/?demo=1")
-        shoot(page, "dashboard_day0")
-        nav(page, f"{base}/user")
-        shoot(page, "user_day0")
+        shoot(page, "home_day0_presenter")
+        nav(page, f"{base}/")
+        shoot(page, "home_day0", full=True)
+        attempt("paypal footer", lambda: page.get_by_test_id("paypal-verified").first.locator("summary").click())
+        attempt("paypal footer shot", lambda: (page.get_by_test_id("paypal-status").first.wait_for(timeout=5000),
+                                               shoot(page, "home_day0_paypal_footer")))
 
         advance(base, 5)
-        nav(page, f"{base}/?demo=1")
-        shoot(page, "dashboard_day5")
-        nav(page, f"{base}/user")
-        shoot(page, "user_day5")
+        nav(page, f"{base}/")
+        shoot(page, "home_day5_checkin", full=True)
         attempt("chat", lambda: (click(page, "chat-open"), shoot(page, "chat_open"),
                                  page.locator("#chat-close").click(timeout=2000)))
         if attempt("cancel", lambda: (click(page, "alert-cancel"),
@@ -118,24 +121,30 @@ def walk(base: str, folder: Path, size: tuple[int, int], headed: bool) -> None:
                                            page.get_by_test_id("email-preview").wait_for(timeout=10000))):
                 shoot(page, "email_modal")
                 attempt("email close", lambda: click(page, "email-dismiss"))
-        shoot(page, "user_day5_cancelled")
+        shoot(page, "home_day5_cancelled", full=True)
 
         advance(base, 11)
         nav(page, f"{base}/?demo=1")
-        shoot(page, "dashboard_day11")
-        attempt("full log", lambda: (click(page, "audit-full-toggle", 2000), shoot(page, "dashboard_day11_log")))
-        nav(page, f"{base}/user")
-        shoot(page, "user_day11")
+        shoot(page, "home_day11_presenter")
+        attempt("audit drawer", lambda: (click(page, "audit-full-toggle", 2000),
+                                         page.get_by_test_id("audit-log-grid").locator(".ag-row").first.wait_for(),
+                                         shoot(page, "audit_drawer"), page.keyboard.press("Escape")))
+        nav(page, f"{base}/")
+        shoot(page, "home_day11", full=True)
         for sec in SECTIONS:
             tab = page.get_by_test_id(f"nav-{sec}")
             if tab.count() and attempt(f"section {sec}", lambda tab=tab: tab.first.click(timeout=2000)):
-                shoot(page, f"user_section_{sec}", full=True)
+                shoot(page, f"home_section_{sec}", full=True)
 
         uid = user_id(base)
         subs = httpx.get(f"{base}/api/subscriptions", params={"user": uid}, timeout=10).json()
         if subs:
             nav(page, f"{base}/subscriptions/{subs[0]['id']}?user={uid}")
-            shoot(page, "subscription_page", full=True)
+            shoot(page, "evidence_summary", full=True)
+            for tab in ("evidence", "paypal", "activity"):
+                if attempt(f"evidence tab {tab}", lambda tab=tab: click(page, f"ev-tab-{tab}")):
+                    page.wait_for_timeout(600)
+                    shoot(page, f"evidence_{tab}", full=True)
         quillnote(base, page, shoot, uid)
         browser.close()
 
@@ -156,7 +165,7 @@ def quillnote(base: str, page: object, shoot: Shooter, uid: str) -> None:
         return
     nav(page, f"{base}/subscriptions/{sub['id']}?user={uid}")  # type: ignore[arg-type]
     shoot(page, "quillnote_ai_vs_basic", full=True)
-    nav(page, f"{base}/user")  # type: ignore[arg-type]
+    nav(page, f"{base}/")  # type: ignore[arg-type]
     card = page.get_by_test_id("sub-card").filter(has=page.get_by_test_id("status-quillnote"))  # type: ignore[attr-defined]
     if attempt("quillnote cancel", lambda: (card.get_by_test_id("sub-cancel").click(timeout=3000),
                                             click(page, "confirm-button"),  # type: ignore[arg-type]

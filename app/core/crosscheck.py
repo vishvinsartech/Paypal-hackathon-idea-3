@@ -56,14 +56,18 @@ def cross_check(capture: PageCapture, plan: PlanView,
     if review.first_charge_day is not None:
         ok = review.first_charge_day == pp_day
         rows.append(PayPalCheckRow(item="First charge", page_says=after_start(review.first_charge_day),
-                                   paypal_says=after_start(pp_day), match=ok))
+                                   paypal_says=after_start(pp_day), match=ok,
+                                   label=f"First charge {after_start(pp_day)}" + ("" if ok else
+                                         f", but the page implies {after_start(review.first_charge_day)}")))
         if not ok:
             problems.append(f"the page implies the first charge {after_start(review.first_charge_day)}, "
                             f"PayPal bills {after_start(pp_day)}")
     if review.first_charge_amount is not None:
         ok = review.first_charge_amount == pp_amount
         rows.append(PayPalCheckRow(item="First charge amount", page_says=money_str(review.first_charge_amount, cur),
-                                   paypal_says=money_str(pp_amount, cur), match=ok))
+                                   paypal_says=money_str(pp_amount, cur), match=ok,
+                                   label=f"First charge of {money_str(pp_amount, cur)}" + (" matches the page" if ok
+                                         else f", but the page says {money_str(review.first_charge_amount, cur)}")))
         if not ok:
             problems.append(f"the page says {money_str(review.first_charge_amount, cur)}, PayPal will charge "
                             f"{money_str(pp_amount, cur)}")
@@ -75,16 +79,20 @@ def cross_check(capture: PageCapture, plan: PlanView,
         rx = price_regex(price, cur)
         stated, upfront = bool(rx.search(full)), bool(rx.search(prominent_text))
         where = "headline / price box" if upfront else ("fine print or terms only" if stated else "not on the page")
+        plain = "shown up front" if upfront else ("shown only in fine print" if stated else "not on the page")
         rows.append(PayPalCheckRow(item=f"PayPal price {money_str(price, cur)}", page_says=where,
-                                   paypal_says=f"{money_str(price, cur)} per cycle", match=stated))
+                                   paypal_says=f"{money_str(price, cur)} per cycle", match=stated,
+                                   label=f"Price {money_str(price, cur)} {plain}"))
         if not stated:
             problems.append(f"PayPal charges {money_str(price, cur)}, which the page never states")
     paid = paid_prices(plan.billing_cycles)
     upfront_ok = not paid or any(price_regex(p, cur).search(prominent_text) for p in paid)
     if paid:
         headline = prominent[0].text if prominent else "(nothing prominent)"
-        rows.append(PayPalCheckRow(item="Headline price", page_says=headline,
-                                   paypal_says=" then ".join(money_str(p, cur) for p in paid), match=upfront_ok))
+        charged = " then ".join(money_str(p, cur) for p in paid)
+        rows.append(PayPalCheckRow(item="Headline price", page_says=headline, paypal_says=charged, match=upfront_ok,
+                                   label="The headline shows a price PayPal charges" if upfront_ok else
+                                   f"The headline says “{headline}”, but PayPal charges {charged}"))
     if not upfront_ok:
         later = " then ".join(money_str(p, cur) for p in paid)
         problems.append(f"the headline doesn't show any price PayPal will charge; the PayPal plan bills {later}")

@@ -14,5 +14,6 @@ router = APIRouter(prefix="/api")
 
 
 @router.get("/analytics")
-def get_analytics(user: str = "priya", svc: Services = Depends(get_services)) -> dict[str, Any]:
-    return analytics(svc, user)
+def get_analytics(user: str = "priya", subscription_id: str | None = None,
+                  svc: Services = Depends(get_services)) -> dict[str, Any]:
+    return analytics(svc, user, subscription_id)

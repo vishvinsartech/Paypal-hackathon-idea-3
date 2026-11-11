@@ -41,7 +41,7 @@
         {"action": "click", "target": "shop-paypal-btn"},
         {"action": "wait_for", "target": "companion-overlay"},
         {"action": "highlight", "target": "companion-risk"},
-        {"action": "highlight", "target": "companion-summary"},
+        {"action": "highlight", "target": "companion-verdict"},
         {"action": "highlight", "target": "finding-NOTICE_PERIOD"},
         {"action": "highlight", "target": "finding-PROMPT_INJECTION_ATTEMPT"},
         {"action": "highlight", "target": "companion-promise"},
@@ -63,7 +63,7 @@
       "on_screen": "Site says Day 10. Real last day to cancel: Day 7.",
       "narration": "This is Priya's own SubGuard. The site says the trial ends on Day 10. Act by Day 7; the terms allow Day 8. SubGuard checks in on Day 5.",
       "actions": [
-        {"action": "goto", "url": "/user"},
+        {"action": "goto", "url": "/"},
         {"action": "highlight", "target": "sub-card"},
         {"action": "highlight", "target": "deadline-line"},
         {"action": "highlight", "target": "risk-score"}
@@ -78,7 +78,7 @@
         {"action": "goto", "url": "/?demo=1"},
         {"action": "click", "target": "sim-jump-5"},
         {"action": "wait_for", "target": "toast-alert"},
-        {"action": "goto", "url": "/user"},
+        {"action": "goto", "url": "/"},
         {"action": "highlight", "target": "user-reminder"},
         {"action": "highlight", "target": "reminder-usage"},
         {"action": "highlight", "target": "reminder-advice"}
@@ -108,7 +108,8 @@
       "narration": "Every step is in a hash-chained audit log. No answer? The Day 6 auto-cancel is allowed only because she was told on Day 0 and warned on Day 5.",
       "actions": [
         {"action": "goto", "url": "/?demo=1"},
-        {"action": "scroll_to", "target": "audit-log-grid"},
+        {"action": "click", "target": "audit-full-toggle"},
+        {"action": "wait_for", "target": "audit-log-grid"},
         {"action": "type", "target": "audit-filter", "text": "R1"},
         {"action": "highlight", "target": "audit-log-grid"},
         {"action": "type", "target": "audit-filter", "text": "R2"}
@@ -120,9 +121,9 @@
       "on_screen": "Day 11: first charge blocked",
       "narration": "Day 11. The first charge is due. SubGuard checks PayPal: no active subscription, so no charge can be taken.",
       "actions": [
-        {"action": "scroll_to", "target": "brand"},
+        {"action": "press", "key": "Escape"},
         {"action": "click", "target": "sim-jump-11"},
-        {"action": "goto", "url": "/user"},
+        {"action": "goto", "url": "/"},
         {"action": "highlight", "target": "proof-banner"}
       ]
     },
@@ -133,7 +134,8 @@
       "narration": "The $24.99 charge was never taken; up to $524.88 in year one. AI reads the fine print. PayPal enforces the outcome. Built on the PayPal Sandbox, MIT licensed.",
       "actions": [
         {"action": "highlight", "target": "user-protected"},
-        {"action": "click", "target": "nav-analytics"},
+        {"action": "click", "target": "view-review"},
+        {"action": "wait_for", "target": "chart-cost"},
         {"action": "highlight", "target": "chart-cost"},
         {"action": "wait", "seconds": 3}
       ]

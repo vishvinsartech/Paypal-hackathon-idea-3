@@ -2,27 +2,40 @@
 {% block title %}Penwright Studio: start your free trial{% endblock %}
 {% block body_class %}theme-penwright{% endblock %}
 {% block brand %}Penwright Studio{% endblock %}
+{% block nav %}<nav class="shop-nav" aria-label="Penwright"><a href="#features">Features</a><a href="#plan">Pricing</a><a href="/shop/penwright/app">Sign in</a></nav>{% endblock %}
 {% block content %}
-<section class="product">
-  <h1 class="headline" data-testid="shop-headline">Start your {{ p.penwright_trial_days }}-day free trial — {{ p.money(0) }} today</h1>
-  <p class="desc">Penwright is an AI writing studio for drafts, outlines and rewrites.</p>
-
-  <div class="price-box" data-testid="shop-price-box">
-    <p class="price-big">{{ p.money(0) }} today</p>
-    <p class="fineprint" data-testid="shop-fineprint">After your {{ p.penwright_trial_days }}-day free trial, your subscription automatically converts to Penwright Pro at {{ p.money(p.penwright_intro_price) }}/month, with the first charge on day {{ p.penwright_first_charge_day }}. After {{ p.penwright_intro_months }} paid months the price becomes {{ p.money(p.penwright_step_up_price) }}/month.</p>
+{# U20: a believable SaaS checkout. The scored text (headline, fine print, Terms) is unchanged word for word. #}
+<section class="product" data-testid="shop-product">
+  <div class="hero-col">
+    <p class="eyebrow">AI writing studio</p>
+    <h1 class="headline" data-testid="shop-headline">Start your {{ p.penwright_trial_days }}-day free trial — {{ p.money(0) }} today</h1>
+    <p class="desc">Penwright is an AI writing studio for drafts, outlines and rewrites.</p>
+    <ul class="features" id="features" data-testid="shop-features">
+      <li class="feature">Turn a few bullet points into a first draft</li>
+      <li class="feature">Outline a long report in seconds</li>
+      <li class="feature">Rewrite any paragraph in your own voice</li>
+    </ul>
   </div>
 
-  <details class="terms-accordion" data-testid="shop-terms">
-    <summary data-testid="shop-terms-toggle">Terms</summary>
-    <div class="terms-body" data-testid="shop-terms-body">
-      <p>Cancellation requires written notice by email to cancel@penwright.example at least {{ p.penwright_notice_days }} days before the next billing date.</p>
-      <p>The trial ends immediately if you export more than {{ p.penwright_export_limit }} documents.</p>
-      <p>There is no online cancel button. You can cancel by email, or by phone on weekdays only.</p>
+  <div class="plan-card" id="plan" data-testid="shop-plan">
+    <p class="plan-name">Penwright Pro · {{ p.penwright_trial_days }}-day free trial</p>
+    <div class="price-box" data-testid="shop-price-box">
+      <p class="price-big">{{ p.money(0) }} today</p>
+      <p class="fineprint" data-testid="shop-fineprint">After your {{ p.penwright_trial_days }}-day free trial, your subscription automatically converts to Penwright Pro at {{ p.money(p.penwright_intro_price) }}/month, with the first charge on day {{ p.penwright_first_charge_day }}. After {{ p.penwright_intro_months }} paid months the price becomes {{ p.money(p.penwright_step_up_price) }}/month.</p>
     </div>
-  </details>
-  <p class="tos-link"><a href="/shop/penwright/terms" data-testid="shop-tos-link">Full Terms of Service</a></p>
 
-  {% set plan_key = "penwright-pro" %}
-  {% include "_checkout.html" %}
+    {% set plan_key = "penwright-pro" %}
+    {% include "_checkout.html" %}
+
+    <details class="terms-accordion" data-testid="shop-terms">
+      <summary data-testid="shop-terms-toggle">Terms</summary>
+      <div class="terms-body" data-testid="shop-terms-body">
+        <p>Cancellation requires written notice by email to cancel@penwright.example at least {{ p.penwright_notice_days }} days before the next billing date.</p>
+        <p>The trial ends immediately if you export more than {{ p.penwright_export_limit }} documents.</p>
+        <p>There is no online cancel button. You can cancel by email, or by phone on weekdays only.</p>
+      </div>
+    </details>
+    <p class="tos-link"><a href="/shop/penwright/terms" data-testid="shop-tos-link">Full Terms of Service</a></p>
+  </div>
 </section>
 {% endblock %}

@@ -46,5 +46,5 @@ def test_other_records_pass_and_setting_turns_it_off() -> None:
 def test_live_refresh_is_marked() -> None:
     from pathlib import Path
 
-    js = (Path(__file__).resolve().parent.parent / "app" / "static" / "user.js").read_text(encoding="utf-8")
+    js = (Path(__file__).resolve().parent.parent / "app" / "static" / "home.js").read_text(encoding="utf-8")
     assert 'url.searchParams.set("live", "1")' in js

@@ -653,6 +653,73 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   says "read from the demo PayPal" instead of "fetched live … via mock". `/healthz` and the audit log keep the
   full detail. Delivery lines ("email: mocked") are U4, Phase 3.
 
+- **D-148 One product view at `/` (U5, U7-U11).** `/` is Priya's SubGuard (`app/routes/user_page.py` +
+  `home_view.py`, template `home.html`); `/user` and `/me` redirect there (307, query kept). The old live demo page
+  and `/user` page are deleted (`dashboard.html`, `user.html`, `dashboard.js`, `user.js`, `audit-summary.js`,
+  `timeline.js`). One merged card per subscription: header, a big cost line (`verdict.cost_line` from the consent
+  snapshot), the act-by line (only while she can still decide), the five dots, one pair of actions, and a quiet
+  "Verified with PayPal ✓ I-xxx · status read live" footer that reads PayPal when opened ("lite" mode, no ids).
+  The Key dates box and the separate PayPal card are gone; `key_dates()` still dates the history rows. Right column:
+  Charges avoided (before any cancel: "Nothing charged yet. Watching up to $524.88 in year one", never "up to $0"),
+  Next decision (code, from the timers), and What SubGuard did (the 5 latest meaningful events from the audit log,
+  chat questions left out, "Show all" opens the audit drawer). Empty state: one card + "Open the demo shop"; the
+  right column is hidden. The `[data-live]` parts refresh from the page's own HTML (home.js); swaps are serialised
+  so an action's refresh is never skipped.
+- **D-149 The check-in is the card (U8).** The open reminder renders as a yellow "Keep it or cancel?" band at the
+  card's top (usage, advice, delivery icons), and the card's buttons become the alert's Keep / Cancel trial. Only one
+  pair on screen (tests count it). A Layer 2 handoff renders as a red band on its card and removes Keep / Cancel and
+  the timer chip. Start demo no longer opens a modal: it waits for the alert to be acknowledged (and any dialog to
+  close), or for "Don't answer (SubGuard acts on Nov 17)" in the presenter bar. The policy path is unchanged
+  (alert Cancel -> propose -> confirmation token, R1/R3).
+- **D-150 Companion order and "3 things to know" (U14-U18).** `app/core/verdict.py` builds, from the PayPal plan
+  (code, not the LLM): the verdict line, the sub-line (step-up + year one), the PayPal check sentence, the 3 things
+  (top severity, one per type; the injection note and TERMS_MISMATCH have their own boxes, and on a tie the things
+  the verdict doesn't already say win: notice, hard cancel, early end), the deduplicated quotes and the cross-check
+  rows failing first. `PayPalCheckRow.label` (new, "" on old reviews) is the row in plain words ("Price $24.99 shown
+  only in fine print"). The AI summary moved inside the folded evidence. The `finding-<TYPE>` test ids stay on the
+  visible lines (3 things, PayPal box, shield note); the folded quotes use `evidence-<TYPE>`. ≤ 640 px: bottom sheet.
+- **D-151 Presenter bar (U6).** `_presenter.html`, fixed at the bottom with a dashed amber border, hidden unless
+  `?demo=1` or D. Day scrubber 0-11 plus 0/5/6/7/11 and +1. Days only move forward (`/api/demo/advance` refuses to go
+  back), so past-day buttons are disabled and dragging back says "Press Reset". The Fair Trial toggle is visible
+  now and fixed to Quillnote. The 7-step tracker is a compact strip in the bar, still derived from the audit log (B4).
+- **D-152 Confirm card and email modal (U12, U13).** `CardItem` gains `short_name`, `trial` and `next_charge_text`
+  ("$24.99 on Nov 22", from the consent snapshot and next billing day). The card says "Cancel Penwright trial? You
+  won't be charged $24.99 on Nov 22."; the year figure and "This can't be undone" are gone from it (the model keeps
+  `warning` for the chat tool). After a cancel the card offers "Start a new trial" with "Penwright may not offer a
+  second free trial." The email preview highlights `Notice.clause` (new field, the verbatim quote) with a mirrored
+  backdrop behind the textarea, so it stays a plain editable textarea. "Open in my email app" is a `mailto:` link
+  (new `POST /api/notices/{id}/mailto`, `sent_via="mailto"`, audit event `cancellation_email_app_opened`); Gmail is the
+  secondary link.
+- **D-153 Shop (U19-U22).** `/shop` is two product cards with a neutral one-line pitch (no spoiler, no tagline). The
+  checkout pages got a hero, three features, a plan card and a PayPal-style button, with the scored text (headline,
+  fine print, Terms) word for word. New text classes are dark on white and ≥ 13 px, and `@media` rules use only
+  descendant selectors, because the static capture reads single-class rules: Penwright stays 87 and Quillnote 73
+  (a test asserts it). After approval the page shows only "You're subscribed. Welcome to Penwright." and "Open
+  SubGuard ↗"; the PayPal card left the merchant page (mock and sandbox).
+- **D-154 Evidence page tabs (U23-U25).** Summary (verdict, 3 things, dates, AI vs basic, the three charts, the
+  cancellation email) · Evidence (full-width page preview, then the findings grid) · PayPal check (cross-check
+  failing row first, consent snapshot, the full PayPal card with request and debug ids) · Activity (meaningful
+  events, then "Show raw log" with CSV). `/api/analytics?subscription_id=` scopes the charts to one subscription.
+  "Why SubGuard flagged it" has four categories: Hidden deadline (notice, early end, auto-renew), Price jumps
+  (step-up, mismatch, add-on, the money factor), Hard to cancel, Hard-to-read terms (styling, hidden text, injection,
+  library bonus). The total still equals the score. Findings show plain labels, severity chips and "Found by:
+  AI / Code check / PayPal".
+- **D-155 Routine audit entries (U26).** `PayPalGateway._audit` adds `details.routine = true` to successful reads
+  (`get_subscription`, `verify_subscription`, `verify_plan`, `get_plan`). They stay in the hash chain and the CSV.
+  Every audit grid hides them by default with a "Show routine PayPal checks" box; summaries never showed them.
+  Writes and errors are never routine.
+- **D-156 Developer strings off user surfaces (U4).** Delivery: "App ✓ · Email ✓ · SMS ✓". The drafted-email
+  activity line no longer names the drafter ("mock · fixtures"). Card cancels send "Cancelled on your SubGuard card"
+  as the reason. Activity lines and the card status use calendar dates. PayPal ids and debug ids are on the
+  evidence page's PayPal tab only.
+- **D-157 Mobile, a11y, motion, vendoring (U27-U30).** At ≤ 640 px the top bar keeps logo, badge (no model name),
+  and icon buttons on one line, the sections are a fixed bottom tab bar (B9), and the presenter bar sits above it.
+  ui-check asserts no sideways scroll at 390 px. The companion keeps its focus trap and Esc. The evidence tabs are
+  WAI-ARIA tabs (arrow keys). The theme toggle is an icon with a tooltip. `<html data-ready="1">` is set once no
+  count-up is running (shots and the recorder wait for it), and `prefers-reduced-motion` turns animation off. AG Grid
+  36.2.0 and AG Charts 14.2.0 are vendored in `app/static/vendor/` with their MIT licence files
+  (`vendor/README.md`), and ui-check fails on any CDN request.
+
 ## Not used in v1 (sponsor tools)
 
 - **Bryntum:** a CSS timeline is enough for a prototype.

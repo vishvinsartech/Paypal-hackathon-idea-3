@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% block title %}SubGuard{% endblock %}
+{% block content %}
+{% set u = current_user %}
+{% set uid = u.id if u else 'priya' %}
+{% macro icon(d) %}<svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ d | safe }}</svg>{% endmacro %}
+{% macro trial_dots(c) %}{% if c.trial_dots %}<div class="t5" data-testid="trial-timeline">
+  <ol class="t5-track" aria-label="Trial timeline">{% for d in c.trial_dots %}
+    <li class="t5-dot is-{{ d.state }} t5-{{ d.side }} t5-{{ d.key }}" style="left:{{ d.pos }}%" data-testid="t5-{{ d.key }}"><span class="t5-mark" aria-hidden="true"></span><span class="t5-label"><span class="t5-name">{{ d.label }}</span> <time>{{ d.date }}</time></span></li>{% endfor %}
+  </ol><span class="t5-today" style="left:{{ c.today_pos }}%" title="Today" aria-hidden="true"></span>
+</div>{% endif %}{% endmacro %}
+{% set drafts = notices | selectattr("status", "equalto", "draft") | list %}
+<div class="home" data-testid="user-dashboard">
+<h1 class="home-title">Hi {{ u.name if u else "there" }}, here's your SubGuard.</h1>
+
+<div id="live-banners" data-live>
+{% if proof %}<section class="card proof-banner" data-testid="proof-banner" role="status"><strong>{{ proof }}</strong></section>{% endif %}
+{% if drafts %}<section class="card email-ready" data-testid="user-email-ready">
+  {% for n in drafts %}<p><strong>Your cancellation email is ready to review and send.</strong>
+    <button class="btn btn-sm" data-email-open="{{ n.id }}" data-testid="email-review">Review email</button></p>{% endfor %}
+</section>{% endif %}
+</div>
+
+{# U10: three sections. Desktop: tabs under the greeting; mobile: a bottom tab bar (B9, U27). #}
+<nav class="sections" aria-label="Sections" data-testid="side-nav">
+  <a href="#overview" data-nav="overview" data-testid="nav-overview" aria-current="true">
+    {{ icon('<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>') }}<span>Overview</span></a>
+  <a href="#activity" data-nav="activity" data-testid="nav-activity">
+    {{ icon('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>') }}<span>Activity</span>
+    <span class="nav-badge" id="live-badge-activity" data-live {% if not alerts %}hidden{% endif %}>{{ alerts | length }}<span class="sr-only"> messages</span></span></a>
+  <a href="#emails" data-nav="emails" data-testid="nav-emails">
+    {{ icon('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>') }}<span>Emails</span>
+    <span class="nav-badge nav-badge-hot" id="live-badge-emails" data-live {% if not drafts %}hidden{% endif %}>{{ drafts | length }}<span class="sr-only"> to review</span></span></a>
+</nav>
+
+<div class="panel" id="panel-overview" data-panel="overview" data-testid="panel-overview">
+<div class="home-grid" id="home-grid">
+<section class="subs" id="live-subs" data-live aria-label="Your subscriptions">
+{% for c in cards %}
+<article class="card sub-card{% if c.band %} has-band{% endif %}{% if c.handoff %} has-handoff{% endif %}" data-testid="sub-card" data-sub="{{ c.id }}" aria-labelledby="sub-{{ c.id }}">
+  {% if c.band %}{% set a = c.band.alert %}
+  {# U8: the check-in is the card's top; the card's own buttons below become this decision. #}
+  <div class="band band-checkin" data-testid="user-reminder" role="region" aria-labelledby="band-{{ a.id }}">
+    <p class="eyebrow">Check-in · sent by email, SMS and in-app <span class="delivery" data-testid="delivery">{{ delivery_text(a.delivery) }}</span></p>
+    <h2 id="band-{{ a.id }}">Keep it or cancel?</h2>
+    <p class="check-body">{{ a.body }}</p>
+    <p class="usage" data-testid="reminder-usage"><span class="chip">Your usage</span> {{ c.band.usage }}</p>
+    <p class="advice" data-testid="reminder-advice"><span class="chip chip-advice">Advice</span>
+      <strong>SubGuard suggests: {{ c.band.suggest }}. You decide.</strong> <span class="muted">{{ c.band.reason }}</span></p>
+  </div>
+  {% endif %}
+  {% if c.handoff %}{% set h = c.handoff %}{% set a = h.alert %}
+  <div class="band band-action" data-testid="action-needed" data-poll-sub="{{ c.id }}" role="region" aria-labelledby="an-{{ a.id }}">
+    <h2 id="an-{{ a.id }}">{{ a.title }}</h2>
+    <p>{{ a.body }}</p>
+    <div class="row">
+      <a class="btn btn-danger" href="{{ h.url }}" target="_blank" rel="noopener" data-testid="action-autopay">Open PayPal Automatic payments ↗</a>
+      {% if h.notice_id %}<button type="button" class="btn btn-ghost" data-email-open="{{ h.notice_id }}" data-testid="action-review-email">Review email</button>{% endif %}
+    </div>
+    <p class="muted small" data-testid="layer2-waiting"><span class="pulse-dot" aria-hidden="true"></span>
+      Waiting for PayPal to show {{ h.merchant }} as CANCELLED. SubGuard checks PayPal every few seconds.</p>
+  </div>
+  {% endif %}
+  <header class="sub-card-head">
+    <h2 class="sub-name" id="sub-{{ c.id }}">{{ c.merchant }} <span class="muted sub-plan">· {{ c.plan }}{% if c.trial_dots %} · free trial{% endif %}</span></h2>
+    <div class="row">
+      <span class="pill pill-{{ c.status | lower }}" data-testid="status-{{ c.merchant_id }}">{{ c.status }}</span>
+      {% if c.risk is not none %}<span class="risk-big risk-{{ c.risk_level }}" data-testid="risk-score">Risk {{ c.risk }}/100</span>{% endif %}
+    </div>
+  </header>
+  <p class="cost-line" data-testid="cost-line">{{ c.cost_line }}</p>
+  {% if c.cost_sub %}<p class="cost-sub muted" data-testid="cost-sub">{{ c.cost_sub }}</p>{% endif %}
+  {% if c.show_act_by %}
+  <p class="deadline-line" data-testid="deadline-line"><strong data-testid="act-by">{{ c.act_by_text }}</strong>{% if c.trial_end_text %}<span class="muted"> · the site says the trial ends {{ c.trial_end_text }}</span>{% endif %}</p>
+  {% endif %}
+  {{ trial_dots(c) }}
+  <p class="sub-status small" data-testid="sub-status">{{ c.outcome }}{% if c.timer_text and c.can_decide %} · <span class="chip chip-teal" data-testid="timer-chip">{{ c.timer_text }}</span>{% endif %}</p>
+  <div class="row sub-actions">
+    {% if c.band %}{% set a = c.band.alert %}
+    <button class="btn btn-ghost" data-alert="{{ a.id }}" data-action="keep" data-testid="alert-keep">Keep</button>
+    <button class="btn btn-danger" data-alert="{{ a.id }}" data-action="cancel" data-testid="alert-cancel">Cancel trial</button>
+    {% elif c.can_decide %}
+    <button class="btn btn-ghost" data-sub-keep="{{ c.id }}" data-testid="sub-keep">Keep</button>
+    <button class="btn btn-danger" data-sub-cancel="{{ c.id }}" data-testid="sub-cancel">Cancel trial</button>
+    {% endif %}
+    <a class="btn btn-ghost" href="/subscriptions/{{ c.id }}?user={{ uid }}" data-testid="view-review">See evidence</a>
+    {% if c.cancelled %}
+    <a class="btn btn-ghost" href="/shop/{{ c.merchant_id }}?user={{ uid }}" target="_blank" rel="noopener" data-testid="start-new-trial">Start a new trial</a>
+    <span class="muted small" data-testid="no-second-trial">{{ c.merchant.split()[0] }} may not offer a second free trial.</span>
+    {% endif %}
+  </div>
+  {# U7: the quiet PayPal footer; opening it reads the subscription live from PayPal (paypal-card.js, "lite"). #}
+  <details class="pp-foot" data-testid="paypal-verified" data-pp-sub="{{ c.id }}" data-pp-status="{{ c.status }}">
+    <summary>Verified with PayPal ✓ <code data-testid="paypal-sub-id">{{ c.paypal_id }}</code> · status read live</summary>
+    <div data-pp-body></div>
+  </details>
+</article>
+{% else %}
+{# U11: one friendly card, no zero KPIs. #}
+<section class="card empty-card" data-testid="user-empty">
+  <img src="/static/shield.svg" alt="" width="40" height="40">
+  <h2>No subscriptions yet.</h2>
+  <p>When you start a free trial, SubGuard checks it before you pay.</p>
+  <a class="btn" href="/shop?user={{ uid }}" target="_blank" rel="noopener" data-testid="empty-open-shop">Open the demo shop</a>
+</section>
+{% endfor %}
+</section>
+
+<aside class="side" id="home-side" aria-label="Summary" {% if not cards %}hidden{% endif %}>
+  <section class="card kpi" id="live-kpis" data-live data-testid="user-protected">
+    <span class="kpi-label">Charges avoided</span>
+    <span class="kpi-value" id="kpi-protected" data-countup data-testid="user-avoided">{{ avoided }}</span>
+    {% if nothing_avoided %}<span class="kpi-sub" data-testid="user-year-one">Nothing charged yet. Watching up to {{ at_stake }} in year one</span>
+    {% else %}<span class="kpi-sub" data-testid="user-year-one">up to {{ protected }} in year one</span>{% endif %}
+    <span class="sr-only" data-testid="user-cancelled">Cancelled in PayPal: {{ cancelled }}</span>
+  </section>
+  <section class="card next-card" id="live-next" data-live data-testid="next-decision" aria-labelledby="next-h">
+    <h2 id="next-h" class="kpi-label">Next decision</h2>
+    <p class="next-what">{% if next.when %}<strong>{{ next.when }}</strong> · {% endif %}{{ next.what }}</p>
+    <p class="muted small">{{ next.note }}</p>
+  </section>
+  <section class="card did-card" id="live-did" data-live aria-labelledby="did-h">
+    <div class="card-head">
+      <h2 id="did-h">What SubGuard did</h2>
+      <span class="chain {{ 'ok' if chain_ok else 'bad' }}" data-testid="audit-chain-mini" title="SHA-256 hash chain over the audit log">{{ "chain verified ✓" if chain_ok else "chain BROKEN ✗" }}</span>
+    </div>
+    <ol class="did" data-testid="audit-summary">
+      {% for r in did %}<li class="did-row" data-testid="audit-summary-row"><span class="who who-{{ r.kind }}">{{ r.who }}</span>
+        <span class="did-text">{{ r.text }}{% if r.rule_id %} <span class="rule-chip">{{ r.rule_id }}</span>{% endif %}</span>
+        <span class="muted tiny did-when">{{ r.when }}</span></li>
+      {% else %}<li class="muted">Nothing yet. When you start a free trial, SubGuard's steps show here.</li>{% endfor %}
+    </ol>
+    <button type="button" class="link-btn" data-open-audit data-testid="audit-full-toggle">Show all →</button>
+  </section>
+</aside>
+</div>
+</div>
+
+<div class="panel" id="panel-activity" data-panel="activity" data-testid="panel-activity" hidden>
+<section class="card" aria-labelledby="msg-h">
+  <h2 id="msg-h">Messages to you</h2>
+  <div id="live-messages" data-live data-testid="alerts-panel">
+  {% set kinds = {"timer_set": "alert-timer-set", "reminder": "alert-trial-check", "cancelled": "alert-done",
+                  "blocked_charge": "blocked-charge", "notice_unsent": "alert-notice-unsent"} %}
+  {% for a in alerts | reverse %}
+  <article class="alert alert-{{ a.level }}{% if a.acknowledged_at %} is-done{% endif %}" data-testid="{{ kinds.get(a.kind, 'alert-' ~ a.kind) }}">
+    <header><strong>{{ a.title }}</strong><span class="muted small">{{ alert_when(a) }}</span></header>
+    <p>{{ a.body }}</p>
+    <p class="muted tiny delivery">{{ delivery_text(a.delivery) }}{% if a.acknowledged_at %} · handled{% endif %}</p>
+  </article>
+  {% else %}<p class="muted">None yet.</p>{% endfor %}
+  </div>
+</section>
+<section class="card" aria-labelledby="hist-h">
+  <h2 id="hist-h">Your subscriptions</h2>
+  <ul class="hist-list" id="live-history" data-live data-testid="user-history">
+    {% for h in history[:grid_after] %}<li><a href="/subscriptions/{{ h.id }}?user={{ uid }}"><strong>{{ h.merchant }}</strong></a>
+      <span class="pill pill-{{ h.status | lower }}">{{ h.status }}</span> <span>{{ h.outcome }}</span>
+      {% if h.last_event %}<span class="muted small">· {{ h.last_event }}</span>{% endif %}</li>
+    {% else %}<li class="muted">No subscriptions yet.</li>{% endfor %}
+  </ul>
+  {% if history | length > grid_after %}
+  <details class="hist-all" data-testid="history-all"><summary>Show all {{ history | length }}</summary>
+    <div class="grid-tools" role="group" aria-label="Search and filter your subscriptions">
+      <input type="search" id="hist-search" placeholder="Search subscriptions…" aria-label="Search subscriptions" data-testid="history-search">
+      <select id="hist-status" aria-label="Show" data-testid="history-status">
+        <option value="">All statuses</option><option value="ACTIVE">Active</option><option value="CANCELLED">Cancelled</option>
+      </select>
+      <button class="btn btn-sm btn-ghost" id="hist-clear" data-testid="history-clear">Clear filters</button>
+      <button class="btn btn-sm btn-ghost" id="hist-export" data-testid="history-export">Export CSV</button>
+    </div>
+    <div id="history-grid" class="grid" data-testid="history-grid"></div>
+  </details>
+  {% endif %}
+</section>
+<section class="card" aria-labelledby="all-h">
+  <div class="card-head"><h2 id="all-h">Everything SubGuard did</h2>
+    <button type="button" class="btn btn-sm btn-ghost" data-open-audit data-testid="activity-raw-log">Show raw log</button></div>
+  <ol class="did" id="live-did-all" data-live data-testid="activity-list">
+    {% for r in did_all %}<li class="did-row"><span class="who who-{{ r.kind }}">{{ r.who }}</span>
+      <span class="did-text">{{ r.text }}{% if r.rule_id %} <span class="rule-chip">{{ r.rule_id }}</span>{% endif %}</span>
+      <span class="muted tiny did-when">{{ r.when }}</span></li>
+    {% else %}<li class="muted">Nothing yet.</li>{% endfor %}
+  </ol>
+</section>
+</div>
+
+<div class="panel" id="panel-emails" data-panel="emails" data-testid="panel-emails" hidden>
+<section class="card" aria-labelledby="mail-h">
+  <h2 id="mail-h">Your cancellation emails</h2>
+  <div id="live-emails" data-live>
+  {% for n in notices %}
+  <div class="notice" data-testid="cancellation-notice">
+    <p><strong>{{ n.subject }}</strong> → {{ n.to }}<br>
+      <span class="small {{ 'ok' if n.status == 'sent' else 'muted' }}">{% if n.status == "sent" %}{{ {"gmail_compose_link": "Opened in Gmail (demo)", "mailto": "Opened in your email app (demo)"}.get(n.sent_via, "Email sent (demo)") }} · edited: {{ "yes" if n.edited else "no" }}{% else %}Draft, not sent yet{% endif %} · drafted by {{ "AI" if n.draft_source == "llm" else "a standard template" }}</span></p>
+    <button class="btn btn-sm" data-email-open="{{ n.id }}">{{ "View" if n.status == "sent" else "Review & send" }}</button>
+  </div>
+  {% else %}<p class="muted">None yet. SubGuard drafts one for you after a cancel in PayPal.</p>{% endfor %}
+  </div>
+  <p class="muted tiny">Demo only. Production would send from your own Gmail/Outlook with send-only permission.</p>
+</section>
+</div>
+</div>
+
+{# U9 "Show all" / presenter "Show audit log": the full hash-chained log. Routine PayPal reads hidden (U26). #}
+<dialog id="audit-drawer" class="dialog drawer" aria-labelledby="audit-h" data-testid="audit-drawer">
+  <div class="drawer-head card-head">
+    <h2 id="audit-h">Audit log</h2>
+    <span id="chain" class="chain" data-testid="audit-chain">checking…</span>
+    <button type="button" class="btn btn-ghost btn-sm" data-close-audit aria-label="Close audit log">✕</button>
+  </div>
+  <div class="card-head drawer-tools">
+    <label class="sr-only" for="audit-filter">Filter audit log</label>
+    <input id="audit-filter" type="search" placeholder="Filter, e.g. R2" data-testid="audit-filter">
+    <label class="small"><input type="checkbox" id="audit-routine" data-testid="audit-routine"> Show routine PayPal checks</label>
+    <button class="btn btn-ghost btn-sm" id="audit-export" data-testid="audit-log-export">Export CSV</button>
+    <a class="small" href="/api/audit-log.csv">server CSV</a>
+  </div>
+  <div id="audit-grid" class="grid grid-tall" data-testid="audit-log-grid"></div>
+</dialog>
+
+{% include "_presenter.html" %}
+<dialog id="confirm-dialog" class="dialog" aria-labelledby="confirm-title"></dialog>
+{% endblock %}
+{% block scripts %}
+<script src="/static/home.js"></script>
+<script src="/static/user-nav.js"></script>
+<script src="/static/presenter.js"></script>
+<script src="/static/autoplay_sandbox.js"></script>
+<script src="/static/autoplay.js"></script>
+{% endblock %}

@@ -1,5 +1,6 @@
-// All AG Grid setup (Community 36.2.0 from a pinned CDN, D-060): audit log (Live demo), Priya's subscription history,
-// findings + per-subscription audit (subscription page). Subscriptions are cards on Priya's dashboard (D-112).
+// All AG Grid setup (Community 36.2.0, vendored in /static/vendor, U30): the audit log drawer on `/`, the history
+// grid under "Show all", findings + per-subscription audit (evidence page). Routine PayPal reads (the poller and
+// status re-reads, `details.routine`) are hidden by default in every audit grid (U26); a checkbox shows them.
 (function () {
   "use strict";
   if (!window.agGrid || !window.SG) return;
@@ -24,6 +25,8 @@
   const base = {theme, animateRows: motion, suppressCellFocus: false, domLayout: "autoHeight",
                 defaultColDef: {sortable: true, filter: true, resizable: true, flex: 1, minWidth: 90}};
   const html = (s) => { const d = document.createElement("span"); d.innerHTML = s; return d; };
+  // U26: routine entries are hidden unless the box is ticked (they stay in the hash chain and in the CSV).
+  const routine = (r) => !!(r.details && r.details.routine);
 
   // ---- Priya's subscription history (/user, D-118): one row per subscription, search + status filter + CSV ----
   const histEl = document.getElementById("history-grid");
@@ -84,7 +87,11 @@
   // ---- audit log grid -----------------------------------------------------------------------
   const auditEl = document.getElementById("audit-grid");
   if (auditEl) {
-    const grid = AG.createGrid(auditEl, Object.assign({}, base, {
+    const box = document.getElementById("audit-routine");
+    let grid = null;
+    const filter = {isExternalFilterPresent: () => !(box && box.checked), doesExternalFilterPass: (n) => !routine(n.data)};
+    if (box) box.addEventListener("change", () => grid && grid.onFilterChanged());
+    grid = AG.createGrid(auditEl, Object.assign({}, base, filter, {
       rowData: [], getRowId: (p) => String(p.data.seq), domLayout: "normal", pagination: true, paginationPageSize: 50, paginationPageSizeSelector: false,
       columnDefs: [
         {field: "seq", headerName: "#", maxWidth: 80, sort: "desc"},
@@ -114,8 +121,8 @@
       maxSeq = top; // after a reset the log shrinks, and this follows it down
       const v = await api("/api/audit-log/verify");
       const chain = document.getElementById("chain");
-      chain.textContent = v.ok ? `chain verified ✓ (${v.entries} entries)` : `chain BROKEN ✗ ${v.reason || ""}`;
-      chain.className = "chain " + (v.ok ? "ok" : "bad");
+      if (chain) chain.textContent = v.ok ? `chain verified ✓ (${v.entries} entries)` : `chain BROKEN ✗ ${v.reason || ""}`;
+      if (chain) chain.className = "chain " + (v.ok ? "ok" : "bad");
     });
     document.getElementById("audit-filter").addEventListener("input", (e) => grid.setGridOption("quickFilterText", e.target.value));
     document.getElementById("audit-export").addEventListener("click", () => grid.exportDataAsCsv({fileName: "subguard-audit-log.csv"}));
@@ -128,18 +135,23 @@
     AG.createGrid(findEl, Object.assign({}, base, {
       rowData: rows,
       columnDefs: [
-        {field: "type", headerName: "Type", minWidth: 200, cellRenderer: (p) => html(`<span class="chip" data-testid="finding-${esc(p.value)}">${esc(p.value)}</span>`)},
-        {field: "severity", headerName: "Severity", maxWidth: 100, sort: "desc"},
+        {field: "label", headerName: "Finding", minWidth: 200, cellRenderer: (p) => html(`<span class="chip" data-testid="finding-${esc(p.data.type)}">${esc(p.value)}</span>`)},
+        {field: "severity", headerName: "Severity", maxWidth: 120, sort: "desc",
+         cellRenderer: (p) => html(`<span class="sev sev-${p.value >= 5 ? "high" : p.value >= 4 ? "mid" : "low"}">${p.value >= 5 ? "High" : p.value >= 4 ? "Medium" : "Low"}</span>`)},
         {field: "plain_english", headerName: "In plain English", minWidth: 260, wrapText: true, autoHeight: true},
         {field: "quote", headerName: "Verbatim quote", minWidth: 260, wrapText: true, autoHeight: true},
         {field: "money_impact_usd_year", headerName: "Money / yr", maxWidth: 120, valueFormatter: (p) => p.value ? "$" + p.value : "—"},
-        {field: "source", headerName: "Source", maxWidth: 120},
+        {field: "source_label", headerName: "Found by", maxWidth: 130},
       ],
     }));
   }
   const subAuditEl = document.getElementById("sub-audit-grid");
   if (subAuditEl) {
-    const grid = AG.createGrid(subAuditEl, Object.assign({}, base, {
+    const box = document.getElementById("sub-audit-routine");
+    let grid = null;
+    const filter = {isExternalFilterPresent: () => !(box && box.checked), doesExternalFilterPass: (n) => !routine(n.data)};
+    if (box) box.addEventListener("change", () => grid && grid.onFilterChanged());
+    grid = AG.createGrid(subAuditEl, Object.assign({}, base, filter, {
       rowData: [], columnDefs: [
         {field: "seq", headerName: "#", maxWidth: 80}, {field: "sim_day", headerName: "Day", maxWidth: 80},
         {field: "actor", maxWidth: 120}, {field: "event", minWidth: 170}, {field: "rule_id", headerName: "Rule", maxWidth: 90},
@@ -147,5 +159,7 @@
       ],
     }));
     api(`/api/audit-log?subscription_id=${encodeURIComponent(subAuditEl.dataset.sub)}`).then((rows) => grid.setGridOption("rowData", rows));
+    const exp = document.getElementById("sub-audit-export");
+    if (exp) exp.addEventListener("click", () => grid.exportDataAsCsv({fileName: `subguard-audit-${subAuditEl.dataset.sub}.csv`}));
   }
 })();

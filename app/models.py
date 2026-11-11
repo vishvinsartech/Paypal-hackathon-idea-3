@@ -239,8 +239,9 @@ class Notice(BaseModel):
     by_timer: bool = False
     edited: bool | None = None
     sent_at: datetime | None = None
-    sent_via: Literal["demo_outbox", "gmail_compose_link", "auto_on_timer"] | None = None
-    delivery: str = "draft"  # draft | demo_outbox | gmail_compose_link | auto_on_timer (D7 opt-in)
+    sent_via: Literal["demo_outbox", "gmail_compose_link", "mailto", "auto_on_timer"] | None = None
+    delivery: str = "draft"  # draft | demo_outbox | gmail_compose_link | mailto | auto_on_timer (D7 opt-in)
+    clause: str = ""  # U13: the verbatim clause the email quotes (highlighted in the preview); "" for old drafts
 
 
 class NoticeList(BaseModel):

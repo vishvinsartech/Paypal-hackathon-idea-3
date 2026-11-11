@@ -1,15 +1,30 @@
-/* Deliberately unlike SubGuard: light, warm, serif headings. "Someone else's site". */
+/* Deliberately unlike SubGuard: light, warm, serif headings. "Someone else's site" (U20).
+   Page capture (app/integrations/capture.py) reads single-class rules from this file, so every text class keeps a
+   dark colour on white (the risk score must only see the intentional trap: .fineprint). Descendant rules are
+   ignored by the capture and only style non-text things. */
 body { margin: 0; background: #ffffff; color: #222; font-family: Georgia, "Times New Roman", serif; }
 a { color: #6b3fa0; }
+* { box-sizing: border-box; }
 .banner { background: #fff4c2; color: #4a3b00; font: 600 14px/1.4 system-ui, sans-serif; text-align: center; padding: 6px; border-bottom: 1px solid #e6d58a; }
-.shop-header { padding: 14px 24px; border-bottom: 1px solid #eee; }
+.shop-header { padding: 14px 24px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 18px; }
 .shop-home { font-size: 1.3rem; font-weight: 700; color: #222; text-decoration: none; }
-.shop-main { max-width: 760px; margin: 0 auto; padding: 24px; }
-.merchant-list li { margin: 6px 0; }
+.shop-nav { margin-left: auto; display: flex; gap: 16px; font: 15px system-ui, sans-serif; }
+.shop-nav a { color: #222; text-decoration: none; }
+.shop-main { max-width: 980px; margin: 0 auto; padding: 24px; }
+:focus-visible { outline: 3px solid #6b3fa0; outline-offset: 2px; }
 
+/* ---- product page: hero + plan card ---- */
+.product { display: grid; grid-template-columns: 1.2fr 1fr; gap: 32px; align-items: start; }
+.hero-col { padding-top: 8px; }
+.eyebrow { font: 700 13px/1.4 system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: #5a2e8a; margin: 0; }
 .headline { font-size: 2.2rem; line-height: 1.15; margin: 8px 0 12px; }
 .desc { font-size: 1.1rem; color: #444; }
-.price-box { border: 2px solid #eee; border-radius: 12px; padding: 16px 20px; margin: 16px 0; background: #fff; }
+.features { list-style: none; padding: 0; margin: 18px 0; }
+.feature { font: 16px/1.5 system-ui, sans-serif; color: #333; padding: 8px 0 8px 30px; position: relative; }
+.features li::before { content: "✓"; position: absolute; left: 4px; top: 7px; color: #6b3fa0; font-weight: 800; }
+.plan-card { border: 1px solid #e3dcef; border-radius: 16px; padding: 20px 22px; background: #fff; box-shadow: 0 12px 34px rgba(42,20,64,.12); }
+.plan-name { font: 700 15px/1.4 system-ui, sans-serif; color: #3d2361; margin: 0 0 4px; }
+.price-box { margin: 0 0 12px; }
 .price-big { font-size: 1.8rem; font-weight: 700; margin: 0 0 8px; }
 .plans { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
@@ -20,28 +35,53 @@ a { color: #6b3fa0; }
 .terms-accordion summary { cursor: pointer; color: #888; font-size: 12px; }
 .terms-body p { font-size: 11px; color: #9a9a9a; }
 .tos-link { font-size: 12px; }
+.tos { max-width: 760px; }
 .tos h2 { font-size: 1.1rem; margin-top: 20px; }
 .terms-clear { background: #f7f7fb; border-radius: 10px; padding: 8px 18px; margin: 16px 0; }
-.muted { color: #777; }
+.muted { color: #666; }
 
-.checkout { margin-top: 24px; }
-.paypal-btn { width: 100%; max-width: 360px; padding: 12px; border: 0; border-radius: 24px; background: #ffc439; color: #111; font: 700 16px system-ui, sans-serif; cursor: pointer; }
+.checkout { margin-top: 16px; }
+/* U20: a PayPal-style button: gold pill, the word in italic bold navy (no real logo or brand art). */
+.paypal-btn { width: 100%; padding: 12px; border: 0; border-radius: 24px; background: #ffc439; color: #003087; font: italic 800 19px/1.2 Verdana, system-ui, sans-serif; letter-spacing: -.02em; cursor: pointer; }
+.paypal-btn:hover { background: #f2ba36; }
 .paypal-btn:disabled { opacity: .6; cursor: default; }
+.demo-approval { display: block; width: fit-content; margin: 8px auto 0; font: 12px/1.4 system-ui, sans-serif; color: #5b4a00; background: #fff4c2; border-radius: 4px; padding: 2px 8px; }
 
 .theme-penwright .shop-header { background: #2a1440; }
-.theme-penwright .shop-home { color: #f3e9ff; }
+.theme-penwright .shop-home, .theme-penwright .shop-nav a { color: #f3e9ff; }
+.theme-penwright .plan-card { border-top: 6px solid #6b3fa0; }
 .theme-quillnote { font-family: "Trebuchet MS", system-ui, sans-serif; }
 .theme-quillnote .shop-header { background: #e9f5ec; border-bottom-color: #cfe6d5; }
 .theme-quillnote .shop-home { color: #1f5f3a; }
 .theme-quillnote a { color: #1f7a4a; }
+.theme-quillnote .eyebrow { color: #1f5f3a; }
+.theme-quillnote .features li::before { color: #1f7a4a; }
+.theme-quillnote .plan-card { border-top: 6px solid #2e8b57; }
 .faq { margin: 18px 0; }
 .faq h2 { font-size: 1.2rem; margin: 0 0 6px; }
 .faq h3 { font-size: 1rem; margin: 14px 0 2px; }
 .faq p { margin: 0; color: #444; }
 
-/* SubGuard companion note (simulated browser extension; not part of the merchant's page). */
-.companion-note { font: 13px/1.4 system-ui, sans-serif; color: #1d4f45; background: #e6f7f3; border-radius: 6px; padding: 4px 8px; display: inline-block; }
-.btn { padding: 8px 14px; border-radius: 6px; border: 1px solid #333; background: #fff; font: inherit; cursor: pointer; }
-.hidden-tricks { margin-top: 18px; border: 1px solid #ddd; border-radius: 8px; padding: 10px 14px; background: #fafafa; }
-.hidden-tricks summary { cursor: pointer; font-weight: 600; }
-.demo-approval { display: block; width: fit-content; margin: 6px 0 0; font: 12px/1.4 system-ui, sans-serif; color: #5b4a00; background: #fff4c2; border-radius: 4px; padding: 2px 8px; }
+/* ---- after approval (U22): only the welcome ---- */
+.welcome { grid-column: 1 / -1; text-align: center; padding: 48px 16px; border: 1px solid #e3dcef; border-radius: 16px; }
+.welcome-title { font-size: 2rem; margin: 0 0 8px; }
+
+/* ---- shop index (U19): two product cards ---- */
+.shop-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; margin: 18px 0; }
+.shop-card { border: 1px solid #e3dcef; border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; }
+.shop-card h2 { margin: 0; font-size: 1.3rem; }
+.shop-card p { margin: 0; color: #444; }
+.shop-card .btn { margin-top: auto; align-self: flex-start; }
+.btn { display: inline-block; padding: 8px 14px; border-radius: 8px; border: 1px solid #333; background: #fff; color: #222; font: 600 15px system-ui, sans-serif; text-decoration: none; cursor: pointer; }
+
+/* SubGuard companion strip (simulated browser extension; not part of the merchant's page). */
+.companion-note { font: 13px/1.4 system-ui, sans-serif; color: #1d4f45; background: #e6f7f3; border-radius: 6px; padding: 4px 8px; display: inline-block; margin-top: 12px; }
+.companion-note a { color: #0b5c4f; font-weight: 700; }
+
+/* Descendant selectors only in here: the capture reads single-class rules and ignores @media. */
+@media (max-width: 760px) {
+  main .product { grid-template-columns: 1fr; gap: 16px; }
+  body .shop-main { padding: 16px; }
+  .product .headline { font-size: 1.8rem; }
+  .shop-header .shop-nav { display: none; }
+}

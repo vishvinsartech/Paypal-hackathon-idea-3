@@ -2,30 +2,41 @@
 {% block title %}Quillnote: try it free{% endblock %}
 {% block body_class %}theme-quillnote{% endblock %}
 {% block brand %}Quillnote{% endblock %}
+{% block nav %}<nav class="shop-nav" aria-label="Quillnote"><a href="#features">Features</a><a href="#faq">Questions</a><a href="/shop/quillnote/app">Sign in</a></nav>{% endblock %}
 {% block content %}
 {# A1: every catch is plain prose. No "N days" notice, no "auto-renews", no "after N months the price", no
-   "no online cancel": the basic regex check misses them, the AI review reads them. No hidden injection line. #}
-<section class="product">
-  <h1 class="headline" data-testid="shop-headline">Try Quillnote free for {{ number_words(p.quillnote_trial_days) }} days</h1>
-  <p class="desc">Quillnote turns meeting scribbles into tidy, searchable notes with an AI that writes the summary for you.</p>
-
-  <div class="price-box" data-testid="shop-price-box">
-    <p class="price-big">Nothing to pay today</p>
-    <p class="fineprint" data-testid="shop-fineprint">Once the trial wraps up, your Quillnote Plus membership simply carries on at {{ p.money(p.quillnote_intro_price) }} a month, and we keep it going for you month after month so your notes are never interrupted.</p>
+   "no online cancel": the basic regex check misses them, the AI review reads them. No hidden injection line.
+   U20: hero + features + plan card; the scored text is unchanged word for word. #}
+<section class="product" data-testid="shop-product">
+  <div class="hero-col">
+    <p class="eyebrow">AI meeting notes</p>
+    <h1 class="headline" data-testid="shop-headline">Try Quillnote free for {{ number_words(p.quillnote_trial_days) }} days</h1>
+    <p class="desc">Quillnote turns meeting scribbles into tidy, searchable notes with an AI that writes the summary for you.</p>
+    <ul class="features" id="features" data-testid="shop-features">
+      <li class="feature">Write while you talk, tidy it up later</li>
+      <li class="feature">Find any note in a second</li>
+      <li class="feature">A short summary after every meeting</li>
+    </ul>
+    <section class="faq" id="faq" data-testid="shop-faq">
+      <h2>Questions</h2>
+      <h3>Can I use it on my phone?</h3>
+      <p>Yes. Quillnote works in any browser and keeps your notebooks in sync.</p>
+      <h3>Does the price ever change?</h3>
+      <p data-testid="shop-faq-price">Plus members enjoy our launch pricing for their first {{ number_words(p.quillnote_intro_months) }} paid months; from then on the membership is {{ p.money(p.quillnote_step_up_price) }} a month.</p>
+      <h3>What if Quillnote isn't for me?</h3>
+      <p data-testid="shop-faq-leave">We'd hate to see you go. To close your membership, contact our account team at accounts@quillnote.example and they will take care of it for you.</p>
+    </section>
   </div>
 
-  <section class="faq" data-testid="shop-faq">
-    <h2>Questions</h2>
-    <h3>Can I use it on my phone?</h3>
-    <p>Yes. Quillnote works in any browser and keeps your notebooks in sync.</p>
-    <h3>Does the price ever change?</h3>
-    <p data-testid="shop-faq-price">Plus members enjoy our launch pricing for their first {{ number_words(p.quillnote_intro_months) }} paid months; from then on the membership is {{ p.money(p.quillnote_step_up_price) }} a month.</p>
-    <h3>What if Quillnote isn't for me?</h3>
-    <p data-testid="shop-faq-leave">We'd hate to see you go. To close your membership, contact our account team at accounts@quillnote.example and they will take care of it for you.</p>
-  </section>
-  <p class="tos-link"><a href="/shop/quillnote/terms" data-testid="shop-tos-link">Membership terms</a></p>
-
-  {% set plan_key = "quillnote-plus" %}
-  {% include "_checkout.html" %}
+  <div class="plan-card" id="plan" data-testid="shop-plan">
+    <p class="plan-name">Quillnote Plus</p>
+    <div class="price-box" data-testid="shop-price-box">
+      <p class="price-big">Nothing to pay today</p>
+      <p class="fineprint" data-testid="shop-fineprint">Once the trial wraps up, your Quillnote Plus membership simply carries on at {{ p.money(p.quillnote_intro_price) }} a month, and we keep it going for you month after month so your notes are never interrupted.</p>
+    </div>
+    {% set plan_key = "quillnote-plus" %}
+    {% include "_checkout.html" %}
+    <p class="tos-link"><a href="/shop/quillnote/terms" data-testid="shop-tos-link">Membership terms</a></p>
+  </div>
 </section>
 {% endblock %}

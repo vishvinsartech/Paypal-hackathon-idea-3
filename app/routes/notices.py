@@ -59,3 +59,10 @@ async def gmail(notice_id: str, body: FinalizeIn,
                 svc: Services = Depends(get_services)) -> dict[str, Any] | JSONResponse:
     """"Open in Gmail": records the edited text and returns the compose link (`too_long` if over the limit)."""
     return await _finalize(svc, notice_id, body, "gmail_compose_link")
+
+
+@router.post("/notices/{notice_id}/mailto", response_model=None)
+async def mailto(notice_id: str, body: FinalizeIn,
+                 svc: Services = Depends(get_services)) -> dict[str, Any] | JSONResponse:
+    """U13 "Open in my email app": records the edited text; the page opens a mailto: link with it."""
+    return await _finalize(svc, notice_id, body, "mailto")

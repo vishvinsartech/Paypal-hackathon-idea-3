@@ -12,6 +12,17 @@
   status.setAttribute("aria-live", "polite");
   area.appendChild(status);
 
+  // U22: after approval the merchant page shows only its welcome, plus "Open SubGuard" in the companion strip.
+  // The PayPal proof (ids, debug ids) lives on SubGuard's evidence page, not on someone else's site.
+  function welcome(box, who) {
+    const product = box.closest(".product") || box;
+    const name = box.dataset.welcome || "us";
+    product.innerHTML = `<div class="welcome" data-testid="shop-welcome" role="status">
+      <h1 class="welcome-title">You're subscribed. Welcome to ${name.replace(/[<>&"]/g, "")}.</h1>
+      <p class="companion-note" data-subguard-ignore>&#128737; SubGuard is watching this trial for you.
+        <a href="/?user=${encodeURIComponent(who)}" target="_blank" rel="noopener" data-testid="shop-open-subguard">Open SubGuard ↗</a></p></div>`;
+  }
+
   async function post(url, body) {
     const res = await fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
     const data = await res.json().catch(() => ({}));
@@ -33,19 +44,8 @@
     status.textContent = "PayPal approval (simulated)…";
     try {
       const merchantId = area.dataset.merchant;
-      const main = await subscribe(merchantId, area.dataset.planKey);
-      const msg = "Subscribed. PayPal status: " + main.status + ".";
-      status.innerHTML = "";
-      status.append(msg + " ");
-      const link = document.createElement("a");
-      link.href = "/?user=" + encodeURIComponent(user);
-      link.textContent = "Open SubGuard";
-      link.dataset.testid = "shop-open-subguard";
-      status.appendChild(link);
-      const card = document.createElement("div");
-      card.dataset.testid = "shop-paypal-card";
-      area.appendChild(card);
-      window.PayPalCard.mount(card, main.id, user);
+      await subscribe(merchantId, area.dataset.planKey);
+      welcome(area, user);
     } catch (err) {
       status.textContent = "Checkout failed: " + err.message;
       btn.disabled = false;
@@ -53,4 +53,5 @@
   }
 
   btn.addEventListener("click", checkout);
+  window.SGShopWelcome = welcome;
 })();

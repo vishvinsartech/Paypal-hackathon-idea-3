@@ -7,37 +7,34 @@
   <link rel="icon" href="/static/shield.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/app.css">
   <link rel="stylesheet" href="/static/panels.css">
+  <link rel="stylesheet" href="/static/home.css">
   <script>/* theme before first paint (D-109): saved choice, else dark */
   (function () { var t = "dark"; try { t = localStorage.getItem("sg-theme") || "dark"; } catch (e) {}
     if (t !== "light") t = "dark"; var h = document.documentElement; h.dataset.theme = t; h.dataset.agThemeMode = t; })();</script>
 </head>
-<body data-user="{{ current_user.id if current_user else 'priya' }}" data-sim-day="{{ sim_day }}">
+{% set uid = current_user.id if current_user else 'priya' %}
+<body data-user="{{ uid }}" data-sim-day="{{ sim_day }}">
   <a class="skip-link" href="#main">Skip to content</a>
+  {# U1: logo, one status badge (A6), Ask SubGuard, the theme icon, Priya's avatar. The shop link is in the
+     presenter bar (U6); developer links are in the footer (U3). #}
   <header class="topbar" role="banner">
-    <a class="brand" href="/?user={{ current_user.id if current_user else 'priya' }}" data-testid="brand">
+    <a class="brand" href="/?user={{ uid }}" data-testid="brand">
       <img src="/static/shield.svg" alt="" width="28" height="28">
       <span>SubGuard</span>
     </a>
-    {# A6: one status badge. The full detail (mode, providers, transports) is in /healthz and the audit log. #}
     <span class="badge badge-mode" data-testid="mode-badge"
           title="{{ 'Real PayPal sandbox and a real AI model' if settings.is_sandbox else 'Simulated PayPal and recorded AI answers: no keys needed' }}">
-      {{ ("PayPal Sandbox · " ~ settings.llm_model) if settings.is_sandbox else "Demo data" }}
+      {% if settings.is_sandbox %}PayPal Sandbox<span class="badge-model"> · {{ settings.llm_model }}</span>{% else %}Demo data{% endif %}
     </span>
-    {% set uid = current_user.id if current_user else 'priya' %}
-    <nav class="tabs" aria-label="Pages" data-testid="nav-tabs">
-      <a class="tab{% if active_tab == 'demo' %} is-active{% endif %}" href="/?user={{ uid }}&amp;demo=1"
-         {% if active_tab == 'demo' %}aria-current="page"{% endif %} data-testid="tab-demo">Live demo</a>
-      <a class="tab{% if active_tab == 'user' %} is-active{% endif %}" href="/user?user={{ uid }}"
-         {% if active_tab == 'user' %}aria-current="page"{% endif %} data-testid="tab-user">{{ current_user.name if current_user else "User" }}'s dashboard</a>
-      <a class="tab" href="/shop" target="_blank" rel="noopener" data-testid="view-shop" title="The fictional merchant site (opens a new tab)">Shop&nbsp;↗</a>
-    </nav>
     <div class="topbar-right">
-      {% block topbar_actions %}{% endblock %}
-      <button type="button" class="theme-toggle" id="theme-toggle" data-testid="theme-toggle" aria-label="Switch to light theme">
+      <button type="button" class="btn btn-ghost topbar-chat" id="chat-open" data-testid="chat-open" aria-controls="chat" aria-expanded="false" aria-label="Ask SubGuard"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="topbar-chat-text">Ask SubGuard</span></button>
+      <button type="button" class="theme-toggle icon-btn" id="theme-toggle" data-testid="theme-toggle" aria-label="Switch to light theme" title="Switch to light theme">
         <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
         <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g></svg>
-        <span class="theme-label">Dark</span>
       </button>
+      <a class="avatar avatar-sm" href="/?user={{ uid }}" data-testid="user-avatar"
+         title="{{ current_user.full_name if current_user and current_user.full_name else (current_user.name if current_user else 'You') }}"
+         aria-label="{{ current_user.name if current_user else 'You' }}'s SubGuard">{{ (current_user.name if current_user else "?")[:1] | upper }}</a>
     </div>
   </header>
   <main id="main">
@@ -46,8 +43,8 @@
   <footer class="site-footer" data-testid="footer">
     <span>Fictional merchant</span><span aria-hidden="true">·</span>
     <span>PayPal Sandbox</span><span aria-hidden="true">·</span>
-    <a href="{{ settings.repo_url }}/blob/main/LICENSE" target="_blank" rel="noopener" data-testid="footer-license">MIT license</a><span aria-hidden="true">·</span>
-    <a href="{{ settings.repo_url }}" target="_blank" rel="noopener" data-testid="footer-github">GitHub</a>
+    <a href="{{ settings.repo_url }}/blob/main/LICENSE" target="_blank" rel="noopener" data-testid="footer-license">MIT</a><span aria-hidden="true">·</span>
+    <a href="{{ settings.repo_url }}" target="_blank" rel="noopener" data-testid="footer-github">GitHub</a><span aria-hidden="true">·</span>
     <details class="dev-menu" data-testid="dev-menu">
       <summary>Developer</summary>
       <div class="dev-body">
@@ -57,12 +54,14 @@
       </div>
     </details>
   </footer>
+  {% include "_chat.html" %}
   <div class="toasts" aria-live="polite" role="status" id="toasts"></div>
   <script src="{{ ag_grid_url }}"></script>
   <script src="/static/app.js"></script>
   <script src="/static/email.js"></script>
   <script src="/static/paypal-card.js"></script>
   <script src="/static/grids.js"></script>
+  <script src="/static/chat.js"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

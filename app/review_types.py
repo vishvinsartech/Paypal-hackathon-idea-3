@@ -106,6 +106,7 @@ class PayPalCheckRow(BaseModel):
     page_says: str
     paypal_says: str
     match: bool
+    label: str = ""  # U16: the row in plain words ("Price $24.99 shown only in fine print"); old reviews: ""
 
 
 class Deadlines(BaseModel):

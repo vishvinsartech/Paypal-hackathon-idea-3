@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -20,8 +20,9 @@ from app.core.notices import auto_send, create_draft
 from app.core.policy import Decision
 from app.core.savings import year_one_cost
 from app.core.services import Services
+from app.core.sub_dates import day_text
 from app.integrations.paypal_gateway import Ctx
-from app.integrations.paypal_types import PayPalError
+from app.integrations.paypal_types import PayPalError, first_charge_day, first_paid_price
 from app.models import ConfirmToken, Subscription
 from app.store import utcnow
 
@@ -35,6 +36,9 @@ class CardItem(BaseModel):
     plan: str
     per_year: Decimal
     per_year_text: str
+    short_name: str = ""  # "Penwright" (U12 title: "Cancel Penwright trial?")
+    trial: bool = False  # still before the first paid charge
+    next_charge_text: str = ""  # U12: "$24.99 on Nov 22", from the consent snapshot + next billing day (code)
 
 
 class ConfirmCard(BaseModel):
@@ -70,6 +74,17 @@ async def year_cost(svc: Services, sub: Subscription) -> Decimal:
         return year_one_cost(sub.consent_snapshot.billing_cycles) if sub.consent_snapshot else Decimal("0")
 
 
+def next_charge(svc: Services, sub: Subscription) -> dict[str, Any]:
+    """U12: the charge this cancel avoids, "$24.99 on Nov 22" (the first paid price while still in the trial)."""
+    snap = sub.consent_snapshot
+    if snap is None or sub.next_billing_day is None:
+        return {}
+    first = first_charge_day(snap.billing_cycles, sub.signup_day)
+    trial = svc.day < first and bool(snap.billing_cycles) and snap.billing_cycles[0].price == 0
+    amount = first_paid_price(snap.billing_cycles) if trial else snap.price
+    return {"trial": trial, "next_charge_text": f"{svc.money(amount)} on {day_text(sub, sub.next_billing_day)}"}
+
+
 async def propose_cancel(svc: Services, user_id: str, sub_ids: list[str], reason: str) -> ConfirmCard | Decision:
     issued = svc.policy.issue_token(svc.store, user_id, sub_ids)
     if isinstance(issued, Decision):
@@ -83,7 +98,8 @@ async def propose_cancel(svc: Services, user_id: str, sub_ids: list[str], reason
         merchant = svc.merchant(sub.merchant_id)
         plan = next((p.name for p in merchant.plans if p.key == sub.plan_key), sub.plan_key)
         items.append(CardItem(subscription_id=sid, merchant=merchant.name, plan=plan,
-                              per_year=per_year, per_year_text=f"{svc.money(per_year)}/yr"))
+                              per_year=per_year, per_year_text=f"{svc.money(per_year)}/yr",
+                              short_name=merchant.name.split()[0], **next_charge(svc, sub)))
     total = sum((i.per_year for i in items), start=Decimal("0"))
     return ConfirmCard(token=tok.token, expires_at=tok.expires_at, user_id=user_id, reason=reason, items=items,
                        total_per_year=total, total_text=f"{svc.money(total)}/yr")

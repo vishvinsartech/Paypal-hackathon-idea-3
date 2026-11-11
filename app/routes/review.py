@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from app.core.auditor import Auditor, save_review
 from app.core.sub_dates import companion_display
+from app.core.verdict import verdict
 from app.integrations.capture import CaptureError
 from app.integrations.paypal_gateway import Ctx, PayPalGateway
 from app.integrations.paypal_types import PayPalError
@@ -84,8 +85,10 @@ async def preflight(body: PreflightIn, request: Request, store: JsonStore = Depe
                            reason="Instructions aimed at AI found in merchant page; ignored, score unchanged",
                            details={"review_id": review.id, "merchant": merchant.id})
     # B2: the companion shows dates relative to sign-up (now), never the internal sim days
-    return {"review_id": review.id, **data.model_dump(mode="json"),
-            "display": companion_display(data.deadlines, utcnow())}
+    display = companion_display(data.deadlines, utcnow())
+    display["verdict"] = verdict(plan.billing_cycles, request.app.state.services.money,  # U14, from the PayPal plan
+                                 display["points"]["first_charge"]["date"], data.clauses, data.paypal_check)
+    return {"review_id": review.id, **data.model_dump(mode="json"), "display": display}
 
 
 class ConsentIn(BaseModel):

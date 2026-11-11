@@ -1,8 +1,8 @@
-"""Priya's dashboard (/user): the product, written to her (D-110, D-111).
+"""Priya's SubGuard at `/`: the product view (FIX_PLAN U5, D-148). `/user` and `/me` redirect here.
 
-Server-rendered parts: subscription cards, the Day 5 check-in (usage + advice + Keep / Cancel), the Day 11 proof,
-money KPIs, messages and emails. AG Grid (subscription history, D-118) and AG Charts load from
-/api/subscription-history and /api/analytics.
+Server-rendered: the subscription cards (with the check-in band and the Layer 2 handoff), the right column
+(Charges avoided, Next decision, What SubGuard did), the Activity and Emails sections. `?demo=1` (or the D key)
+shows the presenter bar. The page refreshes its `[data-live]` parts from this same HTML (home.js).
 """
 
 from __future__ import annotations
@@ -10,144 +10,81 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app.config import Settings
-from app.core import timers as tm
 from app.core.activity import Activity, activity_for
-from app.core.layer2 import open_handoffs
 from app.core.savings import charges_avoided, money_protected, year_one_cost
 from app.core.services import Services
-from app.core.sub_dates import day_text, key_dates, stamp, sub_act_by
-from app.core.usage import SIMULATED_SOURCE, last_open_day, opens_between, times
-from app.models import Alert, Subscription
+from app.core.sub_dates import day_text
 from app.routes.actions import get_services
 from app.routes.deps import get_settings, get_store
+from app.routes.home_view import card, check_in, delivery_text, did_rows, handoffs, history_row, next_decision, proof
 from app.routes.pages import _base, templates
-from app.routes.views import current_timer, sub_view
 from app.store import JsonStore
 
 router = APIRouter()
-RARELY_USED = 3  # fewer opens than this during the trial -> SubGuard suggests cancelling (advice only, D-111)
+DID_ROWS = 5  # U9: "What SubGuard did" shows the 5 latest meaningful events
+GRID_AFTER = 5  # U10: the history grid only under "Show all" when there are more rows than this
 
 
-def card(svc: Services, sub: Subscription) -> dict[str, Any]:
-    """One subscription card: the grid row's facts plus the site-vs-real deadline line."""
-    timers = svc.store.load("timers").items
-    view = sub_view(svc, sub, timers)
-    review = tm.review_for(svc, sub)
-    deadline = review.data.deadlines.real_cancel_deadline_day if review else view["deadline_day"]
-    dates = key_dates(svc, sub, view, current_timer(timers, sub.id), deadline)
-    next_charge = view["next_charge_text"]
-    if sub.status != "ACTIVE" and sub.next_billing_day is not None:
-        next_charge = f"{day_text(sub, sub.next_billing_day)} · blocked (no active PayPal subscription)"
-    act_by = sub_act_by(sub, deadline) if deadline is not None else ""
-    trial_end = day_text(sub, view["trial_end_day"]) if view.get("trial_end_day") is not None else ""
-    return {**view, "deadline_day": deadline, "next_charge_text": next_charge, "dates": dates,
-            "act_by_text": act_by, "trial_end_text": trial_end,
-            "subscribed": stamp(sub.registered_at, with_time=True),
-            "dated": {r["key"]: r["when"] for r in dates}, "can_decide": sub.status == "ACTIVE"
-            and sub.kept_day is None, "risk_level": "high" if (view["risk"] or 0) >= 60 else
-            ("mid" if (view["risk"] or 0) >= 30 else "low")}
+def _subs(store: JsonStore, user: str) -> list[Any]:
+    return [s for s in store.load("subscriptions").items if s.owner_id == user and s.status != "APPROVAL_PENDING"]
 
 
-def check_in(svc: Services, alerts: list[Alert]) -> dict[str, Any] | None:
-    """The open Day 5 "keep or cancel?" alert, with usage numbers and SubGuard's advice (code, not the LLM)."""
-    alert = next((a for a in reversed(alerts) if a.kind == "reminder" and a.acknowledged_at is None), None)
-    sub = svc.sub(alert.subscription_id or "") if alert else None
-    if alert is None or sub is None or sub.status != "ACTIVE":
-        return None
-    merchant = svc.merchant(sub.merchant_id)
-    opens = opens_between(svc.store, sub.owner_id, sub.merchant_id, sub.signup_day, svc.day)
-    last = last_open_day(svc.store, sub.owner_id, sub.merchant_id, svc.day)
-    days = max(1, svc.day - sub.signup_day)
-    cost = year_one_cost(sub.consent_snapshot.billing_cycles) if sub.consent_snapshot else None
-    suggest = "cancel" if opens < RARELY_USED else "keep"
-    used = f"You opened it {times(opens)} in {days} days" if opens else f"You haven't opened it in {days} days"
-    reason = used + (f", and keeping it costs {svc.money(cost)} in the first paid year." if cost else ".")
-    source = SIMULATED_SOURCE.format(name=tm.short(merchant.name))  # D8: say where the usage numbers come from
-    return {"alert": alert, "merchant": merchant.name,
-            "usage": (f"Opened {times(opens)} in {days} days" if opens else f"Not opened in {days} days")
-            + (f", last on {day_text(sub, last)} ({source})" if opens and last is not None else "") + ".",
-            "suggest": suggest, "reason": reason}
-
-
-def proof(svc: Services, alerts: list[Alert]) -> str | None:
-    """The Day 11 proof: the first charge was due and found no active PayPal subscription."""
-    blocked = next((a for a in reversed(alerts) if a.kind == "blocked_charge"), None)
-    if blocked is None:
-        return None
-    if blocked.sim_day == svc.day:
-        return f"First charge due today. {blocked.body}"
-    sub = svc.sub(blocked.subscription_id or "")
-    when = day_text(sub, blocked.sim_day) if sub else f"Day {blocked.sim_day}"
-    return f"First charge was due {when}. {blocked.body}"
-
-
-def action_needed(svc: Services, alerts: list[Alert], user: str) -> list[dict[str, Any]]:
-    """A5: the Layer 2 handoff as a card: one-tap PayPal link, the email draft, and SubGuard watching PayPal."""
-    out = []
-    for a in open_handoffs(alerts, user):
-        notice = next((x.get("notice_id") for x in a.actions if x["action"] == "review_email"), None)
-        out.append({"alert": a, "merchant": svc.merchant(svc.sub(a.subscription_id or "").merchant_id).name
-                    if svc.sub(a.subscription_id or "") else "", "notice_id": notice, "url": svc.settings.autopay_link,
-                    "sandbox": svc.settings.is_sandbox})
-    return out
-
-
-@router.get("/user", response_class=HTMLResponse)
-@router.get("/me", response_class=HTMLResponse)  # alias (FIX_PLAN persona)
-def user_dashboard(
-    request: Request, user: str = "priya",
+@router.get("/", response_class=HTMLResponse)
+def home(
+    request: Request, user: str = "priya", demo: int = 0,
     settings: Settings = Depends(get_settings), store: JsonStore = Depends(get_store),
 ) -> HTMLResponse:
     svc = get_services(request)
     ctx = _base(request, user, settings, store)
-    subs = [s for s in store.load("subscriptions").items if s.owner_id == user and s.status != "APPROVAL_PENDING"]
+    subs = sorted(_subs(store, user), key=lambda s: s.signup_day, reverse=True)
     notices = [n for n in store.load("notices").items if n.subscription_id in {s.id for s in subs}]
     alerts = sorted((a for a in store.load("alerts").items if a.user_id == user), key=lambda a: a.created_at)
-    ctx.update(active_tab="user", cards=[card(svc, s) for s in subs], notices=notices, alerts=alerts,
-               check_in=check_in(svc, alerts), proof=proof(svc, alerts),
-               action_needed=action_needed(svc, alerts, user),
+    band = check_in(svc, alerts)
+    hand = handoffs(svc, alerts, user)
+    cards = [card(svc, s, band if band and band["subscription_id"] == s.id else None, hand.get(s.id)) for s in subs]
+    acts = activity_for(svc, user)
+    history = [history_row(c, [a for a in acts if a.subscription_id == c["id"]]) for c in cards]
+    did = did_rows(svc, user)
+    verify = store.audit.verify()
+
+    def alert_when(a: Any) -> str:
+        sub = svc.sub(a.subscription_id or "")
+        return day_text(sub, a.sim_day) if sub else f"Day {a.sim_day}"
+
+    ctx.update(demo=bool(demo), merchants=store.load("merchants").items, cards=cards, notices=notices,
+               alerts=alerts, proof=proof(svc, alerts), next=next_decision(svc, cards), did=did[:DID_ROWS],
+               did_all=did, history=history, grid_after=GRID_AFTER, delivery_text=delivery_text,
+               chain_ok=verify.ok, alert_when=alert_when, chain_entries=verify.entries,
                protected=svc.money(money_protected(subs, user, settings.pricing.demo_currency)),
-               avoided=svc.money(charges_avoided(subs, user, settings.pricing.demo_currency)),
+               avoided=svc.money(avoided := charges_avoided(subs, user, settings.pricing.demo_currency)),
+               nothing_avoided=not avoided,  # before any cancel: show what's at stake, not "up to $0"
+               at_stake=svc.money(sum((year_one_cost(s.consent_snapshot.billing_cycles) for s in subs
+                                       if s.status == "ACTIVE" and s.kept_day is None and s.consent_snapshot),
+                                      start=year_one_cost([]))),
                cancelled=sum(1 for s in subs if s.status == "CANCELLED"))
-    return templates.TemplateResponse(request, "user.html", ctx)
+    return templates.TemplateResponse(request, "home.html", ctx)
 
 
-def outcome(c: dict[str, Any]) -> str:
-    """The card's Status line, as one grid cell."""
-    if c["cancelled_day"] is not None:
-        by = {"user": "by you", "timer": "by your safety timer"}.get(c["cancelled_by"] or "", "outside SubGuard")
-        return f"Cancelled in PayPal on Day {c['cancelled_day']} {by}"
-    if c["kept_day"] is not None:
-        return f"You kept it on Day {c['kept_day']}"
-    return "Watching for you"
-
-
-def history_row(c: dict[str, Any], acts: list[Activity]) -> dict[str, Any]:
-    """One row of the subscription history grid: the card's facts + its events from the audit log."""
-    iso = {k: (w["iso"] if w else None) for k, w in c["dated"].items()}
-    return {"id": c["id"], "merchant": c["merchant"], "plan": c["plan"], "price": c["price_text"],
-            "status": c["status"], "risk": c["risk"], "signup_day": c["signup_day"],
-            "subscribed_at": iso.get("subscribed"), "trial_end_day": c["trial_end_day"],
-            "trial_end_at": iso.get("trial_end"), "deadline_day": c["deadline_day"],
-            "deadline_at": iso.get("deadline"), "next_charge": c["next_charge_text"],
-            "timer": c["timer_text"] or "—", "outcome": outcome(c), "events": len(acts),
-            "last_event": f"Day {acts[-1].day} · {acts[-1].text}" if acts else "",
-            "event_log": [f"Day {a.day} · {a.who}: {a.text}" for a in acts]}
+@router.get("/user")
+@router.get("/me")  # alias (FIX_PLAN persona)
+def user_dashboard(request: Request) -> RedirectResponse:
+    """The old dashboard URLs: same page now (U5). Keeps ?user=."""
+    query = f"?{request.url.query}" if request.url.query else ""
+    return RedirectResponse(f"/{query}", status_code=307)
 
 
 @router.get("/api/subscription-history")
 def subscription_history(user: str = "priya", svc: Services = Depends(get_services)) -> list[dict[str, Any]]:
     """Priya's subscription history for the AG Grid (R5: only her subscriptions), newest first."""
-    subs = [s for s in svc.store.load("subscriptions").items if s.owner_id == user and s.status != "APPROVAL_PENDING"]
     acts = activity_for(svc, user)
-    rows = [history_row(card(svc, s), [a for a in acts if a.subscription_id == s.id]) for s in subs]
+    rows = [history_row(card(svc, s), [a for a in acts if a.subscription_id == s.id]) for s in _subs(svc.store, user)]
     return sorted(rows, key=lambda r: r["signup_day"], reverse=True)
 
 
 @router.get("/api/activity")
 def activity(user: str = "priya", svc: Services = Depends(get_services)) -> list[Activity]:
-    """Priya's timeline for the AG Grid activity list (from the audit log; R5: only her entries)."""
+    """Priya's timeline (from the audit log; R5: only her entries)."""
     return activity_for(svc, user)

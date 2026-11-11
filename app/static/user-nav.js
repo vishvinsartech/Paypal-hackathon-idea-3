@@ -1,6 +1,6 @@
-// Priya's dashboard sidebar (D-122): shows one section at a time (Overview, Analytics, History, Messages, Emails).
-// The URL hash names the section (#analytics), so reloads and links keep it. The check-in, "email ready" and the
-// Day 11 proof banner sit above the sections and are always visible.
+// Priya's sections (U10): Overview · Activity · Emails, one at a time. Tabs on desktop, a bottom tab bar on
+// mobile (B9, U27); the same <nav>, styled by home.css. The URL hash names the section (#activity), so reloads and
+// links keep it. Old hashes (#history, #messages, #analytics) land on Activity.
 (function () {
   "use strict";
   const nav = document.querySelector("[data-testid=side-nav]");
@@ -8,7 +8,8 @@
   const links = Array.from(nav.querySelectorAll("[data-nav]"));
   const panels = Array.from(document.querySelectorAll("[data-panel]"));
   const names = new Set(panels.map((p) => p.dataset.panel));
-  const pick = () => { const h = location.hash.slice(1); return names.has(h) ? h : "overview"; };
+  const OLD = {history: "activity", messages: "activity", analytics: "activity"};
+  const pick = () => { const h = location.hash.slice(1); const n = OLD[h] || h; return names.has(n) ? n : "overview"; };
 
   function show(name, focus) {
     panels.forEach((p) => { p.hidden = p.dataset.panel !== name; });
@@ -16,14 +17,12 @@
       if (a.dataset.nav === name) a.setAttribute("aria-current", "true");
       else a.removeAttribute("aria-current");
     });
-    // Charts and grids measure themselves when they become visible; nudge any that missed it.
-    window.dispatchEvent(new Event("resize"));
+    window.dispatchEvent(new Event("resize")); // grids measure themselves when they become visible
     if (focus) {
       const panel = panels.find((p) => p.dataset.panel === name);
       const h = panel && panel.querySelector("h2");
       if (h) { h.setAttribute("tabindex", "-1"); h.focus({preventScroll: true}); }
-      const top = document.getElementById("dash").getBoundingClientRect().top;
-      if (top < 0) document.getElementById("dash").scrollIntoView({block: "start"});
+      if (nav.getBoundingClientRect().top < 0) nav.scrollIntoView({block: "start"});
     }
   }
 

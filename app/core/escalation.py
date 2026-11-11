@@ -12,6 +12,7 @@ import re
 from app.core import timers as tm
 from app.core.alerts import action, send_alert
 from app.core.services import Services
+from app.core.sub_dates import day_text
 from app.core.usage import exports
 from app.integrations.paypal_gateway import Ctx
 from app.integrations.paypal_types import DAYS_PER_UNIT, PayPalError, cycle_days
@@ -158,10 +159,27 @@ async def scheduled_reminders(svc: Services, day: int) -> None:
             next(r for r in state.reminders if r.id == rem.id).sent = True
 
 
+async def unsent_notice_reminders(svc: Services, day: int) -> None:
+    """D7: on the act-by day, a cancelled subscription whose cancellation email is still a draft gets one
+    reminder: the terms need written notice, and PayPal's cancel alone doesn't give it."""
+    drafts = {n.subscription_id: n for n in svc.store.load("notices").items if n.status == "draft"}
+    for timer in [t for t in svc.store.load("timers").items if t.kind == "trial" and t.deadline_day == day]:
+        sub, notice = svc.sub(timer.subscription_id), drafts.get(timer.subscription_id)
+        if sub is None or notice is None or sub.status != "CANCELLED":
+            continue
+        await send_alert(svc, user_id=sub.owner_id, key=f"notice-unsent:{sub.id}", kind="notice_unsent",
+                         level="warning", title=f"{svc.merchant(sub.merchant_id).name}: email not sent yet",
+                         body=(f"Your cancellation email isn't sent yet. The terms need it by "
+                               f"{day_text(sub, day + 1)}."),
+                         actions=[action("review_email", "Review email", notice_id=notice.id)],
+                         subscription_id=sub.id)
+
+
 async def tick(svc: Services, day: int) -> None:
     await sync_statuses(svc)
     await early_trial_end(svc, day)
     await run_timers(svc, day)
+    await unsent_notice_reminders(svc, day)
     await layer2_urgent(svc, day)
     await billing_day(svc, day)
     await scheduled_reminders(svc, day)

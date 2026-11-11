@@ -28,7 +28,7 @@ MAX_WORDS = 120
 GMAIL_MAX_URL = 1800
 GMAIL_BASE = "https://mail.google.com/mail/?view=cm&fs=1"
 TEMPLATE_LABEL = "standard template"
-SentVia = Literal["demo_outbox", "gmail_compose_link"]
+SentVia = Literal["demo_outbox", "gmail_compose_link", "auto_on_timer"]
 
 
 def word_count(text: str) -> int:
@@ -177,9 +177,25 @@ async def finalize(svc: Services, user_id: str, notice_id: str, email: EmailIn,
                "subscription_id": notice.subscription_id, "drafted_by": notice.drafted_by}
     atomic_write_text(svc.notifier.outbox / f"{ts_slug()}-merchant_cancellation-{via}-{notice.id}.json",
                       json.dumps(payload, indent=2))
-    svc.store.audit.append(actor="user", event="cancellation_email_sent" if via == "demo_outbox"
-                           else "cancellation_email_gmail_opened", user_id=user_id,
-                           subscription_id=notice.subscription_id, result=via,
-                           details={"notice_id": notice.id, "to": notice.to, "edited": notice.edited,
-                                    "sha256": notice.sha256, "demo_only": True})
+    details = {"notice_id": notice.id, "to": notice.to, "edited": notice.edited, "sha256": notice.sha256,
+               "demo_only": True}
+    if via == "auto_on_timer":  # D7: her opt-in at sign-up, acted on by the timer (R2), never without it
+        svc.store.audit.append(actor="timer", event="notice_auto_sent", user_id=user_id, rule_id="R2",
+                               decision="allowed", subscription_id=notice.subscription_id, result=via,
+                               reason="No answer, and you asked SubGuard to send the cancellation email for you",
+                               details={**details, "consent": "consent_snapshot.auto_send_notice"})
+    else:
+        svc.store.audit.append(actor="user", event="cancellation_email_sent" if via == "demo_outbox"
+                               else "cancellation_email_gmail_opened", user_id=user_id,
+                               subscription_id=notice.subscription_id, result=via, details=details)
     return FinalizeResult(notice=notice, url=url)
+
+
+async def auto_send(svc: Services, sub: Subscription, notice: Notice) -> bool:
+    """D7: the timer cancelled and she ticked "If I don't answer, send the cancellation email for me": finalise
+    the draft as written (demo: the outbox). Only with that consent on the snapshot. True if it was sent."""
+    if not (sub.consent_snapshot and sub.consent_snapshot.auto_send_notice) or notice.status == "sent":
+        return False
+    res = await finalize(svc, sub.owner_id, notice.id, EmailIn(to=notice.to, subject=notice.subject,
+                                                                body=notice.body), "auto_on_timer")
+    return isinstance(res, FinalizeResult) and res.notice.status == "sent"

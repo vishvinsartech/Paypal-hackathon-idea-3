@@ -83,6 +83,8 @@ EVENTS: dict[str, Describe] = {
                                           f"{_edited(e)})."),
     "cancellation_email_gmail_opened": lambda e: ("You", "you", f"You opened the cancellation email in Gmail "
                                                   f"(edited: {_edited(e)})."),
+    "notice_auto_sent": lambda e: ("SubGuard", "guard", "Sent your cancellation email for you, as you asked at "
+                                   "sign-up (demo outbox)."),
     "charge_blocked": lambda e: ("SubGuard", "guard", e.reason or "Checked PayPal: no active subscription, so no "
                                  "charge can be taken."),
     "charge_due": lambda e: ("PayPal", "paypal", "Billing date reached; the subscription you kept charges as agreed."),

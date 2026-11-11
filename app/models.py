@@ -238,8 +238,8 @@ class Notice(BaseModel):
     by_timer: bool = False
     edited: bool | None = None
     sent_at: datetime | None = None
-    sent_via: Literal["demo_outbox", "gmail_compose_link"] | None = None
-    delivery: str = "draft"  # draft | demo_outbox | gmail_compose_link
+    sent_via: Literal["demo_outbox", "gmail_compose_link", "auto_on_timer"] | None = None
+    delivery: str = "draft"  # draft | demo_outbox | gmail_compose_link | auto_on_timer (D7 opt-in)
 
 
 class NoticeList(BaseModel):

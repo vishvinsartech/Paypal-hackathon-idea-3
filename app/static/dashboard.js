@@ -41,7 +41,7 @@
 
   // ---- alerts -------------------------------------------------------------------------------
   const ALERT_TESTID = {timer_set: "alert-timer-set", reminder: "alert-trial-check", cancelled: "alert-done",
-                        blocked_charge: "blocked-charge"};
+                        blocked_charge: "blocked-charge", notice_unsent: "alert-notice-unsent"};
   // The cancel flow is reminder Cancel -> confirmation card -> email preview, with no extra pop-ups: the preview
   // already says "Cancelled in PayPal. You won't be charged.", so that alert is listed but not toasted.
   const QUIET = new Set(["cancelled"]);

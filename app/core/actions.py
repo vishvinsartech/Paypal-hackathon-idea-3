@@ -16,7 +16,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 from app.core.alerts import action, send_alert
-from app.core.notices import create_draft
+from app.core.notices import auto_send, create_draft
 from app.core.policy import Decision
 from app.core.savings import year_one_cost
 from app.core.services import Services
@@ -152,11 +152,14 @@ async def confirm_cancelled(svc: Services, sub: Subscription, result: ItemResult
     merchant = svc.merchant(sub.merchant_id)
     notice = await create_draft(svc, sub, by_timer=by_timer)
     who = "Your safety timer cancelled" if by_timer else "I cancelled"
+    sent = by_timer and await auto_send(svc, sub, notice)  # D7: only with her opt-in from sign-up
+    email = ("I sent your cancellation email for you, as you asked." if sent
+             else "Your cancellation email is ready to review and send.")
     await send_alert(svc, user_id=sub.owner_id, key=f"cancelled:{sub.id}", kind="cancelled",
                      level="warning" if by_timer else "info", title="Cancelled in PayPal. You won't be charged.",
-                     body=(f"{who} {merchant.name} in PayPal (status {result.status}). "
-                           "Your cancellation email is ready to review and send."),
-                     actions=[action("review_email", "Review email", notice_id=notice.id)], subscription_id=sub.id)
+                     body=f"{who} {merchant.name} in PayPal (status {result.status}). {email}",
+                     actions=[action("review_email", "View email" if sent else "Review email", notice_id=notice.id)],
+                     subscription_id=sub.id)
     return notice.id
 
 

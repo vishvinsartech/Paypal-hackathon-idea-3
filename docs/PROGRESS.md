@@ -7,6 +7,16 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
 > price rise, $872.76). Current numbers: Money protected **$524.88**, Penwright risk **87**. See
 > "Story simplification" under the notes.
 
+## v3 (docs/FIX_PLAN.md), branch `prototype-v3`
+
+- [x] **Phase 0. Baseline** (2026-11-11). `make test`: **286 passed**, 2 deselected (sandbox), 127 s.
+  `make lint`: clean. `make ui-check`: passed (story + Start demo with all three answers, no console errors).
+  Added `scripts/shots.py` (`make shots ARGS="--phase p1"`): 25 screenshots per viewport (1440×900, 390×844) in
+  `docs/img/v3/<phase>/`. The baseline set `p0/` shows B1 (companion opens scrolled down), B4 (steps never tick by
+  hand), B6 (floating chat button over the timeline) and B7 (axis to Day 31, "from Day 101").
+
+## v1-v2 milestones (history)
+
 - [x] **1. Preflight.** Run `claude mcp list`; check Python >= 3.11, Node >= 18 and `npx`; install the APIMatic PayPal context plugin; write `docs/PAYPAL_TOOLS.md` and `docs/PAYPAL_SDK_NOTES.md`; create `docs/DECISIONS.md`.
   - *Check:* tool versions confirmed; the three docs exist.
   - Done 2026-11-10 (commit `3a05a3e`). Python 3.14.4, Node 24.15, npx 11.14. **Open:** the APIMatic plugin isn't installed, and the PayPal MCP isn't started (DECISIONS D-003).

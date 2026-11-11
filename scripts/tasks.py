@@ -65,6 +65,7 @@ TASKS = {
     "test": lambda: run(py(), "-m", "pytest", "-q"),
     "lint": lambda: run(py(), "-m", "ruff", "check", "."),
     "ui-check": lambda: run(py(), "scripts/ui_check.py", *sys.argv[2:]),
+    "shots": lambda: run(py(), "scripts/shots.py", *sys.argv[2:]),
     "zapier-check": lambda: run(py(), "scripts/zapier_check.py", *sys.argv[2:]),
     "demo-video-check": lambda: run(py(), "demo-video/check_scenes.py", *sys.argv[2:]),
     "demo-video": lambda: run(py(), "demo-video/build_video.py", *sys.argv[2:]),

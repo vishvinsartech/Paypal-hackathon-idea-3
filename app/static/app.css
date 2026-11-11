@@ -139,7 +139,9 @@ main { max-width: 1280px; margin: 0 auto; padding: 20px 20px 16px; }
 .alert-warning { border-left-color: var(--amber); }
 .alert-urgent, .alert-action_needed { border-left-color: var(--red); }
 .alert.is-done { opacity: .7; }
-.toasts { position: fixed; left: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 50; max-width: 380px; }
+/* B5: stacked top right under the top bar, so they never cover the Alerts card or its Keep / Cancel buttons */
+.toasts { position: fixed; right: 16px; top: 72px; display: flex; flex-direction: column; gap: 8px; z-index: 50; max-width: min(380px, calc(100vw - 32px)); pointer-events: none; }
+.toasts .toast { pointer-events: auto; }
 .toast { position: relative; background: var(--navy-700); border: 1px solid var(--teal); border-radius: 8px; padding: 10px 30px 10px 12px; box-shadow: 0 8px 24px var(--shadow); font-size: .9rem; }
 .toast-warning { border-color: var(--amber); }
 .toast-urgent, .toast-action_needed { border-color: var(--red); }
@@ -177,7 +179,7 @@ main { max-width: 1280px; margin: 0 auto; padding: 20px 20px 16px; }
 .confirm-card h3 { margin: 0 0 6px; }
 
 /* ---- chat ---- */
-.chat-fab { position: fixed; right: 20px; bottom: 20px; z-index: 40; border-radius: 999px; padding: 10px 18px; box-shadow: 0 8px 24px var(--shadow); }
+.topbar-chat { display: inline-flex; align-items: center; gap: 6px; }  /* B6: chat entry in the top bar, not floating */
 .chat { position: fixed; right: 20px; bottom: 74px; width: min(420px, calc(100% - 40px)); height: min(620px, calc(100vh - 120px)); background: var(--navy-800); border: 1px solid var(--line); border-radius: 14px; display: flex; flex-direction: column; z-index: 45; box-shadow: 0 18px 50px var(--shadow); }
 .chat[hidden] { display: none; }
 .chat-head { display: flex; gap: 8px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line); }
@@ -227,7 +229,8 @@ main > :nth-child(4) { animation-delay: .15s; } main > :nth-child(5) { animation
 .brand img { filter: drop-shadow(0 0 6px rgba(46,196,182,.5)); }
 .day-bump { display: inline-block; animation: bump .5s ease-out; }
 .alert.is-new { animation: slide-in .45s ease-out, glow 1.2s ease-out .1s; }
-.toast { animation: slide-in .35s ease-out; }
+@keyframes toast-in { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+.toast { animation: toast-in .35s ease-out; }
 .tl-today { transition: left .7s cubic-bezier(.2,.8,.2,1); box-shadow: 0 0 8px var(--today); }
 .tl-row.is-new .tl-trial { transform-origin: left; animation: grow-x .8s ease-out both; }
 .tl-row.is-new .tl-mark { animation: pop .45s ease-out both; animation-delay: .5s; }

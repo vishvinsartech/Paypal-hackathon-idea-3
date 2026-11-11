@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends
 
 from app.core import timers as tm
 from app.core.services import Services
+from app.core.sub_dates import day_text, today_pos, trial_dots
 from app.core.usage import last_open_day
 from app.integrations.paypal_types import cycle_days
 from app.models import BillingCycleDef, Subscription, Timer
@@ -34,6 +35,24 @@ def step_up(cycles: list[BillingCycleDef], signup_day: int) -> tuple[int | None,
     return trial_end, None
 
 
+UNIT_WORD = {"DAY": "day", "WEEK": "week", "MONTH": "month", "YEAR": "year"}
+
+
+def step_up_line(svc: Services, cycles: list[BillingCycleDef]) -> str | None:
+    """B7: the price step-up as plain text from the agreed cycles: "$49.99/month from month 4"."""
+    paid = [c for c in cycles if c.price > 0]
+    if len(paid) < 2 or paid[0].total_cycles == 0:
+        return None
+    n = 1
+    for c in paid:
+        if c.price != paid[0].price:
+            return f"{svc.money(c.price)}/{UNIT_WORD[c.interval_unit]} from {UNIT_WORD[c.interval_unit]} {n}"
+        if c.total_cycles == 0:
+            return None
+        n += c.total_cycles
+    return None
+
+
 def current_timer(timers: list[Timer], sub_id: str) -> Timer | None:
     mine = [t for t in timers if t.subscription_id == sub_id]
     return next((t for t in mine if t.status == "PENDING"), mine[-1] if mine else None)
@@ -49,10 +68,13 @@ def sub_view(svc: Services, sub: Subscription, timers: list[Timer]) -> dict[str,
     prices = [c.price for c in snap.billing_cycles if c.price > 0] if snap else []
     timer_text = None
     if timer and timer.status == "PENDING":
-        timer_text = f"Check-in Day {timer.reminder_day} · cancel Day {timer.fire_day} unless you keep it"
+        timer_text = (f"Check-in {day_text(sub, timer.reminder_day) if timer.reminder_day is not None else '—'} · "
+                      f"cancel {day_text(sub, timer.fire_day)} unless you keep it")
     elif timer:
-        timer_text = {"KEPT": "Kept", "FIRED": f"Fired Day {timer.fire_day}", "FAILED": "Failed: needs you",
+        timer_text = {"KEPT": "Kept", "FIRED": f"Fired {day_text(sub, timer.fire_day)}", "FAILED": "Failed: needs you",
                       "CANCELLED": "Not needed"}[timer.status]
+    deadline = timer.deadline_day if timer and timer.kind == "trial" else None
+    first_charge = timer.billing_day if timer and timer.billing_day is not None else sub.next_billing_day
     return {
         "id": sub.id, "paypal_id": sub.paypal_id, "merchant_id": merchant.id, "merchant": merchant.name,
         "plan": plan.name if plan else sub.plan_key, "plan_key": sub.plan_key,
@@ -65,7 +87,11 @@ def sub_view(svc: Services, sub: Subscription, timers: list[Timer]) -> dict[str,
         "last_used_day": last_open_day(svc.store, sub.owner_id, sub.merchant_id, svc.day),
         "trial_end_day": trial_end, "step_up_day": step_day,
         "step_up_text": f"{svc.money(prices[-1])}" if step_day is not None and prices else None,
-        "deadline_day": timer.deadline_day if timer and timer.kind == "trial" else None,
+        "deadline_day": deadline,
+        "step_up_line": step_up_line(svc, snap.billing_cycles) if snap else None,
+        "trial_dots": trial_dots(sub, svc.day, reminder=timer.reminder_day if timer else None, act_by=deadline,
+                                 trial_end=trial_end, first_charge=first_charge) if trial_end is not None else [],
+        "today_pos": today_pos(sub, svc.day),
         "timer": None if timer is None else {"fire_day": timer.fire_day, "status": timer.status,
                                              "kind": timer.kind, "layer2": timer.layer2},
         "timer_text": timer_text, "kept_day": sub.kept_day,

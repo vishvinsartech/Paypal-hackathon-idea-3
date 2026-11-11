@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from app.llm.base import ChatMessage, ChatTurn, LLMError, ToolCall
 from app.llm.tools_schema import ToolSpec
-from tests.story_helpers import ACT_BY, add_user, advance_to, alerts, audit, sub, subscribe
+from tests.story_helpers import ACT_BY, add_user, advance_to, alerts, audit, on, sub, subscribe
 
 
 def chat(c: TestClient, message: str, user: str = "priya") -> list[dict[str, Any]]:
@@ -79,7 +79,24 @@ def test_cancel_by_name_gives_card(demo_client: TestClient) -> None:
 
 
 def test_other_questions_get_mock_fallback(demo_client: TestClient) -> None:
-    assert "switch to sandbox mode for free chat" in text(chat(demo_client, "What's the weather?"))
+    answer = text(chat(demo_client, "What's the weather?"))
+    assert "sandbox" not in answer  # B11: no "switch to sandbox mode"; it names the chips instead
+    for chip in ("Should I keep it?", "What happens if I do nothing?", "Draft my cancellation email"):
+        assert chip in answer
+
+
+def test_the_three_chips_have_scripted_answers(demo_client: TestClient) -> None:
+    """B11: each suggested-question chip gets an answer built from tool results, and none of them acts."""
+    c = demo_client
+    subscribe(c)
+    keep = text(chat(c, "Should I keep it?"))
+    assert "the first paid year costs $524.88" in keep
+    nothing = text(chat(c, "What happens if I do nothing?"))
+    assert f"I ask you on {on(5)}" in nothing and f"cancels Penwright Studio in PayPal on {on(6)}" in nothing
+    assert f"first charge on {on(11)}" in nothing and ACT_BY in nothing
+    email = chat(c, "Draft my cancellation email")
+    assert "quotes the notice clause word for word" in text(email) and cards(email) == []
+    assert not audit(c, "confirm_token_issued") and not audit(c, "paypal_cancel")
 
 
 def test_unknown_user_404(demo_client: TestClient) -> None:

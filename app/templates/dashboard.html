@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}SubGuard: dashboard{% endblock %}
+{% block topbar_actions %}<button type="button" class="btn btn-ghost topbar-chat" id="chat-open" data-testid="chat-open" aria-controls="chat" aria-expanded="false"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Ask SubGuard</span></button>{% endblock %}
 {% block content %}
 <section class="demo-bar card" id="demo-bar" data-testid="demo-bar" aria-label="Demo controls" {% if not demo %}hidden{% endif %}>
   <strong class="day-chip">Day <span data-testid="demo-day" class="js-day">{{ sim_day }}</span></strong>
@@ -77,11 +78,6 @@
   <section class="card" aria-labelledby="timeline-h">
     <h2 id="timeline-h">Timeline</h2>
     <div id="timeline" class="timeline" data-testid="timeline"><p class="muted">No subscriptions yet.</p></div>
-    <p class="legend muted small">
-      <span class="lg lg-trial"></span> trial <span class="lg lg-deadline"></span> real deadline
-      <span class="lg lg-timer"></span> safety timer <span class="lg lg-charge"></span> charge
-      <span class="lg lg-cancel"></span> cancelled <span class="lg lg-today"></span> today
-    </p>
   </section>
 </div>
 
@@ -130,6 +126,7 @@
 </dialog>
 {% endblock %}
 {% block scripts %}
+<script src="/static/timeline.js"></script>
 <script src="/static/dashboard.js"></script>
 <script src="/static/audit-summary.js"></script>
 <script src="/static/chat.js"></script>

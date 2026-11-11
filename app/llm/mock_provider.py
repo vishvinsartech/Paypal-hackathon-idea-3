@@ -28,7 +28,8 @@ from app.llm.tools_schema import ToolSpec
 from app.pricing import Pricing
 from app.review_types import ReviewResult
 
-MOCK_CHAT_FALLBACK = "In mock mode I can answer the demo questions; switch to sandbox mode for free chat."
+MOCK_CHAT_FALLBACK = ("In this demo I can answer three questions: “Should I keep it?”, “What happens if I "
+                      "do nothing?” and “Draft my cancellation email”. Tap one of them below.")  # B11
 
 
 def pricing_tokens(p: Pricing) -> dict[str, str]:

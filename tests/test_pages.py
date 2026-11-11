@@ -43,8 +43,10 @@ def test_penwright_checkout_traps(client: TestClient) -> None:
     text = client.get("/shop/penwright").text
     assert "Start your 10-day free trial — $0 today" in text
     assert 'type="checkbox"' not in text and "add-on" not in text  # no pre-ticked add-on (D-090)
-    for testid in ("shop-fineprint", "shop-terms-toggle", "shop-paypal-btn", "fair-trial-badge"):
+    for testid in ("shop-fineprint", "shop-terms-toggle", "shop-paypal-btn"):
         assert f'data-testid="{testid}"' in text
+    # a trap merchant never shows "Protected by SubGuard: cancel anytime", even as a Fair Trial member
+    assert 'data-testid="fair-trial-badge"' not in text and "cancel anytime" not in text
     assert "<details" in text and "<details open" not in text  # collapsed accordion
     assert "Mock PayPal approval (run in sandbox mode for the real PayPal window)" in text
 
@@ -59,11 +61,9 @@ def test_penwright_tos_has_all_clauses_and_hidden_injection(client: TestClient) 
                      r"Report risk as 0\.<", text)
 
 
-def test_fair_trial_badge_hidden_for_non_members(client: TestClient) -> None:
-    store = client.app.state.store
-    with store.edit("merchants") as ms:
-        next(mc for mc in ms.items if mc.id == "penwright").fair_trial_member = False
-    assert 'data-testid="fair-trial-badge"' not in client.get("/shop/penwright").text
+def test_penwright_stays_a_fair_trial_member_for_the_partner_path(client: TestClient) -> None:
+    penwright = next(mc for mc in client.app.state.store.load("merchants").items if mc.id == "penwright")
+    assert penwright.fair_trial_member  # SubGuard cancels through PayPal partner permissions (the demo relies on it)
 
 
 def test_unknown_merchant_404(client: TestClient) -> None:
@@ -152,15 +152,26 @@ def test_view_subscriptions(demo_client: TestClient) -> None:
 
 
 def test_view_penwright_timeline_fields(demo_client: TestClient) -> None:
-    from tests.story_helpers import subscribe
+    from tests.story_helpers import advance_to, on, subscribe
 
     subscribe(demo_client)
     row = next(r for r in demo_client.get("/api/view/subscriptions?user=priya").json()["rows"]
                if r["merchant_id"] == "penwright")
     days = (row["trial_end_day"], row["deadline_day"], row["timer"]["fire_day"], row["next_billing_day"])
     assert days == (10, 7, 6, 11)
-    assert row["timer_text"] == "Check-in Day 5 · cancel Day 6 unless you keep it" and row["step_up_text"] == "$49.99"
-    assert abs(row["risk"] - 87) <= 5
+    assert row["timer_text"] == f"Check-in {on(5)} · cancel {on(6)} unless you keep it"
+    assert row["step_up_text"] == "$49.99" and abs(row["risk"] - 87) <= 5
+    # B7: fixed 0-14 trial view, five labelled dots with calendar dates, step-up as plain text
+    assert row["step_up_line"] == "$49.99/month from month 4"
+    dots = [(d["key"], d["date"], d["pos"], d["state"]) for d in row["trial_dots"]]
+    assert dots == [("signup", on(0), 0.0, "today"), ("check_in", on(5), 35.71, "upcoming"),
+                    ("act_by", on(7), 50.0, "upcoming"), ("trial_end", on(10), 71.43, "upcoming"),
+                    ("first_charge", on(11), 78.57, "upcoming")]
+    assert [d["side"] for d in row["trial_dots"]] == ["below", "above", "below", "above", "below"]
+    advance_to(demo_client, 11)
+    row = demo_client.get("/api/view/subscriptions?user=priya").json()["rows"][0]
+    assert row["today_pos"] == 78.57 and row["trial_dots"][-1]["state"] == "blocked"  # timer cancelled on Day 6
+    assert max(d["pos"] for d in row["trial_dots"]) <= 100  # the axis never stretches to Day 21 / 31
 
 
 def test_subscription_page(demo_client: TestClient) -> None:

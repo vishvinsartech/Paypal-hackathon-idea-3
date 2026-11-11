@@ -1,9 +1,15 @@
 {% extends "base.html" %}
 {% block title %}SubGuard: {{ current_user.name if current_user else "user" }}'s dashboard{% endblock %}
+{% block topbar_actions %}<button type="button" class="btn btn-ghost topbar-chat" id="chat-open" data-testid="chat-open" aria-controls="chat" aria-expanded="false"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Ask SubGuard</span></button>{% endblock %}
 {% block content %}
 {% set u = current_user %}
 {% macro when(w) %}{% if w %}<time datetime="{{ w.iso }}" data-local="{{ w.fmt }}">{{ w.text }}</time>{% endif %}{% endmacro %}
 {% macro icon(d) %}<svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ d | safe }}</svg>{% endmacro %}
+{% macro trial_dots(c) %}{% if c.trial_dots %}<div class="t5" data-testid="trial-timeline">
+  <ol class="t5-track" aria-label="Trial timeline">{% for d in c.trial_dots %}
+    <li class="t5-dot is-{{ d.state }} t5-{{ d.side }} t5-{{ d.key }}" style="left:{{ d.pos }}%" data-testid="t5-{{ d.key }}"><span class="t5-mark" aria-hidden="true"></span><span class="t5-label"><span class="t5-name">{{ d.label }}</span> <time>{{ d.date }}</time></span></li>{% endfor %}
+  </ol><span class="t5-today" style="left:{{ c.today_pos }}%" title="Today" aria-hidden="true"></span>
+</div>{% if c.step_up_line %}<p class="t5-step muted small" data-testid="step-up-line">Then {{ c.step_up_line }}</p>{% endif %}{% endif %}{% endmacro %}
 {% set drafts = notices | selectattr("status", "equalto", "draft") | list %}
 <div data-testid="user-dashboard">
 <section class="hero profile" id="live-head" data-live>
@@ -81,6 +87,7 @@
     </header>
     {% if c.trial_end_day is not none and c.deadline_day is not none %}
     <p class="deadline-line" data-testid="deadline-line">Site says: trial ends {{ c.trial_end_text }} · <strong data-testid="act-by">{{ c.act_by_text }}.</strong></p>
+    {{ trial_dots(c) }}
     {% endif %}
     <details class="kd-details" data-testid="key-dates-toggle">
     <summary class="small kd-title"><strong>Key dates</strong> <span class="muted tiny">· {{ c.merchant }} · in your time zone · demo days follow the Day buttons</span></summary>

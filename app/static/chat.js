@@ -69,7 +69,7 @@
   async function send(text) {
     if (busy || !text.trim()) return;
     busy = true;
-    document.getElementById("chat-suggest").hidden = true;
+    // B11: the suggested-question chips stay visible; the mock answers (and the fallback) point at them
     bubble("user", text);
     input.value = "";
     const reply = bubble("agent", "…");

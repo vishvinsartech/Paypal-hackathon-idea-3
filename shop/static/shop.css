@@ -27,7 +27,6 @@ a { color: #6b3fa0; }
 .checkout { margin-top: 24px; }
 .paypal-btn { width: 100%; max-width: 360px; padding: 12px; border: 0; border-radius: 24px; background: #ffc439; color: #111; font: 700 16px system-ui, sans-serif; cursor: pointer; }
 .paypal-btn:disabled { opacity: .6; cursor: default; }
-.fair-trial { font: 600 13px system-ui, sans-serif; color: #1b6b3a; }
 
 .theme-penwright .shop-header { background: #2a1440; }
 .theme-penwright .shop-home { color: #f3e9ff; }

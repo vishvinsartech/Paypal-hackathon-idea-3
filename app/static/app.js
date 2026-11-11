@@ -35,7 +35,7 @@
     el.appendChild(close);
     box.appendChild(el);
     while (box.children.length > 3) box.firstElementChild.remove();
-    setTimeout(() => el.remove(), (opts && opts.ms) || 8000);
+    setTimeout(() => el.remove(), (opts && opts.ms) || 6000);  // B5: auto-dismiss after 6 s
   }
 
   // ---- refresh fan-out: panels register, actions call SG.refresh() ------------------------

@@ -69,6 +69,32 @@ def companion_display(d: Deadlines, start: datetime) -> dict[str, Any]:
                               if trap else f"Next charge {rows['first_charge']['date']}.")}
 
 
+TRIAL_VIEW_DAYS = 14  # B7: the trial timeline is a fixed Day 0-14 view from sign-up
+
+
+def trial_dots(sub: Subscription, today: int, *, reminder: int | None, act_by: int | None, trial_end: int | None,
+               first_charge: int | None) -> list[dict[str, Any]]:
+    """B7: five labelled dots on a fixed 0-14 day view: Signed up, Check-in, Act by, Trial ends, First charge.
+    `pos` is a percentage along the track; `side` alternates the label above/below so close dots never overlap."""
+    points = [("signup", "Signed up", sub.signup_day), ("check_in", "Check-in", reminder),
+              ("act_by", "Act by", act_by), ("trial_end", "Trial ends", trial_end),
+              ("first_charge", "First charge", first_charge)]
+    out = []
+    for i, (key, label, day) in enumerate(p for p in points if p[2] is not None):
+        off = day - sub.signup_day  # type: ignore[operator]
+        state = "today" if day == today else ("done" if day < today else "upcoming")  # type: ignore[operator]
+        if key == "first_charge" and sub.status != "ACTIVE":
+            state = "blocked"
+        out.append({"key": key, "label": label, "date": day_text(sub, day), "day": day,  # type: ignore[arg-type]
+                    "pos": round(max(0, min(TRIAL_VIEW_DAYS, off)) / TRIAL_VIEW_DAYS * 100, 2),
+                    "state": state, "side": "below" if i % 2 == 0 else "above"})
+    return out
+
+
+def today_pos(sub: Subscription, today: int) -> float:
+    return round(max(0, min(TRIAL_VIEW_DAYS, today - sub.signup_day)) / TRIAL_VIEW_DAYS * 100, 2)
+
+
 def stamp(at: datetime | None, *, with_time: bool) -> dict[str, Any] | None:
     """A <time> tag's data: ISO for the browser, plus a UTC fallback text."""
     if at is None:

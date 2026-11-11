@@ -75,3 +75,13 @@ def test_sent_email_gets_no_reminder(demo_client: TestClient) -> None:
                                                   "body": n["body"]})
     advance_to(c, 7)
     assert not alerts(c, kind="notice_unsent")
+
+
+def test_evidence_page_explains_the_partner_connection(demo_client: TestClient) -> None:
+    """Fair Trial badge: Penwright is a member (partner path) but its terms aren't fair, and the page says so."""
+    sub = subscribe_with_consent(demo_client, auto_send=False)
+    html = demo_client.get(f"/subscriptions/{sub['id']}?user=priya").text
+    assert 'data-testid="partner-note"' in html
+    assert "connected to SubGuard through PayPal partner" in html
+    assert "doesn't make Penwright Studio's terms fair" in html
+    assert 'data-testid="act-by"' in html and f"Act by {on(7)} (the terms allow {on(8)})" in html

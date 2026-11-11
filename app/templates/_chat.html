@@ -1,5 +1,5 @@
 {# Chat drawer, collapsed by default (D-112). Suggestions are about Penwright only. Not part of the demo video. #}
-<button class="chat-fab btn" id="chat-open" data-testid="chat-open" aria-controls="chat" aria-expanded="false">Ask SubGuard</button>
+{# The "Ask SubGuard" entry is in the top bar (B6, base.html block topbar_actions); the drawer stays here. #}
 <aside class="chat" id="chat" aria-label="Chat with SubGuard" hidden>
   <header class="chat-head">
     <strong>SubGuard chat</strong>
@@ -7,9 +7,10 @@
     <button class="btn btn-ghost btn-sm" id="chat-close" aria-label="Close chat" data-testid="chat-close">✕</button>
   </header>
   <div class="chat-log" id="chat-log" aria-live="polite"></div>
-  <div class="chat-suggest" id="chat-suggest">
-    <button class="btn btn-ghost btn-sm">Should I keep Penwright?</button>
-    <button class="btn btn-ghost btn-sm">Cancel Penwright</button>
+  <div class="chat-suggest" id="chat-suggest" aria-label="Suggested questions">
+    <button type="button" class="btn btn-ghost btn-sm chip-q" data-testid="chat-chip-keep">Should I keep it?</button>
+    <button type="button" class="btn btn-ghost btn-sm chip-q" data-testid="chat-chip-nothing">What happens if I do nothing?</button>
+    <button type="button" class="btn btn-ghost btn-sm chip-q" data-testid="chat-chip-email">Draft my cancellation email</button>
   </div>
   <form class="chat-form" id="chat-form">
     <label class="sr-only" for="chat-input">Message</label>

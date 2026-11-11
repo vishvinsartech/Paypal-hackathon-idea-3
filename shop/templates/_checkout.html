@@ -14,7 +14,6 @@
   {% if settings.is_sandbox %}<script src="/shop/static/autodemo.js" defer></script>
   <script src="/shop/static/checkout_sandbox.js" defer></script>
   {% else %}<script src="/shop/static/checkout.js" defer></script>{% endif %}
-  {% if merchant.fair_trial_member %}
-  <p class="fair-trial" data-testid="fair-trial-badge">&#10003; Protected by SubGuard: cancel anytime</p>
-  {% endif %}
+  {# No "Protected by SubGuard: cancel anytime" badge: Penwright is a trap merchant. Fair Trial membership only means
+     SubGuard can cancel through PayPal partner permissions; it doesn't make the terms fair (FIX_PLAN). #}
 </div>

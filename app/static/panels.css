@@ -137,3 +137,27 @@ body, .card, .topbar, .tab, .btn { transition: background-color .25s, color .25s
   .side-nav a { flex: none; padding: 7px 10px; border-left: 0; border-bottom: 3px solid transparent; }
   .side-nav a[aria-current="true"] { border-bottom-color: var(--teal); }
 }
+
+/* ---- B7: fixed Day 0-14 trial timeline, five labelled dots (timeline.js / user.html macro) ---- */
+.t5 { position: relative; margin: 34px 8px 34px; }
+.t5-track { list-style: none; margin: 0; padding: 0; position: relative; height: 4px; border-radius: 2px;
+  background: var(--line); }
+.t5-dot { position: absolute; top: 50%; transform: translate(-50%, -50%); }
+.t5-mark { display: block; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--muted);
+  background: var(--navy-800); }
+.t5-dot.is-done .t5-mark { background: var(--teal); border-color: var(--teal); }
+.t5-dot.is-today .t5-mark { background: var(--amber); border-color: var(--amber); box-shadow: 0 0 0 4px rgba(245,179,66,.25); }
+.t5-act_by .t5-mark { border-color: var(--red); }
+.t5-act_by .t5-name { color: var(--red); font-weight: 700; }
+.t5-dot.is-blocked .t5-mark { background: var(--navy-800); border-color: var(--muted); border-style: dashed; }
+.t5-label { position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: .78rem;
+  line-height: 1.15; text-align: center; color: var(--muted); }
+.t5-label time { display: block; color: var(--text); font-variant-numeric: tabular-nums; }
+.t5-below .t5-label { top: 18px; }
+.t5-above .t5-label { bottom: 18px; }
+.t5-signup .t5-label { left: 0; transform: none; text-align: left; }
+.t5-first_charge .t5-label { left: auto; right: 0; transform: none; text-align: right; }
+.t5-today { position: absolute; top: -8px; width: 2px; height: 20px; background: var(--text); opacity: .7;
+  transform: translateX(-1px); transition: left .6s ease; }
+.t5-step { margin: 0 0 4px; }
+@media (prefers-reduced-motion: reduce) { .t5-today { transition: none; } }

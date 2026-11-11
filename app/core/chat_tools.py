@@ -94,7 +94,11 @@ async def t_review(svc: Services, user_id: str, a: dict[str, Any]) -> dict[str, 
     if review is None:
         raise ToolError("No fine-print review exists for this subscription.")
     d = review.data
-    return {"merchant": svc.merchant(sub.merchant_id).name, "risk_score": d.risk_score, "summary": d.summary,
+    timer = next((t for t in svc.store.load("timers").items if t.subscription_id == sub.id and t.kind == "trial"),
+                 None)
+    return {"check_in_on": day_text(sub, timer.reminder_day) if timer and timer.reminder_day is not None else "—",
+            "auto_cancel_on": day_text(sub, timer.fire_day) if timer else "—",
+            "merchant": svc.merchant(sub.merchant_id).name, "risk_score": d.risk_score, "summary": d.summary,
             "mode": d.mode_label, "real_cancel_deadline_day": d.deadlines.real_cancel_deadline_day,
             "first_charge_day": d.deadlines.first_charge_day,
             "terms_last_day": d.deadlines.terms_last_day,

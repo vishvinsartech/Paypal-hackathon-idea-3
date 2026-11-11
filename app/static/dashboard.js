@@ -93,10 +93,6 @@
   });
 
   // ---- timeline -----------------------------------------------------------------------------
-  function marker(cls, day, x, label) {
-    return `<span class="tl-mark ${cls}" style="left:${x(day)}%" title="${esc(label)}" aria-label="${esc(label)}"></span>`;
-  }
-
   let shownRows = null; // subscription ids already on the timeline (new rows animate in)
   let lastTodayX = null;
 
@@ -116,27 +112,18 @@
       lastTodayX = null;
       return;
     }
-    const days = view.rows.flatMap((r) => [r.signup_day, r.next_billing_day, r.timer && r.timer.fire_day]).filter((d) => d != null);
-    const lo = Math.min(0, ...days), hi = Math.max(31, view.today + 3, ...days.map((d) => d + 2));
-    const x = (d) => Math.max(0, Math.min(100, ((d - lo) / (hi - lo)) * 100));
+    // B7: one fixed Day 0-14 trial view per subscription, five labelled dots with calendar dates (timeline.js)
     box.innerHTML = view.rows.map((r) => {
       const t = r.timer;
-      const parts = [];
-      if (r.trial_end_day != null) parts.push(`<span class="tl-trial" style="left:${x(r.signup_day)}%;width:${x(r.trial_end_day) - x(r.signup_day)}%" title="Trial window"></span>`);
-      if (r.deadline_day != null) parts.push(marker("tl-deadline", r.deadline_day, x, `Real deadline: Day ${r.deadline_day}`));
-      if (t && t.status === "PENDING") parts.push(marker("tl-timer", t.fire_day, x, `Safety timer: Day ${t.fire_day}`));
-      if (r.next_billing_day != null) parts.push(marker(r.status === "ACTIVE" ? "tl-charge" : "tl-charge is-blocked", r.next_billing_day, x, `${r.status === "ACTIVE" ? "Next charge" : "Charge blocked"}: Day ${r.next_billing_day}`));
-      if (r.cancelled_day != null) parts.push(marker("tl-cancel", r.cancelled_day, x, `Cancelled: Day ${r.cancelled_day}`));
       const chip = r.timer_text && t && t.status === "PENDING" ? `<span class="chip chip-teal" data-testid="timer-chip">${esc(r.timer_text)}</span>` : "";
-      const step = r.step_up_text ? `<span class="muted tiny">→ ${esc(r.step_up_text)} from Day ${r.step_up_day}</span>` : "";
       const fresh = shownRows !== null && !shownRows.has(r.id);
-      return `<div class="tl-row${fresh ? " is-new" : ""}"><div class="tl-label"><strong>${esc(r.merchant)}</strong> <span class="muted small">${esc(r.plan)}</span> ${chip} ${step}</div>
-        <div class="tl-track">${parts.join("")}<span class="tl-today" style="left:${x(view.today)}%" title="Today: Day ${view.today}"></span></div></div>`;
-    }).join("") + `<div class="tl-axis"><span>Day ${lo}</span><span>Day ${hi}</span></div>`;
+      return `<div class="tl-row${fresh ? " is-new" : ""}"><div class="tl-label"><strong>${esc(r.merchant)}</strong> <span class="muted small">${esc(r.plan)}</span> ${chip}</div>
+        ${window.SGTimeline ? window.SGTimeline.html(r) : ""}</div>`;
+    }).join("");
     shownRows = new Set(view.rows.map((r) => r.id));
     // slide the "today" line from where it was to where it is now
-    const todayX = x(view.today);
-    const lines = box.querySelectorAll(".tl-today");
+    const todayX = view.rows.length ? view.rows[0].today_pos : 0;
+    const lines = box.querySelectorAll(".t5-today");
     if (lastTodayX !== null && lastTodayX !== todayX && !reduce) {
       lines.forEach((l) => { l.style.transition = "none"; l.style.left = lastTodayX + "%"; });
       void box.offsetWidth;

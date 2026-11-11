@@ -484,6 +484,46 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   quietly fell back to the static one. Both now run on their own loop in a worker thread
   (`app/integrations/own_loop.py`, a Proactor loop on Windows). OpenAI errors now keep OpenAI's reason (for
   example "organization must be verified to use gpt-5").
+- **D-118 Subscription history grid replaces "Your timeline"; key dates fold away.** On userA's dashboard the
+  AG Grid now lists one row per subscription (`GET /api/subscription-history`, R5: owner only, newest first):
+  name + plan, Active/Cancelled, price, subscribed / free-trial-ends / real-last-day-to-cancel (Day N + local
+  date), next charge, outcome, safety timer, risk, latest event (tooltip: every event from the audit log) and an
+  event count. Tools: quick search, status filter, Clear filters (search, column filters, sort), CSV export.
+  Rows reuse the card's data (`card()`), so grid and card never disagree. `/api/activity` stays as an API.
+  Each card's "Key dates" list is a closed `<details>` dropdown; the live refresh keeps it open once opened.
+- **D-119 Fine-print check speed (companion's 20 s limit).** Sandbox reviews sometimes showed "SubGuard couldn't
+  check this page" because capture (~2-3 s) + PayPal plan fetch + the LLM call (11.7-18.6 s in the audit log) ran
+  one after another. Capture and plan fetch now run side by side (`asyncio.gather` in `/api/review/preflight`).
+  `OPENAI_REASONING_EFFORT` is optional and omitted by default: measured on gpt-5.4 (Penwright, risk 87 every
+  run), default/none took 8-10 s and ~1k output tokens, while "low" took 17-19 s and ~1.6k tokens. The LLM
+  call's time is mostly writing the JSON answer, and OpenAI's speed varies, so a slow call can still pass 20 s;
+  the browser limit (20 s) is shorter than the server's worst case (2 x LLM_TIMEOUT_SECONDS). Open item.
+- **D-120 Manual shop visits log in as the sandbox buyer too.** In sandbox mode, when
+  PAYPAL_SANDBOX_BUYER_EMAIL / _PASSWORD are set, the shop's "Continue to PayPal" shows the same "Subscribe with
+  PayPal" button as the live demo (D-117): the server opens PayPal's approval page in its own window, already
+  logged in, and a person clicks Agree & Subscribe (SubGuard never clicks consent). The page only gets a
+  `data-buyer-login="1"` flag; the credentials stay on the server. Without them, PayPal's own JS SDK pop-up is
+  used, as before. `/api/checkout/demo-paypal-window` takes `source: demo|shop`, audited in `details.source`.
+  Static JS/CSS is now served with `Cache-Control: no-cache` (`FreshStatic` in `app/main.py`): Chrome had kept
+  the old checkout_sandbox.js and opened PayPal's own pop-up (with Chrome's saved email) instead.
+- **D-121 Compact PayPal strip and a "What SubGuard did" table on the live demo.** Re-running Start demo without
+  Reset stacked one full PayPal card per run. Now both dashboards show only the latest run as a one-line strip
+  (plan, id, live status, cycles on one line, "View in PayPal sandbox"); start time, request ids and debug ids
+  sit under "details", and earlier runs fold into "N earlier runs" one-line rows (still read live from PayPal).
+  On the live demo the strip sits inside the step-by-step card. The shop keeps the full card (D-113). The audit
+  card now defaults to "What SubGuard did": the current run only (userA's latest registered subscription, its
+  fine-print review, and anything blocked for her since), one plain row each, reusing userA's activity wording
+  plus every policy decision (allowed or blocked). Built server-side (`app/core/run_summary.py`,
+  `GET /api/audit-log/summary`); the audit log itself is unchanged. "Show full log" reveals the raw AG Grid with
+  filter and CSV export; the chain badge stays visible.
+- **D-122 Sidebar sections on userA's dashboard.** The page was one long scroll. A sidebar now shows one section
+  at a time: Overview (KPIs, subscription cards, "Verified with PayPal"), Analytics (AG Charts), History (AG Grid),
+  Messages (badge: message count) and Emails (badge: drafts to review). Anything that needs userA (the Day 5
+  check-in, "email ready", the Day 11 proof banner) is pinned above the sections, so it can't be hidden. The URL
+  hash names the section (`/user#analytics`), so reloads and links keep it; no storage. Below 860 px the sidebar
+  becomes a sticky, scrollable strip. Sections are plain `hidden` blocks: the live refresh (`[data-live]` by id)
+  and the charts/grid (ResizeObserver) are unchanged. `app/static/user-nav.js`. Video scene 09 clicks Analytics
+  before highlighting the cost chart.
 
 ## Not used in v1 (sponsor tools)
 

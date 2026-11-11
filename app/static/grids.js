@@ -1,4 +1,4 @@
-// All AG Grid setup (Community 36.2.0 from a pinned CDN, D-060): audit log (Live demo), userA's activity list,
+// All AG Grid setup (Community 36.2.0 from a pinned CDN, D-060): audit log (Live demo), userA's subscription history,
 // findings + per-subscription audit (subscription page). Subscriptions are cards on userA's dashboard (D-112).
 (function () {
   "use strict";
@@ -25,29 +25,59 @@
                 defaultColDef: {sortable: true, filter: true, resizable: true, flex: 1, minWidth: 90}};
   const html = (s) => { const d = document.createElement("span"); d.innerHTML = s; return d; };
 
-  // ---- userA's activity list (/user): her timeline from the audit log, filterable by who acted ---------------
-  const actEl = document.getElementById("activity-grid");
-  if (actEl) {
-    let who = "all";
-    const whoCell = (p) => html(`<span class="who who-${esc(p.data.kind)}">${esc(p.value)}</span>`);
-    const grid = AG.createGrid(actEl, Object.assign({}, base, {
-      rowData: [], getRowId: (p) => String(p.data.seq), animateRows: false,  // wrapped rows: no slide on filter
-      defaultColDef: {sortable: true, resizable: true, filter: false},
-      isExternalFilterPresent: () => who !== "all",
-      doesExternalFilterPass: (n) => (n.data.who === "Safety timer" ? "SubGuard" : n.data.who) === who,
-      overlayNoRowsTemplate: "Nothing yet. Your story starts when you click PayPal on a trial.",
+  // ---- userA's subscription history (/user, D-118): one row per subscription, search + status filter + CSV ----
+  const histEl = document.getElementById("history-grid");
+  if (histEl) {
+    const search = document.getElementById("hist-search");
+    const status = document.getElementById("hist-status");
+    // "Day N" plus the calendar date in the viewer's time zone (dates come from code, D-115).
+    const dayDate = (dayKey, atKey) => (p) => {
+      const day = p.data[dayKey];
+      if (day === null || day === undefined) return "—";
+      const at = p.data[atKey] ? new Date(p.data[atKey]) : null;
+      const date = at && !isNaN(at) ? at.toLocaleDateString(undefined, {day: "numeric", month: "short", year: "numeric"}) : "";
+      return `Day ${day}${date ? " · " + date : ""}`;
+    };
+    const grid = AG.createGrid(histEl, Object.assign({}, base, {
+      rowData: [], getRowId: (p) => p.data.id, tooltipShowDelay: 200,
+      isExternalFilterPresent: () => status.value !== "",
+      doesExternalFilterPass: (n) => n.data.status === status.value,
+      overlayNoRowsTemplate: "No subscriptions yet. Your history starts when you approve a trial in PayPal.",
       columnDefs: [
-        {field: "day", headerName: "Day", width: 100, valueFormatter: (p) => "Day " + p.value},  // API order = log order
-        {field: "who", headerName: "Who", width: 140, cellRenderer: whoCell},
-        {field: "text", headerName: "What happened", flex: 1, minWidth: 260, wrapText: true, autoHeight: true},
-        {field: "rule_id", headerName: "Rule", width: 90, valueFormatter: (p) => p.value || ""},
+        {field: "merchant", headerName: "Subscription", minWidth: 190, pinned: "left",
+         cellRenderer: (p) => html(`<a href="/subscriptions/${encodeURIComponent(p.data.id)}?user=${encodeURIComponent(user)}">${esc(p.value)}</a> <span class="muted small">${esc(p.data.plan)}</span>`),
+         getQuickFilterText: (p) => `${p.value} ${p.data.plan}`},
+        {field: "status", headerName: "Status", minWidth: 120,
+         cellRenderer: (p) => html(`<span class="pill pill-${esc(String(p.value).toLowerCase())}">${p.value === "ACTIVE" ? "Active" : esc(p.value === "CANCELLED" ? "Cancelled" : p.value)}</span>`)},
+        {field: "price", headerName: "Price", minWidth: 110},
+        {field: "signup_day", headerName: "Subscribed", minWidth: 160, valueFormatter: dayDate("signup_day", "subscribed_at")},
+        {field: "trial_end_day", headerName: "Free trial ends", minWidth: 160, valueFormatter: dayDate("trial_end_day", "trial_end_at")},
+        {field: "deadline_day", headerName: "Real last day to cancel", minWidth: 180, valueFormatter: dayDate("deadline_day", "deadline_at")},
+        {field: "next_charge", headerName: "Next charge", minWidth: 200, tooltipField: "next_charge"},
+        {field: "outcome", headerName: "Outcome", minWidth: 230, tooltipField: "outcome"},
+        {field: "timer", headerName: "Safety timer", minWidth: 170, tooltipField: "timer"},
+        {field: "risk", headerName: "Risk", minWidth: 90, filter: "agNumberColumnFilter",
+         valueFormatter: (p) => (p.value === null || p.value === undefined ? "—" : `${p.value}/100`)},
+        {field: "last_event", headerName: "Latest event", minWidth: 260,
+         tooltipValueGetter: (p) => (p.data.event_log || []).join("\n") || null,
+         getQuickFilterText: (p) => (p.data.event_log || []).join(" ")},
+        {field: "events", headerName: "Events", minWidth: 90, filter: "agNumberColumnFilter"},
       ],
     }));
-    onRefresh(async () => grid.setGridOption("rowData", await api(`/api/activity?user=${user}`)));
-    document.querySelectorAll(".feed-filter button").forEach((b) => b.addEventListener("click", () => {
-      who = b.dataset.who;
-      document.querySelectorAll(".feed-filter button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    onRefresh(async () => grid.setGridOption("rowData", await api(`/api/subscription-history?user=${user}`)));
+    search.addEventListener("input", () => grid.setGridOption("quickFilterText", search.value));
+    status.addEventListener("change", () => grid.onFilterChanged());
+    document.getElementById("hist-clear").addEventListener("click", () => {
+      search.value = ""; status.value = "";
+      grid.setGridOption("quickFilterText", "");
+      grid.setFilterModel(null);
+      grid.applyColumnState({defaultState: {sort: null}});
       grid.onFilterChanged();
+    });
+    document.getElementById("hist-export").addEventListener("click", () => grid.exportDataAsCsv({
+      fileName: "subguard-subscription-history.csv",
+      columnKeys: ["merchant", "status", "price", "signup_day", "trial_end_day", "deadline_day", "next_charge",
+                   "outcome", "timer", "risk", "last_event", "events"],  // value formatters apply (AG Grid 31+)
     }));
   }
 

@@ -10,7 +10,7 @@ Unconfirmed subscriptions get no snapshot and no timer.
 from __future__ import annotations
 
 import asyncio
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -102,13 +102,15 @@ class DemoWindowIn(BaseModel):
     plan_key: str = "penwright-pro"
     user_id: str = "usera"
     review_id: str | None = None
+    source: Literal["demo", "shop"] = "demo"  # live demo window, or a manual shop visit (D-120)
 
 
 @router.post("/checkout/demo-paypal-window", response_model=None)
 async def demo_paypal_window(body: DemoWindowIn, request: Request, store: JsonStore = Depends(get_store),
                              gw: PayPalGateway = Depends(get_gateway)) -> Subscription | JSONResponse:
-    """Live demo, sandbox only (D-117): create the real sandbox subscription, open PayPal's approval page logged
-    in as the sandbox buyer, wait for the presenter to confirm, then register it. SubGuard never clicks consent."""
+    """Sandbox only (D-117, D-120; live demo or a manual shop visit): create the real sandbox subscription, open
+    PayPal's approval page logged in as the sandbox buyer, wait for a person to confirm, then register it.
+    SubGuard never clicks consent."""
     from app.integrations.sandbox_buyer import CANCEL_URL, RETURN_URL, open_for_confirmation
 
     svc: Services = request.app.state.services
@@ -122,6 +124,7 @@ async def demo_paypal_window(body: DemoWindowIn, request: Request, store: JsonSt
     _check_user(store, body.user_id)
     if _demo_window.locked():
         raise HTTPException(409, "The PayPal window is already open. Confirm the subscription there.")
+    where = "Live demo" if body.source == "demo" else "Shop"
     async with _demo_window:
         ctx = Ctx(actor="user", user_id=body.user_id, merchant=merchant)
         view = await gw.create_subscription(gw.plan_id(body.plan_key), ctx, return_url=RETURN_URL,
@@ -137,10 +140,10 @@ async def demo_paypal_window(body: DemoWindowIn, request: Request, store: JsonSt
                                           "server terminal, then click Subscribe again."}, status_code=502)
         store.audit.append(actor="user", event="demo_paypal_window", user_id=body.user_id, transport="sdk",
                            result="ok" if outcome == "approved" else f"not_confirmed:{outcome}",
-                           reason="Live demo: PayPal's approval page opened logged in as the sandbox buyer; "
-                                  "the presenter confirmed it there" if outcome == "approved" else
-                                  "Live demo: PayPal's approval page opened; not confirmed",
-                           details={"paypal_id": view.id, "outcome": outcome,
+                           reason=f"{where}: PayPal's approval page opened logged in as the sandbox buyer; "
+                                  "a person confirmed it there" if outcome == "approved" else
+                                  f"{where}: PayPal's approval page opened; not confirmed",
+                           details={"paypal_id": view.id, "outcome": outcome, "source": body.source,
                                     "buyer": mask_email(s.paypal_sandbox_buyer_email)})
         if outcome != "approved":
             return JSONResponse({"error": NOT_CONFIRMED[outcome], "outcome": outcome}, status_code=409)

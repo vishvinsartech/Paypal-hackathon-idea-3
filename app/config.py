@@ -34,6 +34,7 @@ class Settings(BaseSettings, PricingFields):
     anthropic_model: str = ""
     openai_api_key: str = ""
     openai_model: str = ""
+    openai_reasoning_effort: str = ""  # empty = omit (model default); none|low|medium|high (D-119)
     llm_timeout_seconds: float = 30.0
 
     paypal_client_id: str = ""

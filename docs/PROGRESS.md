@@ -72,6 +72,13 @@ Milestones from `docs/BUILD_PROMPT.md` section 12. Tick each one only after its 
 
 ## Notes for next session
 
+### Live demo: compact PayPal strip + "What SubGuard did" (2026-11-11)
+- Re-runs no longer stack PayPal cards: latest run = one strip inside the step-by-step card, earlier runs folded
+  (D-121). The audit card defaults to a ~11-row "What SubGuard did" table for the current run (`/api/audit-log/summary`);
+  "Show full log" opens the raw grid + CSV. Tests: `tests/test_run_summary.py`; `scripts/ui_check.py` passes.
+- userA's dashboard has sidebar sections (D-122): Overview / Analytics / History / Messages / Emails, with the
+  check-in and proof pinned above. `ui_check.py` walks the sections; `test_user_page.py::test_sidebar_sections`.
+
 ### Sandbox Start: the presenter confirms in PayPal (2026-11-11)
 - No auto-approve: the Penwright window's **Subscribe with PayPal** opens PayPal already logged in as the sandbox
   buyer, and the presenter confirms there (D-117). Real sandbox run with a scripted presenter: Subscribe at

@@ -65,9 +65,9 @@
     }).render(container);
   }
 
-  // Live demo (D-117, the window the Start button opened): a "Subscribe with PayPal" button. Clicking it has the
-  // server open PayPal's approval page in its own window, already logged in as the sandbox buyer (from .env);
-  // the presenter confirms there. A real PayPal pop-up can't be filled in from this page (other site).
+  // Live demo (D-117) and manual shop visits with the sandbox buyer in .env (D-120): a "Subscribe with PayPal"
+  // button. Clicking it has the server open PayPal's approval page in its own window, already logged in as the
+  // sandbox buyer; a person confirms there. A real PayPal pop-up can't be filled in from this page (other site).
   function demoButton() {
     slot.innerHTML = "";
     const b = document.createElement("button");
@@ -90,7 +90,7 @@
       const res = await fetch("/api/checkout/demo-paypal-window", {
         method: "POST", headers: {"Content-Type": "application/json"},
         body: JSON.stringify({merchant_id: area.dataset.merchant, plan_key: area.dataset.planKey, user_id: user,
-          review_id: area.dataset.reviewId || null}),
+          review_id: area.dataset.reviewId || null, source: window.SG_AUTODEMO ? "demo" : "shop"}),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || data.detail || "HTTP " + res.status);
@@ -109,7 +109,8 @@
       window.dispatchEvent(new CustomEvent("subguard:demo-error", {detail: "No sandbox plan yet. Run make seed."}));
       return;
     }
-    if (window.SG_AUTODEMO) return demoButton();
+    // Sandbox buyer in .env -> PayPal opens already logged in (no typing). Otherwise PayPal's own pop-up.
+    if (window.SG_AUTODEMO || area.dataset.buyerLogin === "1") return demoButton();
     try {
       const paypal = await loadSdk();
       slot.innerHTML = "";

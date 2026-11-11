@@ -133,6 +133,7 @@
       "narration": "$524.88 stays in userA's pocket this year. AI reads the fine print. PayPal enforces the outcome. Built on the PayPal Sandbox, MIT licensed.",
       "actions": [
         {"action": "highlight", "target": "user-protected"},
+        {"action": "click", "target": "nav-analytics"},
         {"action": "highlight", "target": "chart-cost"},
         {"action": "wait", "seconds": 3}
       ]

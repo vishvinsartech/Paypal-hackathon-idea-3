@@ -1,7 +1,8 @@
 """userA's dashboard (/user): the product, written to her (D-110, D-111).
 
 Server-rendered parts: subscription cards, the Day 5 check-in (usage + advice + Keep / Cancel), the Day 11 proof,
-money KPIs, messages and emails. AG Grid (activity) and AG Charts load from /api/activity and /api/analytics.
+money KPIs, messages and emails. AG Grid (subscription history, D-118) and AG Charts load from
+/api/subscription-history and /api/analytics.
 """
 
 from __future__ import annotations
@@ -91,6 +92,38 @@ def user_dashboard(
                protected=svc.money(money_protected(subs, user, settings.pricing.demo_currency)),
                cancelled=sum(1 for s in subs if s.status == "CANCELLED"))
     return templates.TemplateResponse(request, "user.html", ctx)
+
+
+def outcome(c: dict[str, Any]) -> str:
+    """The card's Status line, as one grid cell."""
+    if c["cancelled_day"] is not None:
+        by = {"user": "by you", "timer": "by your safety timer"}.get(c["cancelled_by"] or "", "outside SubGuard")
+        return f"Cancelled in PayPal on Day {c['cancelled_day']} {by}"
+    if c["kept_day"] is not None:
+        return f"You kept it on Day {c['kept_day']}"
+    return "Watching for you"
+
+
+def history_row(c: dict[str, Any], acts: list[Activity]) -> dict[str, Any]:
+    """One row of the subscription history grid: the card's facts + its events from the audit log."""
+    iso = {k: (w["iso"] if w else None) for k, w in c["dated"].items()}
+    return {"id": c["id"], "merchant": c["merchant"], "plan": c["plan"], "price": c["price_text"],
+            "status": c["status"], "risk": c["risk"], "signup_day": c["signup_day"],
+            "subscribed_at": iso.get("subscribed"), "trial_end_day": c["trial_end_day"],
+            "trial_end_at": iso.get("trial_end"), "deadline_day": c["deadline_day"],
+            "deadline_at": iso.get("deadline"), "next_charge": c["next_charge_text"],
+            "timer": c["timer_text"] or "—", "outcome": outcome(c), "events": len(acts),
+            "last_event": f"Day {acts[-1].day} · {acts[-1].text}" if acts else "",
+            "event_log": [f"Day {a.day} · {a.who}: {a.text}" for a in acts]}
+
+
+@router.get("/api/subscription-history")
+def subscription_history(user: str = "usera", svc: Services = Depends(get_services)) -> list[dict[str, Any]]:
+    """userA's subscription history for the AG Grid (R5: only her subscriptions), newest first."""
+    subs = [s for s in svc.store.load("subscriptions").items if s.owner_id == user and s.status != "APPROVAL_PENDING"]
+    acts = activity_for(svc, user)
+    rows = [history_row(card(svc, s), [a for a in acts if a.subscription_id == s.id]) for s in subs]
+    return sorted(rows, key=lambda r: r["signup_day"], reverse=True)
 
 
 @router.get("/api/activity")

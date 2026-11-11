@@ -113,8 +113,10 @@ subscriptions; on first start it only scripts userA's Penwright usage, in both m
 
 Two pages, two jobs. The **Live demo** (http://127.0.0.1:8000/?demo=1, press **D** to show or hide the demo bar)
 is the presenter's control room: Start demo, the day buttons, alerts, the timeline, Money protected and the
-audit log. **userA's dashboard** (`/user`) is the product as she sees it: her subscription card, the Day 5
-check-in, the Day 11 proof, her charts and her timeline. Present with both side by side. The tabs at the top left
+audit log ("What SubGuard did" for the current run; **Show full log** for every entry). **userA's dashboard**
+(`/user`) is the product as she sees it, with a sidebar: **Overview** (her numbers and subscription card),
+**Analytics** (charts), **History**, **Messages** and **Emails**. The Day 5 check-in, "email ready" and the Day 11
+proof stay pinned above whichever section is open. Present with both side by side. The tabs at the top left
 switch pages (the **Shop ↗** opens a new tab); the button at the top right switches dark and light. Health and the
 API docs are in the footer's **Developer** menu.
 

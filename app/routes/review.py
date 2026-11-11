@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 from urllib.parse import urlparse
 
@@ -60,9 +61,9 @@ async def preflight(body: PreflightIn, request: Request, store: JsonStore = Depe
     plan_key = _resolve_plan(merchant, gw, body.plan_key, body.plan_id)
     ctx = Ctx(actor="system", user_id=body.user_id, merchant=merchant)
     day = store.load("state").sim_day
-    try:
-        capture = await request.app.state.capture.capture(path, str(request.base_url))
-        plan = await gw.get_plan(gw.plan_id(plan_key), ctx)
+    try:  # page capture (headless browser) and the PayPal plan fetch run side by side (D-119)
+        capture, plan = await asyncio.gather(request.app.state.capture.capture(path, str(request.base_url)),
+                                             gw.get_plan(gw.plan_id(plan_key), ctx))
     except CaptureError as exc:
         return JSONResponse({"error": "SubGuard couldn't read this page.", "detail": str(exc)}, status_code=502)
     auditor: Auditor = request.app.state.auditor

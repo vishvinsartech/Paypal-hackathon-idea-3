@@ -17,4 +17,5 @@ def build_llm(settings: Settings) -> LLMProvider:
         return AnthropicProvider(settings.anthropic_api_key, settings.anthropic_model, settings.llm_timeout_seconds)
     from app.llm.openai_provider import OpenAIProvider
 
-    return OpenAIProvider(settings.openai_api_key, settings.openai_model, settings.llm_timeout_seconds)
+    return OpenAIProvider(settings.openai_api_key, settings.openai_model, settings.llm_timeout_seconds,
+                          reasoning_effort=settings.openai_reasoning_effort)

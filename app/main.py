@@ -12,6 +12,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.responses import Response
+from starlette.types import Scope
 
 from app.access_log import quiet_access_log
 from app.config import ROOT_DIR, ConfigError, Settings, load_settings
@@ -51,6 +53,16 @@ class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         payload = {"level": record.levelname, "logger": record.name, "msg": record.getMessage()}
         return json.dumps(mask_secrets(payload))
+
+
+class FreshStatic(StaticFiles):
+    """Static JS/CSS with `Cache-Control: no-cache`: the browser revalidates (ETag -> 304) on every load, so a
+    changed script is never served stale from cache (an old checkout_sandbox.js opened the wrong PayPal window)."""
+
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
 
 
 def setup_logging() -> None:
@@ -124,8 +136,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def _paypal_error(_request: Request, exc: PayPalError) -> JSONResponse:
         return paypal_error_response(exc)
 
-    app.mount("/static", StaticFiles(directory=ROOT_DIR / "app" / "static"), name="static")
-    app.mount("/shop/static", StaticFiles(directory=ROOT_DIR / "shop" / "static"), name="shop_static")
+    app.mount("/static", FreshStatic(directory=ROOT_DIR / "app" / "static"), name="static")
+    app.mount("/shop/static", FreshStatic(directory=ROOT_DIR / "shop" / "static"), name="shop_static")
     app.include_router(pages.router)
     app.include_router(user_page.router)
     app.include_router(api.router)

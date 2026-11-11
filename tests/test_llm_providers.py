@@ -120,6 +120,11 @@ def test_openai_request_shape(settings: Settings) -> None:
     assert call["response_format"]["json_schema"]["strict"] is True
     assert call["messages"][0]["role"] == "system" and "UNTRUSTED" in call["messages"][0]["content"]
     assert call["messages"][1]["content"][0]["image_url"]["url"].startswith("data:image/png;base64,")
+    assert "reasoning_effort" not in call  # D-119: omitted by default (model default is fastest)
+    provider.reasoning_effort = "none"  # OPENAI_REASONING_EFFORT, when set, is passed through
+    fake.completions.responses.append(o_msg({"content": mock_text("penwright")}))
+    asyncio.run(provider.extract_findings(cap))
+    assert fake.completions.calls[1]["reasoning_effort"] == "none"
 
 
 @pytest.mark.parametrize("kind", ["anthropic", "openai"])

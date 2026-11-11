@@ -9,6 +9,9 @@ from fastapi.responses import Response
 
 from app.config import Settings
 from app.core.audit_log import AuditEntry, VerifyResult
+from app.core.run_summary import RunSummary, run_summary
+from app.core.services import Services
+from app.routes.actions import get_services
 from app.routes.deps import get_settings, get_store, integration_states
 from app.store import JsonStore
 
@@ -44,6 +47,12 @@ def audit_log(
     subscription_id: str | None = None, store: JsonStore = Depends(get_store),
 ) -> list[AuditEntry]:
     return store.audit.query(user=user, event=event, since_day=since_day, subscription_id=subscription_id)
+
+
+@router.get("/api/audit-log/summary")
+def audit_log_summary(user: str = "usera", svc: Services = Depends(get_services)) -> RunSummary:
+    """Live demo "What SubGuard did": the current run only, in plain words (D-121). The full log stays above."""
+    return run_summary(svc, user)
 
 
 @router.get("/api/audit-log/verify")

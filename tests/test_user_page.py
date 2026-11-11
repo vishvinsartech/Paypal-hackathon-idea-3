@@ -47,11 +47,11 @@ def test_user_page_empty_state(client: TestClient) -> None:
     html = client.get("/user").text
     assert 'data-testid="user-dashboard"' in html and "Hi userA, here's your SubGuard." in html
     assert "No subscriptions yet." in html and "Try the Penwright shop." in html and 'data-testid="user-empty"' in html
-    for t in ("user-protected", "user-cancelled", "user-activity", "chart-cost", "chart-usage", "chart-risk",
-              "chat-open"):
+    for t in ("user-protected", "user-cancelled", "user-history", "history-search", "history-status",
+              "history-clear", "history-export", "chart-cost", "chart-usage", "chart-risk", "chat-open"):
         assert f'data-testid="{t}"' in html, t
     for gone in ("subs-grid", "Your subscriptions</span>", "Your decisions", "sub-card", "user-reminder",
-                 "proof-banner"):
+                 "proof-banner", "Your timeline", "user-activity"):
         assert gone not in html, gone
 
 
@@ -64,6 +64,8 @@ def test_card_reminder_and_proof(demo_client: TestClient) -> None:
     assert "Site says: trial ends Day 10 · <strong>Real last day to cancel: Day 7.</strong>" in html
     assert 'data-testid="next-charge">Day 11 · $24.99<' in html
     assert 'data-sub-keep="' in html and 'data-sub-cancel="' in html
+    kd = re.search(r'<details class="kd-details"[^>]*>', html)  # key dates: closed until she opens them
+    assert kd and " open" not in kd.group(0) and 'data-testid="key-dates"' in html
     assert f'href="/subscriptions/{main["id"]}?user=usera" data-testid="view-review">View fine-print review<' in html
     assert "user-reminder" not in html  # no check-in before Day 5
 
@@ -125,6 +127,25 @@ def test_activity_list_tells_her_story(demo_client: TestClient) -> None:
     assert "Email sent (demo)" in c.get("/user").text
 
 
+def test_subscription_history_grid_rows(demo_client: TestClient) -> None:
+    """D-118: one history row per subscription, with trial / deadline days, outcome and its audit-log events."""
+    c = demo_client
+    assert c.get("/api/subscription-history?user=usera").json() == []
+    main = subscribe(c)
+    (row,) = c.get("/api/subscription-history?user=usera").json()
+    assert (row["id"], row["merchant"], row["status"]) == (main["id"], "Penwright Studio", "ACTIVE")
+    assert (row["trial_end_day"], row["deadline_day"]) == (10, 7) and row["outcome"] == "Watching for you"
+    assert row["next_charge"] == "Day 11 · $24.99" and 82 <= row["risk"] <= 92
+    assert row["subscribed_at"] and row["events"] == len(row["event_log"]) >= 1
+    advance_to(c, 5)
+    cancel_via_alert(c, alerts(c, kind="reminder")[0])
+    (row,) = c.get("/api/subscription-history?user=usera").json()
+    assert row["status"] == "CANCELLED" and row["outcome"] == "Cancelled in PayPal on Day 5 by you"
+    assert any("Cancelled your subscription" in e for e in row["event_log"])
+    add_user(c)
+    assert c.get("/api/subscription-history?user=intruder").json() == []  # R5
+
+
 def test_user_page_shows_only_her_data(demo_client: TestClient) -> None:
     c = demo_client
     subscribe(c)
@@ -158,3 +179,26 @@ def test_analytics_numbers_come_from_code(demo_client: TestClient) -> None:
     u = a["usage"]
     assert (u["total"], u["deadline_day"], u["first_charge_day"]) == (2, 7, 11)
     assert [r["opens"] for r in u["rows"][:5]] == [0, 0, 1, 0, 1]
+
+
+def test_sidebar_sections(client: TestClient) -> None:
+    """D-122: one section at a time from the sidebar; what needs userA stays above the sections."""
+    subscribe(client)
+    advance_to(client, 5)
+    html = client.get("/user").text
+    nav = html.split('data-testid="side-nav"', 1)[1].split("</nav>", 1)[0]
+    names = re.findall(r'data-nav="([a-z]+)"', nav)
+    assert names == ["overview", "analytics", "history", "messages", "emails"]
+    for name in names:
+        panel = re.search(rf'<div class="panel" id="panel-{name}"[^>]*>', html)
+        assert panel, name
+        assert ("hidden" in panel.group(0)) == (name != "overview"), name  # Overview opens first
+    sections = {name: html.split(f'id="panel-{name}"', 1)[1].split('<div class="panel"', 1)[0] for name in names}
+    assert 'data-testid="user-protected"' in sections["overview"] and 'data-testid="sub-card"' in sections["overview"]
+    assert 'data-testid="chart-cost"' in sections["analytics"] and 'id="history-grid"' in sections["history"]
+    assert "Messages to you" in sections["messages"] and "Your cancellation emails" in sections["emails"]
+    attention = html.split('class="attention"', 1)[1].split('id="panel-overview"', 1)[0]
+    assert 'data-testid="user-reminder"' in attention  # the Day 5 check-in is never behind a section
+    badge = re.search(r'id="live-badge-messages" data-live\s*>(\d+)', html)
+    assert badge and int(badge.group(1)) == len(alerts(client))
+    assert "/static/user-nav.js" in html

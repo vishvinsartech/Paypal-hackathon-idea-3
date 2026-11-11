@@ -37,11 +37,15 @@ from app.review_types import REVIEW_JSON_SCHEMA, ReviewResult
 class OpenAIProvider:
     name = "openai"
 
-    def __init__(self, api_key: str, model: str, timeout: float, client: Any | None = None) -> None:
+    def __init__(self, api_key: str, model: str, timeout: float, client: Any | None = None,
+                 reasoning_effort: str = "") -> None:
         self.model = model
+        self.reasoning_effort = reasoning_effort  # "" = don't send it: the model's default (D-119)
         self.client = client or openai.AsyncOpenAI(api_key=api_key, timeout=timeout, max_retries=1)
 
     async def _create(self, **kwargs: Any) -> Any:
+        if self.reasoning_effort:  # measured on gpt-5.4: "low" ADDS reasoning and doubles review time (D-119)
+            kwargs["reasoning_effort"] = self.reasoning_effort
         try:
             return await self.client.chat.completions.create(model=self.model, **kwargs)
         except openai.APIStatusError as exc:  # keep OpenAI's reason (e.g. "organization must be verified")

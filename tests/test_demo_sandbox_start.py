@@ -178,3 +178,29 @@ def test_playwright_helpers_work_under_a_selector_loop() -> None:
 
     with asyncio.Runner(loop_factory=asyncio.SelectorEventLoop) as runner:
         assert runner.run(server()) == "hi"
+
+
+def test_manual_shop_visit_logs_in_as_buyer(sandbox_client: TestClient) -> None:
+    """D-120: a manual sandbox shop visit uses the same logged-in PayPal window when the buyer is in .env."""
+    c = sandbox_client
+    set_buyer(c, paypal_sandbox_buyer_email="", paypal_sandbox_buyer_password="")
+    assert 'data-buyer-login="1"' not in c.get("/shop/penwright").text  # no buyer: PayPal's own pop-up
+    set_buyer(c, paypal_sandbox_buyer_password="s3cret-Buyer-9")
+    shop = c.get("/shop/penwright").text  # a flag only: the email and password never reach the page
+    assert 'data-buyer-login="1"' in shop and "personal.example" not in shop and "s3cret-Buyer-9" not in shop
+    js = c.get("/shop/static/checkout_sandbox.js").text
+    assert 'area.dataset.buyerLogin === "1"' in js and 'source: window.SG_AUTODEMO ? "demo" : "shop"' in js
+    fake_window(c)
+    res = start(c, source="shop")
+    assert res.status_code == 200, res.text
+    (row,) = audit(c, "demo_paypal_window")
+    assert row["details"]["source"] == "shop" and row["reason"].startswith("Shop: ")
+
+
+def test_static_scripts_are_revalidated(sandbox_client: TestClient) -> None:
+    """A changed script must never run stale from the browser cache (D-120)."""
+    for url in ("/shop/static/checkout_sandbox.js", "/static/companion.js"):
+        res = sandbox_client.get(url)
+        assert res.status_code == 200 and res.headers["cache-control"] == "no-cache" and res.headers["etag"]
+        again = sandbox_client.get(url, headers={"If-None-Match": res.headers["etag"]})
+        assert again.status_code == 304  # unchanged -> cheap revalidation

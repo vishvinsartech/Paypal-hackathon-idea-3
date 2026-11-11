@@ -23,6 +23,9 @@ async def register_active(svc: Services, view: SubscriptionView, *, merchant_id:
     plan = await svc.gw.get_plan(view.plan_id or svc.gw.plan_id(plan_key), ctx)
     day = svc.day if signup_day is None else signup_day
     local_id = f"sub-{view.id}"
+    review = next((r for r in svc.store.load("reviews").items if r.id == review_id and r.merchant_id == merchant.id
+                   and r.subscription_id is None), None) if review_id else None
+    auto_send = bool(review and review.auto_send_notice)
     async with svc.store.aedit("subscriptions") as subs:
         existing = next((s for s in subs.items if s.id == local_id), None)
         if existing and existing.owner_id != user_id:
@@ -36,7 +39,7 @@ async def register_active(svc: Services, view: SubscriptionView, *, merchant_id:
             registered_at=utcnow(),
             consent_snapshot=ConsentSnapshot(taken_at=utcnow(), sim_day=day, currency=plan.currency,
                                              price=first_paid_price(plan.billing_cycles),
-                                             billing_cycles=plan.billing_cycles),
+                                             billing_cycles=plan.billing_cycles, auto_send_notice=auto_send),
         )
         subs.items.append(sub)
     if review_id:
@@ -51,6 +54,7 @@ async def register_active(svc: Services, view: SubscriptionView, *, merchant_id:
                                     "signup_day": day})
     svc.store.audit.append(actor="system", event="consent_snapshot", user_id=user_id, subscription_id=sub.id,
                            details={"price": str(sub.consent_snapshot.price), "currency": plan.currency,  # type: ignore[union-attr]
-                                    "cycles": len(plan.billing_cycles), "source": "paypal_plan"})
+                                    "cycles": len(plan.billing_cycles), "source": "paypal_plan",
+                                    "auto_send_notice": auto_send})
     await on_registered(svc, sub)
     return sub, True

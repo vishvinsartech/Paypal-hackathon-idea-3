@@ -5,7 +5,7 @@ from __future__ import annotations
 from decimal import Decimal, InvalidOperation
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 ClauseType = Literal[
     "AUTO_RENEW", "INTRO_PRICE_STEP_UP", "PRECHECKED_ADDON", "NOTICE_PERIOD", "EARLY_TRIAL_TERMINATION",
@@ -105,12 +105,19 @@ class Deadlines(BaseModel):
     signup_day: int
     first_charge_day: int
     notice_days: int
-    real_cancel_deadline_day: int
+    real_cancel_deadline_day: int  # "act by": the terms' last day minus SubGuard's 1-day safety margin
+    terms_last_day: int | None = None  # D6: the last day the terms allow (first charge - notice)
     timer_fire_day: int
     reminder_day: int
     layer2: bool = False
     auto_timer_allowed: bool
     note: str = ""
+
+    @model_validator(mode="after")
+    def _fill_terms_last_day(self) -> Deadlines:  # reviews stored before D6 don't have it
+        if self.terms_last_day is None:
+            self.terms_last_day = self.first_charge_day - self.notice_days
+        return self
 
 
 class RiskBreakdown(BaseModel):

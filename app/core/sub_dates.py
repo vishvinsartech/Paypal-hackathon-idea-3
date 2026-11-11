@@ -11,8 +11,10 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Any
 
+from app.core.crosscheck import after_start
 from app.core.services import Services
 from app.models import Subscription, Timer
+from app.review_types import Deadlines
 
 UTC_DATE = "%a %d %b %Y"
 UTC_DATETIME = "%a %d %b %Y, %H:%M UTC"
@@ -23,6 +25,48 @@ def date_of_day(sub: Subscription, day: int) -> datetime | None:
     if sub.registered_at is None:
         return None
     return sub.registered_at + timedelta(days=day - sub.signup_day)
+
+
+def cal(at: datetime) -> str:
+    """Short calendar date for sentences: "Nov 18" (UTC; FIX_PLAN B2/D6)."""
+    return f"{at:%b} {at.day}"
+
+
+def act_by_text(act_by: str, terms_last: str) -> str:
+    """D6: the one wording for the deadline everywhere: "Act by Nov 18 (the terms allow Nov 19)"."""
+    return f"Act by {act_by} (the terms allow {terms_last})"
+
+
+def day_text(sub: Subscription, day: int) -> str:
+    """A sim day as a calendar date for this subscription ("Nov 18"); "Day N" if its sign-up time is unknown."""
+    at = date_of_day(sub, day)
+    return cal(at) if at is not None else f"Day {day}"
+
+
+def sub_act_by(sub: Subscription, act_by_day: int) -> str:
+    """D6 wording for a subscription. The terms' last day is always the act-by day + 1 (SubGuard's margin)."""
+    return act_by_text(day_text(sub, act_by_day), day_text(sub, act_by_day + 1))
+
+
+def companion_display(d: Deadlines, start: datetime) -> dict[str, Any]:
+    """B2: what the companion shows, relative to sign-up and as calendar dates from `start` (the real now).
+    Absolute sim days stay internal, so the text is the same whatever the sim clock says."""
+    base = d.signup_day
+    terms_last = d.terms_last_day if d.terms_last_day is not None else d.first_charge_day - d.notice_days
+    points = {"signup": base, "check_in": d.reminder_day, "timer": d.timer_fire_day,
+              "act_by": d.real_cancel_deadline_day, "terms_last": terms_last,
+              "trial_end": d.first_charge_day - 1, "first_charge": d.first_charge_day}
+    rows = {k: {"offset": v - base, "date": cal(start + timedelta(days=v - base)),
+                "iso": (start + timedelta(days=v - base)).date().isoformat(), "relative": after_start(v - base)}
+            for k, v in points.items()}
+    trap = d.real_cancel_deadline_day < d.first_charge_day - 1
+    act_by = act_by_text(rows["act_by"]["date"], rows["terms_last"]["date"])
+    return {"points": rows, "trap": trap, "act_by_text": act_by,
+            "first_charge_text": f"First charge {rows['first_charge']['date']}",
+            "trial_end_text": f"Trial ends {rows['trial_end']['date']}",
+            "deadline_text": (f"{act_by}, {rows['act_by']['relative']}. That's before the trial ends "
+                              f"({rows['trial_end']['date']}); the first charge is {rows['first_charge']['date']}."
+                              if trap else f"Next charge {rows['first_charge']['date']}.")}
 
 
 def stamp(at: datetime | None, *, with_time: bool) -> dict[str, Any] | None:

@@ -2,11 +2,22 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Any
 
 from fastapi.testclient import TestClient
 
+from app.core.sub_dates import cal
 from app.models import User
+from app.store import utcnow
+
+
+def on(days: int) -> str:
+    """The calendar date `days` after a sign-up made now, as SubGuard writes it ("Nov 18")."""
+    return cal(utcnow() + timedelta(days=days))
+
+
+ACT_BY = f"Act by {on(7)} (the terms allow {on(8)})"  # D6 wording for a Day 0 Penwright sign-up
 
 
 def subscribe(client: TestClient, merchant: str = "penwright", plan_key: str = "penwright-pro", user: str = "priya",

@@ -18,6 +18,7 @@ from app.core.actions import ConfirmCard, propose_cancel, year_cost
 from app.core.alerts import send_alert
 from app.core.policy import Decision
 from app.core.services import Services
+from app.core.sub_dates import day_text, sub_act_by
 from app.core.usage import days_used, last_open_day, opens_between, times
 from app.llm.base import ToolCall, ToolResult
 from app.llm.tools_schema import TOOLS
@@ -96,6 +97,9 @@ async def t_review(svc: Services, user_id: str, a: dict[str, Any]) -> dict[str, 
     return {"merchant": svc.merchant(sub.merchant_id).name, "risk_score": d.risk_score, "summary": d.summary,
             "mode": d.mode_label, "real_cancel_deadline_day": d.deadlines.real_cancel_deadline_day,
             "first_charge_day": d.deadlines.first_charge_day,
+            "terms_last_day": d.deadlines.terms_last_day,
+            "act_by_text": sub_act_by(sub, d.deadlines.real_cancel_deadline_day),  # D6 wording, from code
+            "first_charge_on": day_text(sub, d.deadlines.first_charge_day),
             "findings": [{"type": c.type, "plain_english": c.plain_english} for c in d.clauses]}
 
 

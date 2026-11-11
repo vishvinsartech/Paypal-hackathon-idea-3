@@ -15,6 +15,7 @@ from pathlib import Path
 
 from app.core.crosscheck import cross_check
 from app.core.patterns import (
+    drop_clear_terms_if_risky,
     fallback_extract,
     find_injections,
     label_similar,
@@ -115,6 +116,7 @@ class Auditor:
         rows, mismatch = cross_check(capture, plan, result)
         if mismatch is not None:
             clauses.append(mismatch)
+        clauses = drop_clear_terms_if_risky(clauses)
 
         y1 = year_one_cost(plan.billing_cycles)
         notice = self._notice_days(clauses, result.notice_days)

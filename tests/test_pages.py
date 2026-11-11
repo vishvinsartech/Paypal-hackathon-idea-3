@@ -169,7 +169,7 @@ def test_subscription_page(demo_client: TestClient) -> None:
     main = subscribe(demo_client)
     text = demo_client.get(f"/subscriptions/{main['id']}?user=priya").text
     for snippet in ('data-testid="risk-score"', 'id="findings-grid"', 'id="findings-data"', "Page says vs PayPal plan",
-                    "Consent snapshot", 'id="sub-audit-grid"', "Real cancel deadline: <strong>Day 7</strong>"):
+                    "Consent snapshot", 'id="sub-audit-grid"', "(the terms allow "):
         assert snippet in text, snippet
     assert "PROMPT_INJECTION_ATTEMPT" in text  # in the findings JSON
     assert demo_client.get(f"/subscriptions/{main['id']}?user=intruder").status_code == 404  # R5

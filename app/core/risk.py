@@ -59,5 +59,6 @@ def compute_deadlines(signup_day: int, first_charge_day: int, notice_days: int, 
     note = "" if allowed else ("Too little time to warn you 24 hours ahead, so SubGuard won't auto-cancel. "
                                "Please decide at signup.")
     return Deadlines(signup_day=signup_day, first_charge_day=first_charge_day, notice_days=notice_days,
-                     real_cancel_deadline_day=deadline, timer_fire_day=timer, reminder_day=max(reminder, signup_day),
+                     real_cancel_deadline_day=deadline, terms_last_day=first_charge_day - notice_days,
+                     timer_fire_day=timer, reminder_day=max(reminder, signup_day),
                      layer2=layer2, auto_timer_allowed=allowed, note=note)

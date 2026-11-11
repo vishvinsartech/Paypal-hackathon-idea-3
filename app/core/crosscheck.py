@@ -19,6 +19,11 @@ from app.review_types import Clause, PayPalCheckRow, ReviewResult
 PROMINENT_MIN_PX = 18.0
 
 
+def after_start(offset: int) -> str:
+    """Relative to sign-up, never a sim day (B2)."""
+    return "the day you start" if offset == 0 else f"{offset} day{'s' if offset != 1 else ''} after you start"
+
+
 def money_str(amount: Decimal, currency: str) -> str:
     text = f"{amount:,.0f}" if amount == amount.to_integral_value() else f"{amount:,.2f}"
     sym = SYMBOLS.get(currency)
@@ -50,11 +55,11 @@ def cross_check(capture: PageCapture, plan: PlanView,
 
     if review.first_charge_day is not None:
         ok = review.first_charge_day == pp_day
-        rows.append(PayPalCheckRow(item="First charge", page_says=f"day {review.first_charge_day}",
-                                   paypal_says=f"day {pp_day}", match=ok))
+        rows.append(PayPalCheckRow(item="First charge", page_says=after_start(review.first_charge_day),
+                                   paypal_says=after_start(pp_day), match=ok))
         if not ok:
-            problems.append(f"the page implies the first charge on day {review.first_charge_day}, "
-                            f"PayPal bills on day {pp_day}")
+            problems.append(f"the page implies the first charge {after_start(review.first_charge_day)}, "
+                            f"PayPal bills {after_start(pp_day)}")
     if review.first_charge_amount is not None:
         ok = review.first_charge_amount == pp_amount
         rows.append(PayPalCheckRow(item="First charge amount", page_says=money_str(review.first_charge_amount, cur),

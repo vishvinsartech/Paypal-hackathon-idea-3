@@ -95,6 +95,7 @@ class ConsentSnapshot(BaseModel):
     currency: str = "USD"
     terms_summary: str = ""
     billing_cycles: list[BillingCycleDef] = Field(default_factory=list)
+    auto_send_notice: bool = False  # D7: "If I don't answer, send the cancellation email for me" (opt-in)
 
 
 class Subscription(BaseModel):
@@ -132,6 +133,7 @@ class Review(BaseModel):
     sim_day: int = 0
     risk_score: int = 0
     data: ReviewData
+    auto_send_notice: bool = False  # D7 checkbox in the companion, copied to the consent snapshot at sign-up
 
 
 class ReviewList(BaseModel):

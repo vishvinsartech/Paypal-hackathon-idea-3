@@ -6,7 +6,7 @@ import re
 
 from fastapi.testclient import TestClient
 
-from tests.story_helpers import add_user, advance_to, alerts, cancel_via_alert, subscribe
+from tests.story_helpers import ACT_BY, add_user, advance_to, alerts, cancel_via_alert, on, subscribe
 
 TABS = ("tab-demo", "tab-user", "view-shop")
 FOOTER = ("footer", "footer-license", "footer-github", "dev-menu", "dev-health", "dev-docs", "health-dots")
@@ -61,7 +61,7 @@ def test_card_reminder_and_proof(demo_client: TestClient) -> None:
     html = c.get("/user").text
     assert 'data-testid="sub-card"' in html and 'data-testid="status-penwright">ACTIVE<' in html
     assert re.search(r'data-testid="risk-score">Risk 8\d/100<', html)
-    assert "Site says: trial ends Day 10 · <strong>Real last day to cancel: Day 7.</strong>" in html
+    assert f'Site says: trial ends {on(10)} · <strong data-testid="act-by">{ACT_BY}.</strong>' in html
     assert 'data-testid="next-charge">Day 11 · $24.99<' in html
     assert 'data-sub-keep="' in html and 'data-sub-cancel="' in html
     kd = re.search(r'<details class="kd-details"[^>]*>', html)  # key dates: closed until she opens them
@@ -72,8 +72,9 @@ def test_card_reminder_and_proof(demo_client: TestClient) -> None:
     advance_to(c, 5)
     (check,) = alerts(c, kind="reminder")
     html = c.get("/user").text
-    assert 'data-testid="user-reminder"' in html and "Your Penwright trial ends on Day 10" in html
-    assert "Opened twice in 5 days (last on Day 4)." in html
+    assert 'data-testid="user-reminder"' in html and f"Your Penwright trial ends on {on(10)}" in html
+    assert (f"Opened twice in 5 days, last on {on(4)} (from Penwright&#39;s app activity, simulated in this demo)."
+            in html)
     assert "SubGuard suggests: cancel. You decide." in html and ">Advice<" in html
     assert "costs $524.88 in the first paid year" in html
     for action in ("keep", "cancel"):

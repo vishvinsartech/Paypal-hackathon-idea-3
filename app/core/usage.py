@@ -31,3 +31,11 @@ def exports(store: JsonStore, user_id: str, merchant_id: str, since_day: int, to
 
 def times(n: int) -> str:
     return {0: "never", 1: "once", 2: "twice"}.get(n, f"{n} times")
+
+
+SIMULATED_SOURCE = "from {name}'s app activity, simulated in this demo"
+
+
+def usage_label(n: int, merchant_short: str) -> str:
+    """D8: usage stated with its source: "opened it twice (from Penwright's app activity, simulated in this demo)"."""
+    return f"opened it {times(n)} ({SIMULATED_SOURCE.format(name=merchant_short)})"

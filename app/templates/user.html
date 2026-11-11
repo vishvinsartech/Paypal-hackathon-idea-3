@@ -80,7 +80,7 @@
       </div>
     </header>
     {% if c.trial_end_day is not none and c.deadline_day is not none %}
-    <p class="deadline-line" data-testid="deadline-line">Site says: trial ends Day {{ c.trial_end_day }} · <strong>Real last day to cancel: Day {{ c.deadline_day }}.</strong></p>
+    <p class="deadline-line" data-testid="deadline-line">Site says: trial ends {{ c.trial_end_text }} · <strong data-testid="act-by">{{ c.act_by_text }}.</strong></p>
     {% endif %}
     <details class="kd-details" data-testid="key-dates-toggle">
     <summary class="small kd-title"><strong>Key dates</strong> <span class="muted tiny">· {{ c.merchant }} · in your time zone · demo days follow the Day buttons</span></summary>

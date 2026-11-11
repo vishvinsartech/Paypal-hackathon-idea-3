@@ -15,7 +15,8 @@ from app.core.alerts import action, send_alert
 from app.core.policy import Decision
 from app.core.risk import compute_deadlines
 from app.core.services import Services
-from app.core.usage import opens_between, times
+from app.core.sub_dates import day_text, sub_act_by
+from app.core.usage import opens_between, usage_label
 from app.integrations.notify import warning_basis
 from app.models import Review, Subscription, Timer
 from app.store import utcnow
@@ -52,7 +53,7 @@ async def create_trial_timer(svc: Services, sub: Subscription) -> Timer | None:
     if not d.auto_timer_allowed:  # corner case 13: too short to warn 24h ahead
         await send_alert(svc, user_id=sub.owner_id, key=f"decide-now:{sub.id}", kind="decide_now", level="warning",
                          title=f"Decide now about {merchant.name}",
-                         body=f"{d.note} The real deadline is Day {d.real_cancel_deadline_day}.",
+                         body=f"{d.note} {sub_act_by(sub, d.real_cancel_deadline_day)}.",
                          actions=[action("keep", "Keep"), action("cancel", "Cancel")], subscription_id=sub.id)
         svc.store.audit.append(actor="policy", event="timer_not_created", user_id=sub.owner_id, rule_id="R2",
                                subscription_id=sub.id, decision="blocked", reason=d.note)
@@ -64,9 +65,9 @@ async def create_trial_timer(svc: Services, sub: Subscription) -> Timer | None:
     alert, _ = await send_alert(
         svc, user_id=sub.owner_id, key=f"timer-set:{sub.id}", kind="timer_set", level="info",
         title="I'll check with you before your trial runs out.",
-        body=(f"Your real last day to cancel {name} is Day {d.real_cancel_deadline_day}; the first charge is "
-              f"Day {d.first_charge_day}. I'll ask you on Day {timer.reminder_day}. If I don't hear back, I'll cancel "
-              f"{name} on Day {timer.fire_day} so you're not charged."),
+        body=(f"To cancel {name}: {sub_act_by(sub, d.real_cancel_deadline_day)}. The first charge is on "
+              f"{day_text(sub, d.first_charge_day)}. I'll ask you on {day_text(sub, timer.reminder_day)}. If I don't "
+              f"hear back, I'll cancel {name} on {day_text(sub, timer.fire_day)} so you're not charged."),
         subscription_id=sub.id)
     timer.shown_to_user = alert.delivery.get("in_app") == "shown"
     async with svc.store.aedit("timers") as timers:
@@ -131,13 +132,13 @@ async def warn(svc: Services, timer: Timer, day: int) -> None:
     if sub is None:
         return
     name = short(svc.merchant(sub.merchant_id).name)
-    when = "tomorrow" if timer.fire_day - day == 1 else f"on Day {timer.fire_day}"
+    when = "tomorrow" if timer.fire_day - day == 1 else f"on {day_text(sub, timer.fire_day)}"
     used = opens_between(svc.store, sub.owner_id, sub.merchant_id, sub.signup_day, day)
     deadline = timer.deadline_day or timer.fire_day
     billing = timer.billing_day or sub.next_billing_day
-    ends = (f"Your {name} trial ends on Day {billing - 1}, but your real last day to cancel is Day {deadline}."
-            if billing is not None else f"Your {name} trial is ending. Your real last day to cancel is Day {deadline}.")
-    usage = f"You've opened it {times(used)}." if used else "You haven't opened it yet."
+    ends = (f"Your {name} trial ends on {day_text(sub, billing - 1)}. {sub_act_by(sub, deadline)}."
+            if billing is not None else f"Your {name} trial is ending. {sub_act_by(sub, deadline)}.")
+    usage = f"You've {usage_label(used, name)}." if used else "You haven't opened it yet."
     body = (f"{ends} {usage} Do you want to keep it? "
             f"If I don't hear back, I'll cancel it {when} so you're not charged.")
     alert, _ = await send_alert(svc, user_id=sub.owner_id, key=f"timer-warn:{timer.id}:{day}", kind="reminder",

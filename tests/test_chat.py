@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from app.llm.base import ChatMessage, ChatTurn, LLMError, ToolCall
 from app.llm.tools_schema import ToolSpec
-from tests.story_helpers import add_user, advance_to, alerts, audit, sub, subscribe
+from tests.story_helpers import ACT_BY, add_user, advance_to, alerts, audit, sub, subscribe
 
 
 def chat(c: TestClient, message: str, user: str = "priya") -> list[dict[str, Any]]:
@@ -36,7 +36,7 @@ def test_should_i_keep_penwright_numbers_from_code(demo_client: TestClient) -> N
         "list_subscriptions", "get_usage", "get_savings_estimate", "review_subscription"]
     answer = text(events)
     assert "You've opened Penwright Studio twice so far." in answer
-    assert "the first paid year costs $524.88" in answer and "real last day to cancel is Day 7" in answer
+    assert "the first paid year costs $524.88" in answer and f"{ACT_BY}." in answer
     assert cards(events) == [] and not audit(c, "confirm_token_issued")  # advice only, the decision is hers
     llm = audit(c, "llm_call", actor="agent")
     assert llm and llm[0]["details"]["provider"] == "mock" and "latency_ms" in llm[0]["details"]

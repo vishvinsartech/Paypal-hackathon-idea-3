@@ -11,13 +11,14 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from app.core.auditor import Auditor, save_review
+from app.core.sub_dates import companion_display
 from app.integrations.capture import CaptureError
 from app.integrations.paypal_gateway import Ctx, PayPalGateway
 from app.integrations.paypal_types import PayPalError
 from app.models import Merchant, Review
 from app.routes.deps import get_store
 from app.routes.subscriptions import get_gateway
-from app.store import JsonStore
+from app.store import JsonStore, utcnow
 
 router = APIRouter(prefix="/api")
 
@@ -82,7 +83,32 @@ async def preflight(body: PreflightIn, request: Request, store: JsonStore = Depe
         store.audit.append(actor="system", event="prompt_injection_flagged", user_id=body.user_id,
                            reason="Instructions aimed at AI found in merchant page; ignored, score unchanged",
                            details={"review_id": review.id, "merchant": merchant.id})
-    return {"review_id": review.id, **data.model_dump(mode="json")}
+    # B2: the companion shows dates relative to sign-up (now), never the internal sim days
+    return {"review_id": review.id, **data.model_dump(mode="json"),
+            "display": companion_display(data.deadlines, utcnow())}
+
+
+class ConsentIn(BaseModel):
+    user_id: str = "priya"
+    auto_send_notice: bool = False
+
+
+@router.post("/reviews/{review_id}/consent")
+async def review_consent(review_id: str, body: ConsentIn, store: JsonStore = Depends(get_store)) -> dict[str, Any]:
+    """D7: the companion's "send the cancellation email for me" box, saved on the review before sign-up.
+    Only for a review not yet linked to a subscription; register copies it into the consent snapshot."""
+    async with store.aedit("reviews") as reviews:
+        rev = next((r for r in reviews.items if r.id == review_id), None)
+        if rev is None:
+            raise HTTPException(404, "Unknown review")
+        if rev.subscription_id is not None:
+            raise HTTPException(409, "This review is already linked to a subscription")
+        rev.auto_send_notice = body.auto_send_notice
+    store.audit.append(actor="user", event="notice_consent", user_id=body.user_id,
+                       reason="Send the cancellation email if I don't answer: "
+                              + ("yes" if body.auto_send_notice else "no"),
+                       details={"review_id": review_id, "auto_send_notice": body.auto_send_notice})
+    return {"review_id": review_id, "auto_send_notice": body.auto_send_notice}
 
 
 @router.get("/reviews")

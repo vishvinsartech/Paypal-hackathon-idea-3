@@ -10,7 +10,7 @@
         {"call": "get_usage", "args": {"subscription_id": "$sub", "days": 30}},
         {"call": "get_savings_estimate", "args": {"subscription_id": "$sub"}},
         {"call": "review_subscription", "args": {"subscription_id": "$sub"}},
-        {"say": "You've opened {get_usage.merchant} {get_usage.opens_text} so far. If you keep it, the first paid year costs {get_savings_estimate.per_year_text}. Your real last day to cancel is Day {review_subscription.real_cancel_deadline_day}. It's your call: say \"cancel Penwright\" and I'll show a confirmation card, or tap Keep."}
+        {"say": "You've opened {get_usage.merchant} {get_usage.opens_text} so far. If you keep it, the first paid year costs {get_savings_estimate.per_year_text}. {review_subscription.act_by_text}. It's your call: say \"cancel Penwright\" and I'll show a confirmation card, or tap Keep."}
       ]
     },
     {

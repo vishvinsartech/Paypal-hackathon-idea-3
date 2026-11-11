@@ -12,7 +12,7 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
-from tests.story_helpers import advance_to, alerts, audit, sub, subscribe
+from tests.story_helpers import ACT_BY, advance_to, alerts, audit, on, sub, subscribe
 
 
 def chat(c: TestClient, message: str, user: str = "priya") -> tuple[str, list[dict[str, Any]]]:
@@ -33,10 +33,10 @@ def test_story_end_to_end_with_chat(demo_client: TestClient) -> None:
 
     # ---- Day 5: the check-in, then Priya asks the chat ----------------------------------------------------------
     advance_to(c, 5)
-    assert alerts(c, kind="reminder")[0]["body"].startswith("Your Penwright trial ends on Day 10, but")
+    assert alerts(c, kind="reminder")[0]["body"].startswith(f"Your Penwright trial ends on {on(10)}. {ACT_BY}.")
     answer, cards = chat(c, "Should I keep Penwright?")
     assert "You've opened Penwright Studio twice so far." in answer
-    assert "the first paid year costs $524.88" in answer and "Day 7" in answer and cards == []
+    assert "the first paid year costs $524.88" in answer and ACT_BY in answer and cards == []
     assert not audit(c, "paypal_cancel")  # advice only
 
     answer, cards = chat(c, "Cancel Penwright")

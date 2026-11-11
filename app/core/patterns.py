@@ -100,6 +100,17 @@ def find_injections(capture: PageCapture) -> list[Clause]:
     return found
 
 
+NOT_RISKY = frozenset({"CLEAR_TERMS", "AUTO_RENEW", "PROMPT_INJECTION_ATTEMPT"})
+
+
+def drop_clear_terms_if_risky(clauses: list[Clause]) -> list[Clause]:
+    """B10: "clear terms" can't sit next to dark patterns. Drop CLEAR_TERMS when any risky type is present
+    (AI and basic paths alike). CLEAR_TERMS weighs 0, so the score doesn't change."""
+    if any(c.type not in NOT_RISKY for c in clauses):
+        return [c for c in clauses if c.type != "CLEAR_TERMS"]
+    return clauses
+
+
 def fallback_extract(capture: PageCapture) -> list[Clause]:
     """Regex extractor: never invents anything; every quote is a sentence from the page."""
     out: list[Clause] = []

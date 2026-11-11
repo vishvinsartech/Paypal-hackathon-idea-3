@@ -11,6 +11,7 @@ from fastapi.templating import Jinja2Templates
 from app.config import ROOT_DIR, Settings
 from app.core import timers as tm
 from app.core.savings import year_one_cost
+from app.core.sub_dates import day_text, sub_act_by
 from app.routes.actions import get_services
 from app.routes.deps import get_settings, get_store
 from app.store import JsonStore
@@ -53,6 +54,9 @@ def subscription_page(
     snap = sub.consent_snapshot
     notice = next((n for n in store.load("notices").items if n.subscription_id == sub.id), None)
     plans = [{"name": p.name, "year_one": svc.money(year_one_cost(p.billing_cycles))} for p in merchant.plans]
+    d = review.data.deadlines if review else None
+    ctx.update(act_by=sub_act_by(sub, d.real_cancel_deadline_day) if d else "",
+               first_charge_on=day_text(sub, d.first_charge_day) if d else "")
     ctx.update(sub=sub, merchant=merchant, review=review, snap=snap, notice=notice, plans=plans,
                snap_year=svc.money(year_one_cost(snap.billing_cycles)) if snap else None, money=svc.money,
                evidence=sorted({c.evidence_testid for c in review.data.clauses if c.evidence_testid})

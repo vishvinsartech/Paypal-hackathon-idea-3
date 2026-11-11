@@ -21,8 +21,12 @@
 <section class="card">
   <h2>What SubGuard found</h2>
   <p>{{ review.data.summary }}</p>
-  <p>Real cancel deadline: <strong>Day {{ review.data.deadlines.real_cancel_deadline_day }}</strong> ·
-     first charge Day {{ review.data.deadlines.first_charge_day }} · notice {{ review.data.deadlines.notice_days }} days</p>
+  <p><strong data-testid="act-by">{{ act_by }}</strong> ·
+     first charge {{ first_charge_on }} · notice {{ review.data.deadlines.notice_days }} days</p>
+  {% if merchant.fair_trial_member %}
+  <p class="muted" data-testid="partner-note">{{ merchant.name }} is connected to SubGuard through PayPal partner
+     permissions. That lets SubGuard cancel through PayPal, but it doesn't make {{ merchant.name }}'s terms fair.</p>
+  {% endif %}
   <div id="findings-grid" class="grid" data-testid="findings-grid"></div>
   <script type="application/json" id="findings-data">{{ review.data.model_dump(mode="json")["clauses"] | tojson }}</script>
 </section>

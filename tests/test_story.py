@@ -9,9 +9,10 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
-from tests.story_helpers import advance_to, alerts, audit, cancel_via_alert, sub, subscribe
+from tests.story_helpers import ACT_BY, advance_to, alerts, audit, cancel_via_alert, on, sub, subscribe
 
-DAY5_ASKED = ("Your Penwright trial ends on Day 10, but your real last day to cancel is Day 7. You've opened it twice. "
+DAY5_ASKED = (f"Your Penwright trial ends on {on(10)}. {ACT_BY}. You've opened it twice (from Penwright's app "
+              "activity, simulated in this demo). "
               "Do you want to keep it?")
 DAY5_BODY = DAY5_ASKED + " If I don't hear back, I'll cancel it tomorrow so you're not charged."
 BLOCKED = "First charge due today: blocked. No active PayPal subscription."
@@ -23,8 +24,8 @@ def day0(c: TestClient) -> dict[str, Any]:
     main = subscribe(c)
     (timer_set,) = alerts(c, kind="timer_set")
     assert timer_set["title"] == "I'll check with you before your trial runs out."
-    assert timer_set["body"] == ("Your real last day to cancel Penwright is Day 7; the first charge is Day 11. "
-                                 "I'll ask you on Day 5. If I don't hear back, I'll cancel Penwright on Day 6 "
+    assert timer_set["body"] == (f"To cancel Penwright: {ACT_BY}. The first charge is on {on(11)}. "
+                                 f"I'll ask you on {on(5)}. If I don't hear back, I'll cancel Penwright on {on(6)} "
                                  "so you're not charged.")
     timer = next(t for t in c.get("/api/timers?user=priya").json() if t["subscription_id"] == main["id"])
     assert (timer["fire_day"], timer["deadline_day"], timer["reminder_day"], timer["billing_day"]) == (6, 7, 5, 11)

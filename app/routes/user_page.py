@@ -17,8 +17,8 @@ from app.core import timers as tm
 from app.core.activity import Activity, activity_for
 from app.core.savings import money_protected, year_one_cost
 from app.core.services import Services
-from app.core.sub_dates import key_dates, stamp
-from app.core.usage import last_open_day, opens_between, times
+from app.core.sub_dates import day_text, key_dates, stamp, sub_act_by
+from app.core.usage import SIMULATED_SOURCE, last_open_day, opens_between, times
 from app.models import Alert, Subscription
 from app.routes.actions import get_services
 from app.routes.deps import get_settings, get_store
@@ -40,7 +40,10 @@ def card(svc: Services, sub: Subscription) -> dict[str, Any]:
     next_charge = view["next_charge_text"]
     if sub.status != "ACTIVE" and sub.next_billing_day is not None:
         next_charge = f"Day {sub.next_billing_day} · blocked (no active PayPal subscription)"
+    act_by = sub_act_by(sub, deadline) if deadline is not None else ""
+    trial_end = day_text(sub, view["trial_end_day"]) if view.get("trial_end_day") is not None else ""
     return {**view, "deadline_day": deadline, "next_charge_text": next_charge, "dates": dates,
+            "act_by_text": act_by, "trial_end_text": trial_end,
             "subscribed": stamp(sub.registered_at, with_time=True),
             "dated": {r["key"]: r["when"] for r in dates}, "can_decide": sub.status == "ACTIVE"
             and sub.kept_day is None, "risk_level": "high" if (view["risk"] or 0) >= 60 else
@@ -61,9 +64,10 @@ def check_in(svc: Services, alerts: list[Alert]) -> dict[str, Any] | None:
     suggest = "cancel" if opens < RARELY_USED else "keep"
     used = f"You opened it {times(opens)} in {days} days" if opens else f"You haven't opened it in {days} days"
     reason = used + (f", and keeping it costs {svc.money(cost)} in the first paid year." if cost else ".")
+    source = SIMULATED_SOURCE.format(name=tm.short(merchant.name))  # D8: say where the usage numbers come from
     return {"alert": alert, "merchant": merchant.name,
             "usage": (f"Opened {times(opens)} in {days} days" if opens else f"Not opened in {days} days")
-            + (f" (last on Day {last})." if last is not None else "."),
+            + (f", last on {day_text(sub, last)} ({source})" if opens and last is not None else "") + ".",
             "suggest": suggest, "reason": reason}
 
 

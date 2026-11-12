@@ -2,48 +2,83 @@
    Live demo's hero and step styles from demo.css; this file adds the rest. */
 
 /* ---- signed-out top bar: "Sign in" reads as the main action ---- */
-.topnav a.topnav-signin { color: var(--teal); border: 1px solid var(--teal); }
-.topnav a.topnav-signin:hover { color: var(--navy-900); background: var(--teal); }
+/* a plain text link like "Demo shops": the hero's Sign in is the one main button in the first view (review item 2) */
+.topnav a.topnav-signin { color: var(--ink-2); }
 
 /* ---- intro ---- */
-.intro-page { max-width: 1040px; margin: 0 auto; padding: 12px 0 8px; }
-.intro-hero { margin: 8px 0 32px; }
-.intro-page .hero-h { margin-bottom: 22px; }
-.intro-page .hero-cta .btn { display: inline-flex; align-items: center; min-height: 44px; border-radius: 999px;
-  padding: 10px 24px; font-size: 1rem; }
-.intro-page .hero-cta .btn-start { border: 0; color: #fff; background: var(--teal-dark); }
-.intro-page .hero-cta .btn-start:hover { background: var(--teal); }
-.intro-page .hero-cta .btn-ghost { border: 1px solid var(--line); color: var(--text); background: transparent; }
-.intro-page .hero-cta .btn-ghost:hover { border-color: var(--teal); color: var(--teal); }
-.intro-sec { margin: 0 0 28px; }
-.intro-h { margin: 0 0 4px; font-size: 1.25rem; letter-spacing: -.01em; }
-.intro-sec .how { margin-top: 12px; }
-.intro-ai { padding: 18px 22px; border-radius: 14px; }
-.intro-list { margin: 10px 0 12px; padding-left: 1.2em; display: grid; gap: 8px; line-height: 1.5; }
-.intro-rule { margin: 0; padding: 10px 14px; border-radius: 10px; background: var(--tint); color: var(--teal);
-  font-weight: 700; }
-.intro-note { margin: 0; text-align: center; }
+/* left-aligned, one column; text kept under ~70 characters a line */
+.intro-page { max-width: 1040px; margin: 0 auto; padding: var(--s-5) 0 var(--s-2); }
+.intro-hero { margin: 0 0 var(--s-7); }
+.intro-page .hero-cta { gap: var(--s-3); }
+.intro-page .hero-cta .btn { min-height: 44px; padding: 0 22px; font-size: var(--t-md); }
+.intro-sec { margin: 0 0 var(--s-7); }
+.intro-h { margin: 0 0 var(--s-1); font-size: var(--t-xl); }
+.intro-sec .how { margin-top: var(--s-4); }
+/* on the intro the three steps are open text, not three identical cards */
+.intro-sec .how { gap: var(--s-6); }
+.intro-sec .how li { padding: 0; background: none; border-radius: 0; }
+.intro-ai { margin: 0 0 var(--s-6); padding: var(--s-5) var(--s-6); max-width: 760px; }
+.intro-list { margin: var(--s-3) 0 var(--s-4); padding-left: 1.2em; display: grid; gap: var(--s-2); line-height: 1.55; max-width: 68ch; }
+.intro-rule { margin: 0; font-weight: 700; color: var(--ink); }
+.intro-note { margin: 0; }
+
+/* ---- the deadline ruler (D-191): one tick per day, x = day / first-charge day ---- */
+.dl-tick, .dl-mark { --x: calc(var(--d) / var(--days) * 100%); }  /* on the child: --d is set there */
+.dl-ruler { position: relative; max-width: 760px; margin: var(--s-6) 0;
+  padding: 52px 0 46px; }
+.dl-track { position: relative; height: 34px; }
+.dl-track::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--ink-2); }
+.dl-tick { position: absolute; left: var(--x); bottom: 0; width: 0; height: 100%; }
+.dl-tick::after { content: ""; position: absolute; left: -1px; bottom: 0; width: 2px; height: 14px; background: var(--ink-2); }
+.dl-num { position: absolute; top: 0; left: 0; transform: translateX(-50%); font-size: var(--t-2xs); font-weight: 600;
+  color: var(--ink-2); font-variant-numeric: tabular-nums; line-height: 1; }
+.dl-tick.is-act .dl-num { color: var(--accent); font-weight: 800; }
+.dl-tick.is-charge::after { background: var(--risk); height: 22px; }
+.dl-tick.is-charge .dl-num { color: var(--risk); }
+/* after Act by and before the first charge: the days that are already too late */
+.dl-late { position: absolute; bottom: 2px; height: 8px; left: calc(var(--act) / var(--days) * 100%); right: 0;
+  background: color-mix(in srgb, var(--risk) 22%, transparent); }
+/* the one teal mark: SubGuard's Act by, cut into the rule */
+.dl-notch { position: absolute; left: calc(var(--act) / var(--days) * 100%); bottom: -8px; width: 4px; height: 30px;
+  margin-left: -2px; background: var(--accent); animation: dl-slide .6s cubic-bezier(.2, .8, .2, 1) .25s both; }
+@keyframes dl-slide { from { left: calc(var(--ends) / var(--days) * 100%); } }
+.dl-marks { list-style: none; margin: 0; padding: 0; }
+.dl-mark { position: absolute; left: var(--x); transform: translateX(-50%); display: grid; justify-items: center;
+  text-align: center; white-space: nowrap; font-size: var(--t-sm); line-height: 1.25; }
+.dl-above { top: 0; }
+.dl-below { bottom: 0; }
+.dl-start { transform: none; justify-items: start; text-align: left; }
+.dl-end { transform: translateX(-100%); justify-items: end; text-align: right; }
+.dl-day { font-size: var(--t-xs); font-weight: 700; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.dl-mark.is-act .dl-day { font-size: var(--t-md); font-weight: 800; color: var(--accent); }
+.dl-mark.is-act { font-weight: 600; }
+.dl-mark.is-charge, .dl-mark.is-charge .dl-day { color: var(--risk); }
+.dl-quiet { color: var(--ink-2); }
 
 /* ---- sign-in ---- */
 .auth-page { display: grid; place-items: start center; padding: 32px 0 16px; }
-.auth-card { width: 100%; max-width: 400px; margin: 0; padding: 26px 28px; border-radius: 14px; }
-.auth-h { margin: 0 0 4px; font-size: 1.45rem; letter-spacing: -.01em; }
-.auth-hint { margin: 0 0 16px; font-size: .92rem; }
-.auth-error { margin: 0 0 14px; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--red); color: var(--red);
-  font-size: .92rem; }
+.auth-card { width: 100%; max-width: 400px; margin: 0; padding: 26px 28px; border-radius: var(--r-card); }
+.auth-h { margin: 0 0 4px; font-size: var(--t-2xl); letter-spacing: -.01em; }
+.auth-hint { margin: 0 0 16px; font-size: var(--t-sm); }
+.auth-error { margin: 0 0 14px; padding: 9px 12px; border-radius: var(--r-ctl); border: 1px solid var(--red); color: var(--red);
+  font-size: var(--t-sm); }
 .auth-form { display: grid; gap: 6px; }
-.auth-form label { font-weight: 600; font-size: .92rem; margin-top: 6px; }
+.auth-form label { font-weight: 600; font-size: var(--t-sm); margin-top: 6px; }
 .auth-form input { width: 100%; box-sizing: border-box; min-height: 44px; padding: 10px 12px; font: 16px var(--font);
-  color: var(--text); background: var(--navy-900); border: 1px solid var(--line); border-radius: 8px; }
-.auth-form input:focus-visible { outline: 3px solid var(--teal); outline-offset: 1px; border-color: var(--teal); }
+  color: var(--text); background: var(--navy-900); border: 1px solid var(--line); border-radius: var(--r-ctl); }
+.auth-form input:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; border-color: var(--teal); }
 .auth-form input:disabled { opacity: .55; }
-.auth-submit { margin-top: 14px; min-height: 44px; font-size: 1rem; border-radius: 8px; }
-.auth-back { margin: 16px 0 0; font-size: .92rem; }
+.auth-submit { margin-top: 14px; min-height: 44px; font-size: var(--t-md); border-radius: var(--r-ctl); }
+.auth-back { margin: 16px 0 0; font-size: var(--t-sm); }
 .auth-back a { display: inline-block; padding: 6px 0; }
 
 @media (max-width: 640px) {
-  .intro-page { padding-top: 4px; }
-  .intro-page .hero-cta .btn { flex: 1 1 100%; justify-content: center; }
+  .intro-page { padding-top: var(--s-2); }
+  .intro-hero, .intro-sec { margin-bottom: var(--s-6); }
+  .intro-page .hero-cta .btn { flex: 1 1 100%; }
+  .intro-ai { padding: var(--s-4); }
+  /* phones: keep every tick, label only Signed up, Act by and First charge (the rest stays for screen readers) */
+  .dl-quiet { width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .auth-page { padding-top: 12px; }
   .auth-card { padding: 20px 18px; }
   .topnav a.topnav-signin { display: inline-flex; align-items: center; min-height: 44px; box-sizing: border-box;

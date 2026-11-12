@@ -27,7 +27,18 @@ from typing import Any
 from pydantic import BaseModel
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from videolib import HARD_LIMIT_SECONDS, OUT, RECORDED, ROOT, Slot, captions, load_scenes, probe_seconds, timeline  # noqa: E402
+from videolib import (  # noqa: E402
+    HARD_LIMIT_SECONDS,
+    OUT,
+    RECORDED,
+    ROOT,
+    Slot,
+    captions,
+    load_scenes,
+    probe_seconds,
+    segments,
+    timeline,
+)
 
 FPS = 30
 TRIM_SECONDS = 178  # hard trim; ffprobe then checks < 180
@@ -41,10 +52,12 @@ class Overlay(BaseModel):
     src_start: float  # where it starts in screen.webm
     duration: float   # trimmed to the scene, never extended
     zoom: dict[str, Any] | None = None
+    offset: float = 0.0  # seconds into the scene where this piece starts (> 0 after a jump cut)
 
 
 def plan(d: dict[str, Any], timing: dict[str, Any]) -> tuple[list[Slot], list[Overlay]]:
-    """The timeline for the recorded mode and one overlay per recorded scene. Raises ValueError on a problem."""
+    """The timeline for the recorded mode and the overlays: one per recorded scene, or one per piece between its
+    jump cuts ("cuts" in timing.json: live waits the recorder marked). Raises ValueError on a problem."""
     slots = timeline(d, timing["mode"])
     rec = {t["id"]: t for t in timing.get("scenes", [])}
     by_id = {s["id"]: s for s in d["scenes"]}
@@ -55,19 +68,20 @@ def plan(d: dict[str, Any], timing: dict[str, Any]) -> tuple[list[Slot], list[Ov
         t = rec.get(slot.id)
         if t is None:
             raise ValueError(f"{slot.id}: not in timing.json; record the demo again")
-        length = min(float(t["end"]) - float(t["start"]), slot.duration)
-        overlays.append(Overlay(scene_id=slot.id, at=slot.start, src_start=float(t["start"]),
-                                duration=round(length, 3), zoom=by_id[slot.id].get("zoom")))
+        for src, off, length in segments(float(t["start"]), float(t["end"]), t.get("cuts", []), slot.duration):
+            overlays.append(Overlay(scene_id=slot.id, at=round(slot.start + off, 3), src_start=src,
+                                    duration=length, zoom=by_id[slot.id].get("zoom"), offset=off))
     total = sum(s.duration for s in slots)
     if total > d["max_total_seconds"] or total >= HARD_LIMIT_SECONDS:
         raise ValueError(f"the cut is {total:.1f} s; it must be at most {d['max_total_seconds']} s (under 3 minutes)")
     return slots, overlays
 
 
-def zoom_filter(z: dict[str, Any], vp: dict[str, int]) -> str:
+def zoom_filter(z: dict[str, Any], vp: dict[str, int], offset: float = 0.0) -> str:
     """zoompan into rect [x, y, w, h] (recording pixels): eased in over 0.8 s from `at`, held, out by at + dur."""
     x, y, w, _ = z["rect"]
-    a, b, n = z["at"], z["at"] + z["dur"], f"(in/{FPS})"
+    n = f"(in/{FPS}+{offset:.3f})" if offset else f"(in/{FPS})"  # scene time, also after a jump cut
+    a, b = z["at"], z["at"] + z["dur"]
     q = f"min(clip(({n}-{a})/{RAMP},0,1),clip(({b}-{n})/{RAMP},0,1))"
     e = f"(({q})*({q})*(3-2*({q})))"
     shrink = round(1 - w / vp["width"], 5)
@@ -118,7 +132,7 @@ def ffmpeg_args(d: dict[str, Any], overlays: list[Overlay], total: float, output
         inputs += ["-ss", f"{o.src_start:.3f}", "-t", f"{o.duration:.3f}", "-i", screen]
         chain = [f"fps={FPS}", f"scale={vp['width']}:{vp['height']}"]
         if o.zoom:
-            chain.append(zoom_filter(o.zoom, vp))
+            chain.append(zoom_filter(o.zoom, vp, o.offset))
         chain += [f"scale={hw}:{hh}:flags=lanczos", "setsar=1", f"setpts=PTS-STARTPTS+{o.at:.3f}/TB"]
         filters.append(f"[{k}:v]" + ",".join(chain) + f"[s{k}]")
         end = o.at + o.duration
@@ -167,8 +181,11 @@ def main() -> int:
     if not voices:
         print("WARNING no voice-over (run make_voiceover.py); the video will be silent")
     for s in slots:
-        o = next((x for x in overlays if x.scene_id == s.id), None)
-        extra = f" recording {o.src_start:6.1f}s +{o.duration:.1f}s{' zoom' if o.zoom else ''}" if o else ""
+        pieces = [x for x in overlays if x.scene_id == s.id]
+        o = pieces[0] if pieces else None
+        cut = f" ({len(pieces) - 1} jump cut)" if len(pieces) > 1 else ""
+        extra = (f" recording {o.src_start:6.1f}s +{sum(x.duration for x in pieces):.1f}s"
+                 f"{' zoom' if o.zoom else ''}{cut}") if o else ""
         print(f"  {s.start:6.1f}s  {s.id:<18} {s.kind:<6} {s.duration:5.1f}s{extra}")
     total = sum(s.duration for s in slots)
     print(f"total {total:.1f} s (cap {d['max_total_seconds']} s)")

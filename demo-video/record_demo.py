@@ -13,10 +13,12 @@ app_viewport (1600x900: it is scaled to the stage's 1280x720 hole, so text stays
   placeholder; the password itself is never in scenes.json. If that scene leaves the browser signed out, the
   session is put back so the later scenes still record (and the problem is reported).
   "sandbox_subscribe" registers the pre-approved sandbox subscription after the scene (`make seed ARGS=--demo-subs`).
+- "cut": true on a goto/wait_for = a live wait (the AI review, PayPal's page load): its first 1.2 s stay, the rest
+  is logged in the scene's "cuts" and the build jumps over it, so it doesn't use the scene's time.
 - highlight = a thick yellow glow on the target for about 2.5 s. `{on:N}`, `{sub:<plan>}`, `{paypal_autopay}` resolved.
-- Writes out/screen.webm + out/timing.json ({"mode", "base_url", "viewport", "scenes": [{"id", "start", "end"}],
-  "urls": [{"t", "url"}]}: every page the recorder really visited, for the frame's URL bar). It continues past
-  failed actions, lists every problem at the end, and exits 1 if any (problems in a "pending" scene only warn).
+- Writes out/screen.webm + out/timing.json ({"mode", "base_url", "viewport", "scenes": [{"id", "start", "end",
+  "cuts"?}], "urls": [{"t", "url"}]}: every page the recorder really visited, for the frame's URL bar). It continues
+  past failed actions, lists every problem at the end, and exits 1 if any (problems in a "pending" scene only warn).
 Usage: python demo-video/record_demo.py [--base-url URL] [--headed] [--sandbox-ids PATH]
 """
 
@@ -39,9 +41,29 @@ from playwright.sync_api import Page, sync_playwright
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 from signin import COOKIE, add_session, demo_password, http_client, session_cookie  # noqa: E402
-from videolib import OUT, ROOT, SUB_RE, load_scenes, timeline  # noqa: E402
+from videolib import OUT, ROOT, SUB_RE, cut_span, load_scenes, timeline  # noqa: E402
 
 HIGHLIGHT_S = 2.5
+# Chromium only sends video frames when the page repaints, and Playwright's video doesn't count the time between
+# frames: a static page (the blank tab held during the slides, a page waiting on a request) drops out of
+# screen.webm and the recording runs ahead of timing.json. A 2x2 px, nearly transparent corner pixel that changes
+# every frame keeps it painting, so the video keeps real time. Invisible on screen; no data-testid.
+HEARTBEAT_JS = """(() => {
+  const beat = () => {
+    let el = document.getElementById("sg-rec-heartbeat");
+    if (!el && document.documentElement) {
+      el = document.createElement("div");
+      el.id = "sg-rec-heartbeat";
+      el.style.cssText = "position:fixed;right:0;bottom:0;width:2px;height:2px;pointer-events:none;z-index:2147483647";
+      document.documentElement.appendChild(el);
+    }
+    if (el) el.style.background = el.style.background === "rgba(0, 0, 0, 0.01)" ? "rgba(0, 0, 0, 0.02)"
+                                                                                  : "rgba(0, 0, 0, 0.01)";
+    requestAnimationFrame(beat);
+  };
+  requestAnimationFrame(beat);
+})();"""
+HOLD_PAGE = "data:text/html,<html><body style='margin:0;background:%23fff'></body></html>"
 USER = "priya"
 HIGHLIGHT_JS = """(el, ms) => {
   el.scrollIntoView({block: "center", behavior: "smooth"});
@@ -160,26 +182,37 @@ class Recorder:
                 report.append(f"{sid}: setup failed: {e}")
         if s.get("setup", {}).get("signed_out"):
             page.context.clear_cookies(name=COOKIE)  # only SubGuard's session; PayPal sandbox cookies stay
-        start = self.now()
+        start, cuts = self.now(), []
         for a in s.get("actions", []):
             if a.get("mock_only") and self.mode == "sandbox":
                 continue
-            left = start + duration - self.now()
+            cut_s = sum(b - x for x, b in cuts)  # jumped over in the build, so it doesn't use the scene's time
+            left = start + duration + cut_s - self.now()
             if left <= 0:
                 report.append(f"{sid}: out of time before {a['action']} {a.get('target', '')}; the build trims "
                               "the scene (shorten its actions)")
                 break
+            t0 = self.now()
             try:
                 self.act(page, a, left)
             except (PWError, KeyError) as e:
                 report.append(f"{sid}: {a['action']} {a.get('target') or a.get('url', '')}: "
                               f"{str(e).splitlines()[0][:160]}")
-        left = start + duration - self.now()
+            finally:
+                span = cut_span(t0, self.now()) if a.get("cut") else None
+                if span:  # a live wait (the AI review, PayPal's page): the build jumps over it
+                    cuts.append(span)
+        cut_s = sum(b - x for x, b in cuts)
+        left = start + duration + cut_s - self.now()
         if left > 0:
             page.wait_for_timeout(left * 1000)
         else:
             report.append(f"{sid}: ran {-left:.1f} s over its {duration:.0f} s; the build trims it")
-        self.timing.append({"id": sid, "start": round(start, 3), "end": round(self.now(), 3)})
+        entry: dict[str, Any] = {"id": sid, "start": round(start, 3), "end": round(self.now(), 3)}
+        if cuts:
+            entry["cuts"] = [list(c) for c in cuts]
+            print(f"  {'':<18} jump cut {cut_s:.1f} s of live waiting")
+        self.timing.append(entry)
         if not any(c["name"] == COOKIE for c in page.context.cookies(self.base)):
             report.append(f"{sid}: the browser isn't signed in after this scene; restored the session")
             add_session(page.context, self.base, self.session)
@@ -201,8 +234,10 @@ class Recorder:
             ctx = browser.new_context(viewport=vp, record_video_dir=str(raw), record_video_size=vp,
                                       color_scheme="light", storage_state=str(state) if state else None)
             add_session(ctx, self.base, self.session)
+            ctx.add_init_script(HEARTBEAT_JS)  # every page keeps painting, so the video keeps real time
             page = ctx.new_page()
-            self.t0 = time.monotonic()  # the video starts with the page
+            page.goto(HOLD_PAGE)  # the slides before the first app scene are held here, not on a blank tab
+            self.t0 = time.monotonic()  # the video starts with the page's first frame
             page.on("framenavigated", lambda f: f == page.main_frame and self.urls.append(
                 {"t": round(self.now(), 3), "url": f.url}))
             slots = {x.id: x.duration for x in timeline(d, self.mode)}
@@ -216,7 +251,8 @@ class Recorder:
             shutil.move(video.path(), OUT / "screen.webm")
         (OUT / "timing.json").write_text(json.dumps({
             "mode": self.mode, "base_url": self.base, "viewport": vp, "scenes": self.timing,
-            "urls": [u for u in self.urls if u["url"] != "about:blank"]}, indent=2), encoding="utf-8")
+            "urls": [u for u in self.urls if not u["url"].startswith(("about:blank", "data:"))]}, indent=2),
+            encoding="utf-8")
         shutil.rmtree(raw, ignore_errors=True)
 
 
@@ -245,7 +281,9 @@ def buyer_login(path: Path, email: str, password: str) -> None:
             page = await ctx.new_page()
             await page.goto("https://www.sandbox.paypal.com/signin", wait_until="domcontentloaded")
             await _login(page, email, password)
-            await page.wait_for_load_state("networkidle", timeout=30000)
+            # PayPal's pages never go network-idle (background polling): wait until we've left the sign-in page.
+            await page.wait_for_url(lambda u: "/signin" not in u, timeout=60000)
+            await page.wait_for_load_state("load", timeout=30000)
             await ctx.storage_state(path=str(path))
             await browser.close()
     asyncio.run(go())

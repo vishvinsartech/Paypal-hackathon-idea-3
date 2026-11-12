@@ -1,0 +1,20 @@
+{# The deadline ruler (docs/UI_REDESIGN.md, D-191): the trial as a measuring rule, one tick per day. The shop's
+   "trial ends" is quiet; SubGuard's Act by is the one teal notch; the first charge sits at the end in red. Every
+   number comes from landing_view (D-015). The ticks are decoration; the list under them is what is read out. #}
+{% macro deadline_ruler(L) %}
+{% set days = L.first_charge_day %}
+<figure class="dl-ruler" style="--days:{{ days }};--act:{{ L.act_by_day }};--ends:{{ L.trial_days }}" data-testid="deadline-ruler">
+  <div class="dl-track" aria-hidden="true">
+    <span class="dl-late"></span>
+    {% for d in range(days + 1) %}<span class="dl-tick{% if d == L.act_by_day %} is-act{% elif d == days %} is-charge{% endif %}" style="--d:{{ d }}"><span class="dl-num">{{ d }}</span></span>{% endfor %}
+    <span class="dl-notch"></span>
+  </div>
+  <ol class="dl-marks" aria-label="The trial, day by day">
+    <li class="dl-mark dl-below dl-start" style="--d:0"><span class="dl-day">Day 0</span> Signed up</li>
+    <li class="dl-mark dl-above is-act" style="--d:{{ L.act_by_day }}"><span class="dl-day">Day {{ L.act_by_day }}</span> Act by</li>
+    <li class="dl-mark dl-below dl-quiet" style="--d:{{ L.terms_last_day }}"><span class="dl-day">Day {{ L.terms_last_day }}</span> Terms' last day</li>
+    <li class="dl-mark dl-below dl-quiet" style="--d:{{ L.trial_days }}"><span class="dl-day">Day {{ L.trial_days }}</span> Trial ends</li>
+    <li class="dl-mark dl-above dl-end is-charge" style="--d:{{ days }}"><span class="dl-day">Day {{ days }}</span> First charge</li>
+  </ol>
+</figure>
+{% endmacro %}

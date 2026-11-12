@@ -1078,6 +1078,16 @@ video decisions start at D-184.
   The end card's chips ("Live on Render") and the repo URL aren't narration, so the brand check (narration and
   kickers) doesn't apply to them. The hosted URL stays empty until the deploy, and the check warns about it.
 
+## UI redesign v5 (2026-11-12, docs/UI_REDESIGN.md)
+
+- **D-191 One token system; colour means only four things (overrides D-176's decoration).** All colours, type sizes,
+  space and radii are custom properties in `app/static/tokens.css`, loaded first by `base.html`; old token names
+  (`--navy-*`, `--teal`, ...) stay as aliases. Teal (`--accent`) is only for the key money number and the main
+  button; green = done, amber = needs Priya's answer, red = still at risk. Removed from D-176: per-section sidebar
+  hues, gradient text on Priya's name and the saved total, colour washes on the header and Overview cards, the
+  coloured left stripe on subscription cards and rows. The coin burst stays. The sidebar's active item is an ink
+  marker; Reset on the Live demo is a secondary button. Selectors, copy, JS and routes are unchanged.
+
 ## Not used in v1 (sponsor tools)
 
 - **Bryntum:** a CSS timeline is enough for a prototype.

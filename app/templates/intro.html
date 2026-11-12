@@ -8,7 +8,7 @@
 {% set L = landing %}
 <div class="intro-page" data-testid="intro">
   <section class="intro-hero" aria-labelledby="hero-h">
-    {% call hero(sub=False) %}<a class="btn btn-start" href="/login" data-testid="intro-signin">Sign in</a>
+    {% call hero(sub=False, ruler=L) %}<a class="btn btn-start" href="/login" data-testid="intro-signin">Sign in</a>
         <a class="btn btn-ghost" href="/shop" data-testid="intro-shops">Browse the demo shops</a>{% endcall %}
   </section>
 

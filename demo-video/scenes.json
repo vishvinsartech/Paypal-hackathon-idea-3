@@ -11,7 +11,7 @@
   "_kinds": "kind: card (title/end card) | slide (motion-graphic slide) | app (the app, recorded, shown in the browser frame) | paypal (real PayPal sandbox pages in the frame; sandbox takes only, in mock mode its time goes to mock_fallback). card/slide name their <section id=\"slide-<slide>\"> in stage/stage.html.",
   "_narration": "The narration IS the headline, revealed word by word with the voice. *word* or *several words* = accent colour. {on:N} = the calendar date N days after a sign-up made today (spoken 'November 18'); {fact:key} = the app's own number from landing_view (prices are never typed here). {sub:<plan>} in a goto = the subscription a scene's setup made.",
   "_cues": "cues: [{word, show}] = element #show in the slide appears when that word is spoken (cues match in order).",
-  "_actions": "app/paypal actions: {action: goto|click|hover|type|press|wait_for|wait|scroll_to|highlight, target: data-testid, ...}. highlight = a thick yellow glow for about 2.5 s. mock_only skips an action in sandbox. type: {text, delay (ms per key, default 90)}; text \"{demo_password}\" = DEMO_PASSWORD from .env, filled in by the recorder (only into login-password, a masked field; the password is never written here). setup (off screen, before the scene): reset | day: N | subscribe: <plan> | signed_out (drop the browser's sg_session cookie, so the scene starts at the intro). sandbox_subscribe: after the scene, register the pre-approved sandbox subscription. zoom: {at, rect: [x, y, w, h] in app_viewport pixels, dur} = a slow zoom in and back out inside the frame.",
+  "_actions": "app/paypal actions: {action: goto|click|hover|type|press|wait_for|wait|scroll_to|highlight, target: data-testid, ...}. highlight = a thick yellow glow for about 2.5 s. mock_only skips an action in sandbox. cut: true on a goto/wait_for = a live wait (the AI review, a PayPal page load): its first 1.2 s stay, the build jumps over the rest. type: {text, delay (ms per key, default 90)}; text \"{demo_password}\" = DEMO_PASSWORD from .env, filled in by the recorder (only into login-password, a masked field; the password is never written here). setup (off screen, before the scene): reset | day: N | subscribe: <plan> | signed_out (drop the browser's sg_session cookie, so the scene starts at the intro). sandbox_subscribe: after the scene, register the pre-approved sandbox subscription. zoom: {at, rect: [x, y, w, h] in app_viewport pixels, dur} = a slow zoom in and back out inside the frame.",
   "scenes": [
     {
       "id": "01_title", "kind": "card", "slide": "title", "chapter": "Title", "duration": 6,
@@ -78,7 +78,7 @@
         {"action": "goto", "url": "/shop/penwright"},
         {"action": "highlight", "target": "shop-fineprint"},
         {"action": "click", "target": "shop-paypal-btn"},
-        {"action": "wait_for", "target": "companion-risk", "timeout": 60},
+        {"action": "wait_for", "target": "companion-risk", "timeout": 60, "cut": true},
         {"action": "highlight", "target": "companion-risk"},
         {"action": "highlight", "target": "companion-deadline"},
         {"action": "highlight", "target": "finding-TERMS_MISMATCH"}
@@ -106,7 +106,7 @@
         {"action": "click", "target": "alert-cancel"},
         {"action": "wait_for", "target": "confirm-card"},
         {"action": "click", "target": "confirm-button"},
-        {"action": "wait_for", "target": "email-preview", "timeout": 60},
+        {"action": "wait_for", "target": "email-preview", "timeout": 60, "cut": true},
         {"action": "highlight", "target": "email-paypal-done"},
         {"action": "highlight", "target": "email-clause"}
       ]
@@ -142,7 +142,7 @@
       "kicker": "// proof in PayPal", "mock_fallback": "09_proof_app",
       "narration": "And in PayPal itself, her Penwright subscription shows as *cancelled*.",
       "actions": [
-        {"action": "goto", "url": "{paypal_autopay}"},
+        {"action": "goto", "url": "{paypal_autopay}", "cut": true},
         {"action": "wait", "seconds": 6}
       ]
     },

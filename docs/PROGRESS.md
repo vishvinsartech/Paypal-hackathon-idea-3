@@ -64,3 +64,15 @@ The v1-v2 milestone history (from the original spec, now `docs/archive/BUILD_PRO
   with no problems (every scene within its time), and a build with stand-in tones and a stand-in clip through a
   portable ffmpeg gave a 170.0 s `demo.mp4` (155.0 s without the clip), captions at the bottom, Quillnote in its
   slot. Not run here: edge-tts (the real voice) and a sandbox take; ffmpeg/ffprobe aren't installed on this machine.
+
+- [x] **Phase 6. UI baseline** (commit `9f30e0d`, pushed).
+
+## Phase 7: Sign-in, intro, deploy (docs/PHASE7_PLAN.md), branch `phase7-webapp`
+
+Branch `phase7-webapp` was made from `prototype-v3` at `9f30e0d` ("v3: Phase 6 UI baseline"). All Phase 7 work is
+committed there. When the steps are done, `phase7-webapp` is merged into `main` (`--no-ff`) and Render deploys
+`main` (render.yaml's branch changes from `prototype-v3` to `main` in Step 7). Steps (rows P7-V, P7-1..P7-8 in the
+FIX_PLAN Coverage checklist): V video tooling v2, 1 auth core, 2 intro + login pages, 3 dashboard additions,
+4 shop + session, 5 mobile pass, 6 auth tests + tooling, 7 Render deploy, 8 demo video.
+
+- [x] **Plan** (2026-11-12): Phase 7 section and checklist rows added to FIX_PLAN. No step started.

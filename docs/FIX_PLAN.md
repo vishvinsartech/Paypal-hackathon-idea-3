@@ -248,6 +248,34 @@ Demo controls become an overlay. Colours and fonts mostly stay (dark navy, teal 
    - the exact commands to run the demo in mock and sandbox mode
    - which human tasks remain (list below)
 
+---
+
+## Phase 7: Sign-in, intro, deploy
+
+Branch `phase7-webapp`, made from `prototype-v3` at `9f30e0d`. All Phase 7 work happens there; at the end it is
+merged into `main` and Render deploys `main`. Each step is detailed in `docs/PHASE7_PLAN.md`; commit each one as
+`v3: Phase 7 ...` and tick its row in the Coverage checklist with the hash.
+
+- **P7-V. Video tooling v2.** scenes.json v2 (card / slide / app / paypal kinds, chapters, kickers, word-by-word
+  narration with `*accent*` cues), per-word voice-over timings, an HTML stage (chrome, headline, chapter bar,
+  slides, browser frame), stage recorder, overlay build, `demo-video-preview`; all runnable via `scripts/tasks.py`.
+- **P7-1. Auth core.** `DEMO_PASSWORD`, `SESSION_SECRET`, `SESSION_HOURS`; signed `sg_session` cookie (stdlib HMAC),
+  `/login` + `/logout`, rate limit, access middleware (public list, 303 / 401, `?user=` mismatch -> 403), audit
+  entries with masked email (D-178..D-180).
+- **P7-2. Intro + login pages.** Signed-out `/` shows the intro (shared hero/steps partials, numbers from
+  `landing_view`); styled login page; signed-out top bar (D-181).
+- **P7-3. Dashboard additions.** Avatar menu with Sign out, Presenter menu only when signed in, Connected accounts,
+  Download my activity, Last signed in; demo-only controls behind `data-soon` (R7, D-182).
+- **P7-4. Shop + session.** Shop stays public, reads the session; "Sign in to subscribe" when signed out; checkout
+  JS uses `body[data-user]`; "Open SubGuard" goes to `/`.
+- **P7-5. Mobile pass.** 390x844 audit of every page (scroll, input font size, tap targets, overlap), CSS fixes,
+  390 px shots in `ui_check.py`.
+- **P7-6. Auth tests + tooling.** `tests/test_auth.py`; ui-check and video tooling sign in with `DEMO_PASSWORD`;
+  scene `05_signin` filled in; CLAUDE.md updated.
+- **P7-7. Render deploy.** render.yaml (secrets, proxy headers, branch `main`), no hardcoded host/port, sandbox
+  buyer local-only (D-183), README hosted-demo section; merge to `main`, deploy, URL in the docs.
+- **P7-8. Demo video.** Check, preview and record the final video (< 3:00); per-scene frame check; video not committed.
+
 ## Human tasks (you can't do these; prepare everything they need)
 
 - Make the GitHub repo public. Check that MIT shows in the About section.
@@ -292,3 +320,12 @@ Demo controls become an overlay. Colours and fonts mostly stay (dark navy, teal 
 | U27–U30 mobile/a11y/vendor | [x] | 7b39592 | 390 px checks, ARIA tabs, data-ready, vendored AG Grid 36.2.0 / Charts 14.2.0 (D-157) |
 | S1–S6 docs | [x] | 268d9e5 | README restructured + TROUBLESHOOTING; SUBMISSION (148-word description); ARCHITECTURE (flow, code map, trust boundaries); spec + v1-v2 history in `docs/archive/`, CLAUDE.md story; render.yaml branch + sandbox secrets + seed at start; LICENSE is standard MIT, unchanged (D-158, D-159) |
 | V1–V3 video tooling | [x] | 83e3e19 | 10 beats, 170 s with clip (155 s without); recorder (mock + sandbox pre-approved subs), voice-over, ffprobe < 180 s; check passes, clip is a human task (D-160..D-164) |
+| P7-V video tooling v2 | [ ] | | |
+| P7-1 auth core | [ ] | | |
+| P7-2 intro + login pages | [ ] | | |
+| P7-3 dashboard additions | [ ] | | |
+| P7-4 shop + session | [ ] | | |
+| P7-5 mobile pass | [ ] | | |
+| P7-6 auth tests + tooling | [ ] | | |
+| P7-7 Render deploy | [ ] | | |
+| P7-8 demo video | [ ] | | |

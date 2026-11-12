@@ -325,7 +325,7 @@ merged into `main` and Render deploys `main`. Each step is detailed in `docs/PHA
 | P7-2 intro + login pages | [x] | e9087ae | signed-out `/` = intro (numbers from landing_view), shared _hero/_steps macros (Live demo markup unchanged), styled login (auth.css: 16 px fields, 44 px button), signed-out top bar; `/?demo=1` still needs sign-in (D-181) |
 | P7-3 dashboard additions | [x] | 85c488c | avatar menu (Signed in as Priya · priya@…, Profile, Settings, Help, Sign out POST, 44 px, phones), Settings: Profile, Connected accounts (mode + Zapier from integration_states), Security, Download my activity (CSV), Delete account disabled; Last signed in; demo-only controls data-soon -> "Not part of this demo" (D-182) |
 | P7-4 shop + session | [x] | 48bb8cf | shop reads sg_session (verify_session): body data-user, signed out -> "Sign in to subscribe with SubGuard" to /login?next=/shop/<merchant> (no checkout scripts), signed in -> "Signed in as Priya" chip; checkout + companion JS use data-user, no ?user=; Open SubGuard -> /; signed-out checkout APIs 401 (D-188) |
-| P7-5 mobile pass | [ ] | | |
+| P7-5 mobile pass | [x] | ca03695 | 390x844 audit (intro, login, dashboard sections + menus, shop, companion, Live demo); top-bar Sign in 44 px, Presenter menu opens right, 16 px fields on phones; desktop unchanged; ui-check asserts + 390 shots in docs/img/v3/p7/mobile (D-189) |
 | P7-6 auth tests + tooling | [ ] | | |
 | P7-7 Render deploy | [ ] | | |
 | P7-8 demo video | [ ] | | |

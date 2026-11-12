@@ -84,3 +84,14 @@ FIX_PLAN Coverage checklist): V video tooling v2, 1 auth core, 2 intro + login p
   A mock test take through the whole pipeline (not the final video) ran with no recorder problems and gave a
   175.00 s `demo.mp4` (ffprobe). `test`: **356 passed** (was 328), 2 deselected. `lint`: clean. The sandbox take
   (PayPal proof scene) is not run yet.
+- [x] **Step 1. Auth core** (2026-11-12, commit `dc17e9f`, DECISIONS D-178..D-180). New `app/auth.py` (signed
+  `sg_session` cookie with stdlib HMAC, credential check, 5 failed sign-ins per minute per IP, `AuthMiddleware`) and
+  `app/routes/auth.py` (`GET/POST /login`, `POST /logout`; `next` local paths only). Settings `DEMO_PASSWORD`,
+  `SESSION_SECRET` (random per process in mock if empty), `SESSION_HOURS`; sandbox refuses to start without the two
+  secrets. Signed out: HTML -> 303 to `/login?next=`, `/api/*` -> 401; a different `?user=` -> 403; R5 unchanged.
+  `login.html` is a plain form for now (Step 2 styles it and adds the intro at `/`; until then signed-out `/`
+  redirects to sign-in). Fixtures sign in by default, `anon_client` added, the R5 tests that used `?user=intruder`
+  now sign in as the intruder (`as_user`), `tests/test_auth.py` smoke tests (full set in Step 6). `ui_check.py`,
+  `record_demo.py` and `check_scenes.py` sign in via `scripts/signin.py` (DEMO_PASSWORD from .env, clear error if
+  missing); `record_stage.py` needed no change (only `/healthz`). `test`: **374 passed** (was 356), 2 deselected.
+  `lint`: clean. `ui-check`: passed. `demo-video-check`: passes (same two warnings).

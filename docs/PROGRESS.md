@@ -157,3 +157,11 @@ FIX_PLAN Coverage checklist): V video tooling v2, 1 auth core, 2 intro + login p
   `X-Forwarded-Proto: https` sets `sg_session` with `Secure`, plain http without; log says port 10000.
   `test`: **418 passed** (was 413), 2 deselected. `lint`: clean. `ui-check`: passed. Still to do by hand: merge
   `phase7-webapp` into `main`, create the Blueprint, set `DEMO_PASSWORD`, smoke test, paste the URL.
+
+## UI redesign v5 (docs/UI_REDESIGN.md, DECISIONS D-191)
+
+- [x] **Step 1. Tokens** (2026-11-12). `app/static/tokens.css`: six named colours per theme plus derived tokens,
+  type scale, space and radii; old names as aliases. Every hardcoded colour, `rem` font size and px radius in the
+  seven SubGuard stylesheets replaced by tokens; D-176's colour decoration removed. Shots: `docs/img/v5/1-tokens/`
+  (`scripts/shots_v5.py`, 1440x900 + 390x844, dark + light). `test`: **418 passed**, 2 deselected. `lint`: clean.
+  `ui-check`: passed.

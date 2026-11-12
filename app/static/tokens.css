@@ -1,0 +1,93 @@
+/* SubGuard design tokens (docs/UI_REDESIGN.md, D-191). Loaded first by base.html; every other stylesheet reads these.
+   Colour meanings: --accent (teal) only for the key number and the main button; --done green = done;
+   --ask amber = needs Priya's answer; --risk red = still at risk. Dark is the default theme (D-109). */
+:root {
+  /* the six */
+  --paper: #152225;
+  --surface: #1D2D30;
+  --ink: #E3ECEA;
+  --ink-2: #9DB0AC;
+  --accent: #4CC9BF;
+  --done: #7ACB8E;
+  --ask: #F2B544;
+  --risk: #FF8080;
+  /* derived */
+  --surface-2: #283B3E;
+  --rule: #3A5053;
+  --ask-fill: #F2B544;
+  --risk-fill: #C2333D;
+  --on-accent: #0F1B1D;
+  --on-fill: #0F1B1D;
+  --on-risk: #FFFFFF;
+  --on-tile: #FFFFFF;
+  --knob: #FFFFFF;
+  --paypal: #8FB4FF;  /* PayPal as an actor in the activity list */
+  --frame-bg: #FFFFFF;  /* behind the merchant page preview: shop pages are light */
+  --focus: var(--accent);
+  --tint: color-mix(in srgb, var(--accent) 12%, transparent);
+  --shadow: rgba(0, 0, 0, .45);
+  --shadow-pop: 0 12px 32px -12px var(--shadow);
+  --overlay: rgba(8, 16, 18, .66);
+  --coin-hi: #FFF3C4; --coin: #F2B544; --coin-lo: #C98A12; --coin-rim: #E0A52A; --coin-ink: #5A3B00;
+  color-scheme: dark;
+
+  /* type: one family (the webfont is added in step 2) */
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --t-2xs: .6875rem;
+  --t-xs: .75rem;
+  --t-sm: .875rem;
+  --t-md: 1rem;
+  --t-lg: 1.125rem;
+  --t-xl: 1.3125rem;
+  --t-2xl: 1.5rem;
+  --t-3xl: 2.25rem;
+  --t-4xl: 2.75rem;
+
+  /* space (px): 4 8 12 16 24 32 48 64 */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px; --s-8: 64px;
+
+  /* radii by hierarchy */
+  --r-xs: 4px;
+  --r-ctl: 8px;
+  --r-card: 14px;
+  --r-panel: 20px;
+  --r-pill: 999px;
+
+  /* old names (v1-v4 stylesheets), kept as aliases so nothing that still uses them breaks */
+  --navy-900: var(--paper);
+  --navy-800: var(--surface);
+  --navy-700: var(--surface-2);
+  --line: var(--rule);
+  --text: var(--ink);
+  --muted: var(--ink-2);
+  --teal: var(--accent);
+  --teal-dark: var(--accent);
+  --red: var(--risk);
+  --red-dark: var(--risk-fill);
+  --amber: var(--ask);
+  --ok: var(--done);
+  --today: var(--ink);
+  --mint: var(--ink-2);
+  --radius: var(--r-card);
+}
+
+:root[data-theme="light"] {
+  --paper: #E9EEEC;
+  --surface: #FFFFFF;
+  --ink: #13201E;
+  --ink-2: #4D5E5A;
+  --accent: #0B6B68;
+  --done: #2A7539;
+  --ask: #8A5300;
+  --risk: #B0242E;
+  --surface-2: #E1E8E5;
+  --rule: #C9D4D0;
+  --ask-fill: #F0B13A;
+  --risk-fill: #B0242E;
+  --on-accent: #FFFFFF;
+  --on-fill: #13201E;
+  --paypal: #1F4FBF;
+  --shadow: rgba(19, 32, 30, .18);
+  --overlay: rgba(19, 32, 30, .38);
+  color-scheme: light;
+}

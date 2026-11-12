@@ -136,3 +136,14 @@ FIX_PLAN Coverage checklist): V video tooling v2, 1 auth core, 2 intro + login p
   shots unchanged. `ui_check.py` checks all three and saves `dashboard-390`; shots in `docs/img/v3/p7/mobile/`
   (intro signed out, login, dashboard signed in). `test`: **406 passed**, 2 deselected. `lint`: clean.
   `ui-check`: passed.
+- [x] **Step 6. Auth tests + tooling** (2026-11-12, commit `f1296ab`, DECISIONS D-190). `tests/test_auth.py` is
+  the full set (31 tests): login, generic wrong-password error, the 6th failure in a minute -> 429 (patched clock,
+  allowed again after 61 s), tampered / expired / wrong-signature cookies, `next` open redirects
+  (https://, //, /\, javascript:) -> `/`, signed-out wall (intro, 303s, 401 JSON), `/shop` returned to after sign-in,
+  `?user=` 403, logout, audit entries masked with no password, shop public vs checkout/register 401, mock "Sign-in is
+  off" and sandbox startup failing per missing secret. `check_scenes.py` and `record_stage.py` now check
+  DEMO_PASSWORD and sign in first (ui-check and record_demo already did). `05_signin` filled in, no longer pending:
+  intro -> Sign in -> email -> masked password (`{demo_password}` placeholder) -> dashboard, about 5 s of its 10 s in a
+  dry run; check_scenes fails if the real password is in any video file. No other scene selectors needed changes.
+  `test`: **413 passed** (was 406), 2 deselected. `lint`: clean. `ui-check`: passed. `demo-video-check`: passes
+  (one warning: links.hosted empty). `demo-video-preview`: built `demo-video/out/preview.mp4`.

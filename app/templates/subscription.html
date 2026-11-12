@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block title %}SubGuard: {{ merchant.name if sub else "subscription" }}{% endblock %}
+{% block content %}
+<p><a href="/?user={{ current_user.id }}">← Back to your SubGuard</a></p>
+{% if not sub %}
+<section class="card"><h1>Subscription not found</h1><p>It doesn't exist, or it isn't yours.</p></section>
+{% else %}
+{% set sev = {5: "High", 4: "Medium"} %}
+<section class="hero sub-head">
+  <h1>{{ merchant.name }} <span class="muted">· {{ plans[0].name if plans else sub.plan_key }}</span></h1>
+  <p class="row">
+    <span class="pill pill-{{ sub.status|lower }}" data-testid="status-{{ merchant.id }}">{{ sub.status }}</span>
+    {% if review %}<span class="risk-big risk-{{ 'high' if review.risk_score >= 60 else ('mid' if review.risk_score >= 30 else 'low') }}" data-testid="risk-score">Risk {{ review.risk_score }}/100</span>{% endif %}
+    {% if review and review.data.injection_flagged %}<span class="muted small" data-testid="injection-note">&#128737; Hidden instructions to AI found on the page and ignored.</span>{% endif %}
+    {% if sub.essential %}<span class="chip">essential</span>{% endif %}
+  </p>
+</section>
+
+{# U23: four tabs. Summary · Evidence · PayPal check · Activity. Plain buttons + panels (user-nav style). #}
+<nav class="tabs-row" role="tablist" aria-label="Evidence sections" data-testid="evidence-tabs">
+  {% for key, label in [("summary", "Summary"), ("evidence", "Evidence"), ("paypal", "PayPal check"), ("activity", "Activity")] %}
+  <button type="button" role="tab" id="tab-{{ key }}" aria-controls="ev-{{ key }}" aria-selected="{{ 'true' if loop.first else 'false' }}"
+          {% if not loop.first %}tabindex="-1"{% endif %} data-ev-tab="{{ key }}" data-testid="ev-tab-{{ key }}">{{ label }}</button>
+  {% endfor %}
+</nav>
+
+<div class="ev-panel" id="ev-summary" role="tabpanel" aria-labelledby="tab-summary" data-ev-panel="summary">
+{% if review %}{% set v = verdict %}
+<section class="card verdict-card" data-testid="ev-verdict">
+  <p class="verdict-line">{{ v.line }}</p>
+  {% if v.sub %}<p class="muted">{{ v.sub }}</p>{% endif %}
+  <p><strong class="bad" data-testid="act-by">{{ act_by }}</strong> · trial ends {{ trial_end_on }} · first charge {{ first_charge_on }}
+     · notice {{ review.data.deadlines.notice_days }} day{{ "s" if review.data.deadlines.notice_days != 1 }}</p>
+  {% if v.things %}<h2>3 things to know</h2>
+  <ul class="things">{% for t in v.things %}<li><span class="sev sev-{{ 'high' if t.severity >= 5 else 'mid' if t.severity >= 4 else 'low' }}">{{ t.label }}</span> {{ t.text }}</li>{% endfor %}</ul>{% endif %}
+  <p class="muted small">{{ review.data.summary }}</p>
+  {% if merchant.fair_trial_member %}
+  <p class="muted small" data-testid="partner-note">{{ merchant.name }} is connected to SubGuard through PayPal partner
+     permissions. That lets SubGuard cancel through PayPal, but it doesn't make {{ merchant.name }}'s terms fair.</p>
+  {% endif %}
+</section>
+
+{% if ai_vs_basic %}{% set v = ai_vs_basic %}
+<section class="card ai-vs-basic" data-testid="ai-vs-basic" aria-labelledby="avb-h">
+  <h2 id="avb-h">AI vs basic check</h2>
+  {% if v.same %}
+  <p data-testid="avb-verdict">On this page the basic check (no AI) finds the same things as the AI review.
+    The code checks (PayPal plan, hard-to-read text, hidden instructions) run on both.</p>
+  {% else %}
+  <p data-testid="avb-verdict"><strong>Only the AI found {{ v.ai_only | length }} of these</strong>, including
+    {{ v.risky_labels | join(", ") or "nothing risky" }}.
+    The basic check (no AI, pattern rules only) misses terms written in plain prose.</p>
+  {% endif %}
+  <div class="table-scroll"><table class="table avb-table"><thead><tr><th scope="col">Finding</th><th scope="col">AI review</th><th scope="col">Basic check</th></tr></thead><tbody>
+    {% for r in v.rows %}
+    <tr data-testid="avb-row-{{ r.type | lower }}"><td>{{ type_labels.get(r.type, r.type) }}</td>
+      <td class="{{ 'ok' if r.ai else 'muted' }}">{{ "✓ found" if r.ai else "–" }}</td>
+      <td class="{{ 'ok' if r.basic else 'bad' }}">{{ "✓ found" if r.basic else "✗ missed" }}</td></tr>
+    {% endfor %}
+    <tr data-testid="avb-notice"><td>Notice period</td><td>{{ v.ai_notice }}</td><td class="{{ '' if v.basic_notice == v.ai_notice else 'bad' }}">{{ v.basic_notice }}</td></tr>
+    <tr data-testid="avb-act-by"><td>Act by</td><td><strong>{{ v.ai_act_by }}</strong></td><td class="{{ '' if v.basic_act_by == v.ai_act_by else 'bad' }}">{{ v.basic_act_by }}{% if v.basic_act_by != v.ai_act_by %} (too late){% endif %}</td></tr>
+    <tr data-testid="avb-risk"><td>Risk</td><td>{{ v.ai_risk }}/100</td><td>{{ v.basic_risk }}/100</td></tr>
+  </tbody></table></div>
+  {% if v.notice_quote and v.ai_notice != v.basic_notice %}
+  <p class="muted small" data-testid="avb-notice-quote">The deadline comes from the AI-read clause, checked word for word
+    against the page and converted by code: “{{ v.notice_quote }}”</p>{% endif %}
+</section>
+{% endif %}
+
+{# U25: the old Analytics charts, scoped to this subscription. #}
+<section class="card" aria-labelledby="ins-h" data-testid="user-analytics" data-analytics-sub="{{ sub.id }}">
+  <h2 id="ins-h">This trial at a glance</h2>
+  <div class="charts">
+    <div class="chart-card"><h3>What this trial would have cost you</h3><p class="muted small sub" data-chart-sub></p>
+      <div class="chart" data-chart="cost" data-testid="chart-cost" role="img" aria-label="Cumulative first-year cost: if kept versus what you pay"></div></div>
+    <div class="chart-card"><h3>Why SubGuard flagged it</h3><p class="muted small sub" data-chart-sub></p>
+      <div class="chart" data-chart="risk" data-testid="chart-risk" role="img" aria-label="Risk score by category: hidden deadline, price jumps, hard to cancel, hard-to-read terms"></div></div>
+    <div class="chart-card"><h3>How much you used it</h3><p class="muted small sub" data-chart-sub></p>
+      <div class="chart" data-chart="usage" data-testid="chart-usage" role="img" aria-label="Times you opened the app each day, with the real deadline and first charge"></div></div>
+  </div>
+</section>
+{% else %}
+<section class="card"><p>No fine-print review for this subscription.</p></section>
+{% endif %}
+
+<section class="card">
+  <h2>Cancellation email</h2>
+  {% if notice %}
+  <div data-testid="cancellation-notice">
+    {% if notice.status == "sent" %}
+    <p class="ok"><strong>{{ {"gmail_compose_link": "Opened in webmail (demo)", "mailto": "Opened in your email app (demo)"}.get(notice.sent_via, "Email sent (demo)") }}</strong>
+      · edited: {{ "yes" if notice.edited else "no" }}</p>
+    {% else %}
+    <p><strong>Your cancellation email is ready to review and send.</strong></p>
+    {% endif %}
+    <p><strong>{{ notice.subject }}</strong> → {{ notice.to }}</p>
+    <pre>{{ notice.body }}</pre>
+    <p class="small muted">Drafted by {{ "AI" if notice.draft_source == "llm" else "a standard template" }} · SHA-256: <code>{{ notice.sha256 }}</code></p>
+    <button class="btn btn-sm" data-email-open="{{ notice.id }}" data-testid="email-review">{{ "View sent email" if notice.status == "sent" else "Review email" }}</button>
+  </div>
+  <p class="muted tiny">Demo only. Production would send from the user's own email account with send-only permission.</p>
+  {% else %}<p class="muted">No cancellation email yet.</p>{% endif %}
+</section>
+</div>
+
+<div class="ev-panel" id="ev-evidence" role="tabpanel" aria-labelledby="tab-evidence" data-ev-panel="evidence" hidden>
+{% if review %}
+<section class="card">
+  <h2>The merchant page, with the evidence outlined</h2>
+  <p class="muted small">The live page as Priya saw it, with every quoted element outlined in red. Hidden text (like the
+    instruction to AI) is listed in the quotes below.</p>
+  <iframe class="evidence evidence-wide" id="evidence" title="Merchant page with evidence highlighted"
+          src="/shop/{{ merchant.id }}?user={{ current_user.id }}&evidence=1" data-evidence="{{ evidence | join(',') }}"></iframe>
+</section>
+<section class="card">
+  <h2>What SubGuard found</h2>
+  <div id="findings-grid" class="grid" data-testid="findings-grid"></div>
+  <script type="application/json" id="findings-data">{{ findings | tojson }}</script>
+</section>
+{% endif %}
+</div>
+
+<div class="ev-panel" id="ev-paypal" role="tabpanel" aria-labelledby="tab-paypal" data-ev-panel="paypal" hidden>
+{% if review %}
+<section class="card">
+  <h2>Page says vs PayPal plan</h2>
+  <div class="table-scroll"><table class="table" data-testid="crosscheck-table"><thead><tr><th scope="col">Check</th><th scope="col">Page says</th><th scope="col">PayPal plan</th><th scope="col"><span class="sr-only">Result</span></th></tr></thead><tbody>
+  {% for row in verdict.rows %}
+    <tr class="{{ '' if row.match else 'row-bad' }}"><td>{{ row.label }}</td><td>{{ row.page_says }}</td><td>{{ row.paypal_says }}</td>
+        <td class="{{ 'ok' if row.match else 'bad' }}">{{ "✓" if row.match else "✗ mismatch" }}</td></tr>
+  {% endfor %}</tbody></table></div>
+  <p class="muted small">PayPal is the source of truth for every money figure.</p>
+</section>
+{% endif %}
+<div class="two-col">
+  <section class="card">
+    <h2>Consent snapshot</h2>
+    {% if snap %}
+    <p>Agreed when you approved in PayPal: <strong>{{ money(snap.price) }}</strong> {{ snap.currency }} today · first paid year {{ snap_year }}</p>
+    <ul class="plain small">{% for c in snap.billing_cycles %}<li>{{ "Trial" if c.tenure_type == "TRIAL" else "Regular" }} · {{ money(c.price) }} every {{ c.interval_count }} {{ c.interval_unit|lower }} · {{ c.total_cycles or "unlimited" }} cycle{{ "s" if c.total_cycles != 1 }}</li>{% endfor %}</ul>
+    {% else %}<p class="muted">No snapshot (not confirmed ACTIVE).</p>{% endif %}
+    <h3 class="small">Money impact (first paid year)</h3>
+    <table class="table"><tbody>
+      {% for p in plans %}<tr><td>{{ p.name }}</td><td class="money">{{ p.year_one }}</td></tr>{% endfor %}
+    </tbody></table>
+  </section>
+  <section class="card">
+    <h2>Read live from PayPal</h2>
+    <p class="muted small">Subscription <code>{{ sub.paypal_id }}</code>. Status, plan and cycles come straight from
+      PayPal, with the ids of SubGuard's calls (PayPal-Request-Id, debug id).</p>
+    <div id="ev-paypal-card" data-pp-full="{{ sub.id }}" data-testid="ev-paypal-card"></div>
+  </section>
+</div>
+</div>
+
+<div class="ev-panel" id="ev-activity" role="tabpanel" aria-labelledby="tab-activity" data-ev-panel="activity" hidden>
+<section class="card">
+  <h2>What happened</h2>
+  <ol class="did" data-testid="ev-activity">
+    {% for r in acts %}<li class="did-row"><span class="who who-{{ r.kind }}">{{ r.who }}</span>
+      <span class="did-text">{{ r.text }}{% if r.rule_id %} <span class="rule-chip">{{ r.rule_id }}</span>{% endif %}</span>
+      <span class="muted tiny did-when">{{ r.when }}</span></li>
+    {% else %}<li class="muted">Nothing yet.</li>{% endfor %}
+  </ol>
+  <details class="raw-log" data-testid="ev-raw-log"><summary>Show raw log</summary>
+    <div class="card-head">
+      <label class="small"><input type="checkbox" id="sub-audit-routine"> Show routine PayPal checks</label>
+      <button class="btn btn-ghost btn-sm" id="sub-audit-export" data-testid="sub-audit-export">Export CSV</button>
+    </div>
+    <div id="sub-audit-grid" class="grid" data-sub="{{ sub.id }}"></div>
+  </details>
+</section>
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script src="{{ ag_charts_url }}"></script>
+<script src="/static/charts.js"></script>
+<script src="/static/evidence.js"></script>
+{% endblock %}

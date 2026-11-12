@@ -1,0 +1,231 @@
+"""Checkout + registration: the shop's PayPal button talks to these.
+
+Mock mode: create -> mock-approve -> register. Sandbox: the PayPal JS SDK creates/approves, then onApprove
+posts to /register. Live demo in sandbox (D-117): /checkout/demo-paypal-window creates the subscription, opens
+PayPal's approval page logged in as the sandbox buyer, and waits for the presenter to confirm it there.
+Register polls PayPal until ACTIVE (corner case 2) and only then saves the subscription + consent snapshot.
+Unconfirmed subscriptions get no snapshot and no timer.
+"""
+
+from __future__ import annotations
+
+import asyncio
+from typing import Any, Literal
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+
+from app.core.audit_log import mask_email
+from app.core.paypal_card import paypal_card
+from app.core.policy import Decision
+from app.core.services import Services
+from app.core.signup import AlreadySubscribed, OwnershipError, check_not_subscribed, register_active
+from app.hosts import is_local
+from app.integrations.paypal_gateway import Ctx, PayPalGateway
+from app.integrations.paypal_types import PayPalError, SubscriptionView
+from app.models import Merchant, Subscription
+from app.routes.deps import get_store
+from app.store import JsonStore
+
+router = APIRouter(prefix="/api")
+HOSTED_NO_WINDOW = ("The logged-in PayPal window only runs on a local SubGuard (it opens a browser on the server). "
+                    "On the hosted demo, subscribe with the PayPal button on the shop page instead.")
+POLL_INTERVAL = 3.0
+DEMO_CONFIRM_TIMEOUT_S = 300.0  # how long the PayPal window waits for the presenter's confirmation
+_demo_window = asyncio.Lock()  # one PayPal window at a time
+NOT_CONFIRMED = {"cancelled": "You chose \"Cancel and return\" in PayPal. Nothing was set up.",
+                 "closed": "The PayPal window was closed before confirming. Nothing was set up.",
+                 "timeout": "PayPal waited 5 minutes without a confirmation. Nothing was set up."}
+
+
+def get_gateway(request: Request) -> PayPalGateway:
+    return request.app.state.gateway
+
+
+def _merchant(store: JsonStore, merchant_id: str) -> Merchant:
+    merchant = next((mc for mc in store.load("merchants").items if mc.id == merchant_id), None)
+    if merchant is None:
+        raise HTTPException(404, "Unknown merchant")
+    return merchant
+
+
+def _check_user(store: JsonStore, user_id: str) -> None:
+    if not any(u.id == user_id for u in store.load("users").items):
+        raise HTTPException(404, "Unknown user")
+
+
+def _one_per_run(request: Request, user_id: str, merchant: Merchant) -> None:
+    """D-172: refuse before anything is created in PayPal (Reset starts a new run)."""
+    try:
+        check_not_subscribed(request.app.state.services, user_id, merchant)
+    except AlreadySubscribed as exc:
+        raise HTTPException(409, str(exc)) from None
+
+
+class CheckoutIn(BaseModel):
+    merchant_id: str
+    plan_key: str
+    user_id: str = "priya"
+    js_sdk: bool = False  # True: created for the PayPal JS SDK button (no redirect URLs)
+
+
+class ApproveIn(BaseModel):
+    paypal_id: str
+
+
+class RegisterIn(BaseModel):
+    paypal_id: str
+    merchant_id: str
+    plan_key: str
+    user_id: str = "priya"
+    review_id: str | None = None  # the companion's preflight review, linked to the new subscription
+
+
+@router.post("/checkout/create")
+async def checkout_create(body: CheckoutIn, request: Request, store: JsonStore = Depends(get_store),
+                          gw: PayPalGateway = Depends(get_gateway)) -> dict[str, Any]:
+    merchant = _merchant(store, body.merchant_id)
+    _check_user(store, body.user_id)
+    if not any(p.key == body.plan_key for p in merchant.plans):
+        raise HTTPException(404, "Unknown plan for this merchant")
+    _one_per_run(request, body.user_id, merchant)
+    base = str(request.base_url).rstrip("/")
+    ctx = Ctx(actor="user", user_id=body.user_id, merchant=merchant)
+    if body.js_sdk:  # the PayPal JS SDK button opens the approval window itself; no redirect URLs (D-113)
+        view = await gw.create_subscription(gw.plan_id(body.plan_key), ctx)
+    else:
+        view = await gw.create_subscription(
+            gw.plan_id(body.plan_key), ctx,
+            return_url=f"{base}/shop/{merchant.id}?approved=1", cancel_url=f"{base}/shop/{merchant.id}?cancelled=1")
+    return {"paypal_id": view.id, "status": view.status, "approve_url": view.approve_url}
+
+
+@router.post("/checkout/mock-approve")
+async def checkout_mock_approve(body: ApproveIn, gw: PayPalGateway = Depends(get_gateway)) -> dict[str, Any]:
+    if gw.mock is None:
+        raise HTTPException(400, "Mock approval only exists in mock mode")
+    view = await gw.mock_approve(body.paypal_id, Ctx(actor="user"))
+    return {"paypal_id": view.id, "status": view.status}
+
+
+class DemoWindowIn(BaseModel):
+    merchant_id: str = "penwright"
+    plan_key: str = "penwright-pro"
+    user_id: str = "priya"
+    review_id: str | None = None
+    source: Literal["demo", "shop"] = "demo"  # live demo window, or a manual shop visit (D-120)
+
+
+@router.post("/checkout/demo-paypal-window", response_model=None)
+async def demo_paypal_window(body: DemoWindowIn, request: Request, store: JsonStore = Depends(get_store),
+                             gw: PayPalGateway = Depends(get_gateway)) -> Subscription | JSONResponse:
+    """Sandbox only (D-117, D-120; live demo or a manual shop visit): create the real sandbox subscription, open
+    PayPal's approval page logged in as the sandbox buyer, wait for a person to confirm, then register it.
+    SubGuard never clicks consent."""
+    from app.integrations.sandbox_buyer import CANCEL_URL, RETURN_URL, open_for_confirmation
+
+    svc: Services = request.app.state.services
+    s = svc.settings
+    if not s.is_sandbox:
+        raise HTTPException(400, "The PayPal window only exists in sandbox mode (mock mode approves in the page)")
+    if not is_local(request):  # D-183: the buyer window is a browser on the server, so local runs only
+        raise HTTPException(400, HOSTED_NO_WINDOW)
+    if not (s.paypal_sandbox_buyer_email and s.paypal_sandbox_buyer_password):
+        raise HTTPException(400, "Set PAYPAL_SANDBOX_BUYER_EMAIL and PAYPAL_SANDBOX_BUYER_PASSWORD in .env "
+                                 "(the sandbox Personal account) so the PayPal window can log in")
+    merchant = _merchant(store, body.merchant_id)
+    _check_user(store, body.user_id)
+    _one_per_run(request, body.user_id, merchant)
+    if _demo_window.locked():
+        raise HTTPException(409, "The PayPal window is already open. Confirm the subscription there.")
+    where = "Live demo" if body.source == "demo" else "Shop"
+    async with _demo_window:
+        ctx = Ctx(actor="user", user_id=body.user_id, merchant=merchant)
+        view = await gw.create_subscription(gw.plan_id(body.plan_key), ctx, return_url=RETURN_URL,
+                                            cancel_url=CANCEL_URL)
+        try:
+            outcome = await open_for_confirmation(view.approve_url or "", s.paypal_sandbox_buyer_email,
+                                                  s.paypal_sandbox_buyer_password, timeout_s=DEMO_CONFIRM_TIMEOUT_S)
+        except Exception as exc:  # noqa: BLE001 - the browser couldn't start or PayPal's page broke: say so, no trace
+            store.audit.append(actor="system", event="demo_paypal_window", user_id=body.user_id, transport="sdk",
+                               result=f"error:{type(exc).__name__}", reason=str(exc)[:200],
+                               details={"paypal_id": view.id})
+            return JSONResponse({"error": f"Couldn't open PayPal's window ({type(exc).__name__}). Check the "
+                                          "server terminal, then click Subscribe again."}, status_code=502)
+        store.audit.append(actor="user", event="demo_paypal_window", user_id=body.user_id, transport="sdk",
+                           result="ok" if outcome == "approved" else f"not_confirmed:{outcome}",
+                           reason=f"{where}: PayPal's approval page opened logged in as the sandbox buyer; "
+                                  "a person confirmed it there" if outcome == "approved" else
+                                  f"{where}: PayPal's approval page opened; not confirmed",
+                           details={"paypal_id": view.id, "outcome": outcome, "source": body.source,
+                                    "buyer": mask_email(s.paypal_sandbox_buyer_email)})
+        if outcome != "approved":
+            return JSONResponse({"error": NOT_CONFIRMED[outcome], "outcome": outcome}, status_code=409)
+        active = await _wait_active(gw, view.id, ctx, 60.0)
+    if active.status != "ACTIVE":
+        return JSONResponse({"error": f"PayPal hasn't activated it yet (status {active.status})"}, status_code=502)
+    try:
+        sub, _ = await register_active(svc, active, merchant_id=merchant.id, plan_key=body.plan_key,
+                                       user_id=body.user_id, review_id=body.review_id)
+    except (OwnershipError, AlreadySubscribed) as exc:
+        raise HTTPException(409, str(exc)) from None
+    return sub
+
+
+async def _wait_active(gw: PayPalGateway, paypal_id: str, ctx: Ctx, timeout: float) -> SubscriptionView:
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout
+    view = await gw.get_subscription(paypal_id, ctx)
+    while view.status in ("APPROVAL_PENDING", "APPROVED") and loop.time() < deadline:
+        await asyncio.sleep(POLL_INTERVAL)
+        view = await gw.get_subscription(paypal_id, ctx)
+    return view
+
+
+@router.post("/subscriptions/register", response_model=None)
+async def register(body: RegisterIn, request: Request, store: JsonStore = Depends(get_store),
+                   gw: PayPalGateway = Depends(get_gateway)) -> Subscription | JSONResponse:
+    merchant = _merchant(store, body.merchant_id)
+    _check_user(store, body.user_id)
+    ctx = Ctx(actor="user", user_id=body.user_id, merchant=merchant)
+    timeout = 60.0 if gw.mock is None else 0.0
+    view = await _wait_active(gw, body.paypal_id, ctx, timeout)
+    if view.status != "ACTIVE":
+        store.audit.append(actor="system", event="subscription_register_pending", user_id=body.user_id,
+                           reason=f"PayPal status is {view.status}; not registered (no timer, no snapshot)",
+                           details={"paypal_id": body.paypal_id})
+        return JSONResponse({"registered": False, "status": view.status}, status_code=202)
+
+    svc: Services = request.app.state.services
+    try:
+        sub, _ = await register_active(svc, view, merchant_id=merchant.id, plan_key=body.plan_key,
+                                       user_id=body.user_id, review_id=body.review_id)
+    except (OwnershipError, AlreadySubscribed) as exc:
+        raise HTTPException(409, str(exc)) from None
+    return sub
+
+
+@router.get("/subscriptions")
+def list_subscriptions(user: str = "priya", store: JsonStore = Depends(get_store)) -> list[Subscription]:
+    return [s for s in store.load("subscriptions").items if s.owner_id == user]
+
+
+@router.get("/subscriptions/{sub_id}/paypal", response_model=None)
+async def paypal_status(sub_id: str, request: Request, user: str = "priya") -> dict[str, Any] | JSONResponse:
+    """The "Subscribed via PayPal" card: status, plan and billing cycles read live from PayPal (D-113)."""
+    svc: Services = request.app.state.services
+    sub = svc.sub(sub_id)
+    if sub is None or sub.owner_id != user:  # R5
+        d = svc.policy.record(svc.store, Decision(allowed=False, rule_id="R5", subscription_id=sub_id,
+                                                  reason="You can only view your own subscriptions"),
+                              user_id=user, action="paypal_status", requested_by="user")
+        return JSONResponse({"blocked": True, "rule_id": d.rule_id, "reason": d.reason}, status_code=403)
+    return await paypal_card(svc, sub)
+
+
+def paypal_error_response(exc: PayPalError) -> JSONResponse:
+    msg = "PayPal couldn't complete that request. Please try again."
+    if exc.name == "NOT_SEEDED":
+        msg = exc.message
+    return JSONResponse({"error": msg, "detail": exc.summary(), "debug_id": exc.debug_id}, status_code=502)

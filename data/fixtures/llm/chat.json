@@ -1,0 +1,115 @@
+{
+  "_comment": "Mock-mode chat scripts (app/llm/mock_chat.py). Numbers in 'say' come only from tool results: {tool.field}.",
+  "scripts": [
+    {
+      "id": "keep_penwright",
+      "match": [
+        "should i keep",
+        "worth it",
+        "keep it",
+        "keep penwright"
+      ],
+      "merchant": "penwright",
+      "steps": [
+        {
+          "call": "list_subscriptions"
+        },
+        {
+          "call": "get_usage",
+          "args": {
+            "subscription_id": "$sub",
+            "days": 30
+          }
+        },
+        {
+          "call": "get_savings_estimate",
+          "args": {
+            "subscription_id": "$sub"
+          }
+        },
+        {
+          "call": "review_subscription",
+          "args": {
+            "subscription_id": "$sub"
+          }
+        },
+        {
+          "say": "You've opened {get_usage.merchant} {get_usage.opens_text} so far. If you keep it, the first paid year costs {get_savings_estimate.per_year_text}. {review_subscription.act_by_text}. It's your call: say \"cancel Penwright\" and I'll show a confirmation card, or tap Keep."
+        }
+      ]
+    },
+    {
+      "id": "do_nothing",
+      "match": [
+        "do nothing",
+        "don't answer",
+        "dont answer",
+        "no answer",
+        "ignore it"
+      ],
+      "merchant": "penwright",
+      "steps": [
+        {
+          "call": "list_subscriptions"
+        },
+        {
+          "call": "review_subscription",
+          "args": {
+            "subscription_id": "$sub"
+          }
+        },
+        {
+          "say": "If you do nothing, I ask you on {review_subscription.check_in_on}. If you still don't answer, your safety timer cancels {review_subscription.merchant} in PayPal on {review_subscription.auto_cancel_on}, before the first charge on {review_subscription.first_charge_on}. {review_subscription.act_by_text}: the terms also want written notice, so I'll remind you to send the cancellation email."
+        }
+      ]
+    },
+    {
+      "id": "draft_email",
+      "match": [
+        "draft my cancellation email",
+        "draft",
+        "cancellation email",
+        "write the email"
+      ],
+      "merchant": "penwright",
+      "steps": [
+        {
+          "call": "list_subscriptions"
+        },
+        {
+          "call": "review_subscription",
+          "args": {
+            "subscription_id": "$sub"
+          }
+        },
+        {
+          "say": "I draft the cancellation email right after {review_subscription.merchant} is cancelled in PayPal. It quotes the notice clause word for word, and you check, edit and send it yourself. {review_subscription.act_by_text}. To start, say \"cancel Penwright\" and tap Confirm on the card."
+        }
+      ]
+    },
+    {
+      "id": "cancel",
+      "match": [
+        "cancel"
+      ],
+      "merchant": "from_message",
+      "steps": [
+        {
+          "call": "list_subscriptions"
+        },
+        {
+          "call": "propose_cancel",
+          "args": {
+            "subscription_ids": [
+              "$sub"
+            ],
+            "reason": "You asked me to cancel it."
+          }
+        },
+        {
+          "say": "Cancelling {propose_cancel.merchants} keeps {propose_cancel.total_per_year_text} in your pocket. Nothing happens until you tap Confirm."
+        }
+      ]
+    }
+  ]
+}

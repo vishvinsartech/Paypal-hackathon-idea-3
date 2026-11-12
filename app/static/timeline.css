@@ -1,0 +1,52 @@
+/* D-172: Priya's Activity, one chronological timeline. No card borders, no coloured stripes, one font.
+   Colour only for status: green tick = done, amber dot = needs your answer. Everything else is text / muted. */
+.ac-wrap { max-width: 760px; margin: 4px 0 24px; }
+.ac-title { font-size: 1.15rem; margin: 8px 0 0; }
+.ac-day-h { margin: 22px 0 2px; font-size: .72rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); }
+.ac { list-style: none; margin: 0; padding: 0; }
+.ac-entry + .ac-entry { border-top: 1px solid var(--navy-700); }
+
+.ac-row { display: grid; grid-template-columns: 104px minmax(0, 1fr) auto; gap: 2px 14px; align-items: baseline;
+  padding: 10px 0; }
+.ac-actor { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: .82rem; min-width: 0; }
+.ac-actor svg { width: 16px; height: 16px; flex: none; align-self: center; }
+.ac-main { display: grid; gap: 2px; min-width: 0; }
+.ac-text { color: var(--text); font-size: .95rem; overflow-wrap: anywhere; }
+.ac-answer { font-weight: 600; white-space: nowrap; }
+.ac-detail { color: var(--muted); font-size: .85rem; }
+.ac-act { justify-self: end; color: var(--muted); font-size: .85rem; white-space: nowrap; }
+.ac-act .link-btn { margin: 0; padding: 0; font-size: .85rem; }
+
+.ac-mark { display: inline-block; width: 14px; height: 14px; margin-right: 6px; vertical-align: -2px; }
+.ac-done { color: var(--ok); }
+.ac-ask { width: 9px; height: 9px; margin: 0 8px 1px 2px; border-radius: 50%; background: var(--amber); vertical-align: 1px; }
+
+/* Proof ▸ : the whole row is the toggle; the proof opens inline under the line */
+.ac-proof > summary { list-style: none; cursor: pointer; }
+.ac-proof > summary::-webkit-details-marker { display: none; }
+.ac-proof > summary:hover .ac-proof-toggle, .ac-proof[open] .ac-proof-toggle { color: var(--text); }
+.ac-proof > summary:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; border-radius: 4px; }
+.ac-caret { display: inline-block; transition: transform .15s; }
+.ac-proof[open] .ac-caret { transform: rotate(90deg); }
+.ac-proof-body { margin: 0 0 12px calc(104px + 14px); padding: 10px 14px; border-radius: 8px; background: var(--navy-800);
+  display: grid; gap: 8px; font-size: .85rem; }
+.ac-proof-body div { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 12px; }
+.ac-proof-body dt { color: var(--muted); }
+.ac-proof-body dd { margin: 0; overflow-wrap: anywhere; }
+.ac-proof-body q { font-style: italic; }
+
+.ac-foot { margin: 18px 0 0; }
+.ac-foot .link-btn { margin: 0; }
+
+/* Overview: What SubGuard did (the 3 latest entries) */
+.did-short .ac-answer { white-space: normal; }
+.did-card > .link-btn { display: inline-block; }
+
+@media (max-width: 640px) {
+  .ac-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .ac-actor { grid-column: 1 / -1; }
+  .ac-proof-body { margin-left: 0; }
+  .ac-proof-body div { grid-template-columns: 1fr; gap: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .ac-caret { transition: none; } }

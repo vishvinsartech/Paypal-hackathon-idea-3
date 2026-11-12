@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Live demo · SubGuard{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/demo.css">{% endblock %}
+{% block content %}
+{% set uid = current_user.id if current_user else 'priya' %}
+{# D-173: a product landing section first (hero, Priya, how it works), then the demo under "Run the demo
+   yourself". D-167: the Live demo is its own page at `/?demo=1`: controls, the 7-step story, Priya's side of it (her check-in
+   question, answered here), and the results. Priya's dashboard stays at `/`. Parts marked data-live refresh from
+   this page's own HTML (home.js). #}
+<div class="demo-page" data-testid="live-demo">
+{% include "_landing.html" %}
+
+<details class="run-demo" id="run-demo" open data-testid="run-demo">
+  <summary class="run-sum"><h2 class="run-h">Run the demo yourself</h2>
+    <span class="muted small">Start Priya's story, move the days, or open a shop.</span></summary>
+  <p class="run-links muted small"><a href="#about" data-testid="what-is-subguard">↑ What is SubGuard?</a> ·
+    To see what Priya sees, open <a href="/?user={{ uid }}" target="_blank" rel="noopener"
+    data-testid="demo-open-dashboard">her dashboard ↗</a>.</p>
+
+{% include "_presenter.html" %}
+
+<div class="demo-grid">
+  <section class="card demo-priya" aria-labelledby="priya-h">
+    <h2 id="priya-h" class="pr-h">Priya's side</h2>
+    <div id="live-priya" data-live data-testid="demo-priya">
+    {% set asked = cards | selectattr("band") | list %}{% set handed = cards | selectattr("handoff") | list %}
+    {% set drafts = notices | selectattr("status", "equalto", "draft") | list %}
+    {% if proof %}<p class="proof-banner card" data-testid="proof-banner" role="status"><strong>{{ proof }}</strong></p>{% endif %}
+    {% if drafts %}<div class="card email-ready" data-testid="user-email-ready">
+      {% for n in drafts %}<p><strong>Her cancellation email is ready to review and send.</strong>
+        <button class="btn btn-sm" data-email-open="{{ n.id }}" data-testid="email-review">Review email</button></p>{% endfor %}
+    </div>{% endif %}
+    {% for c in asked %}{% set a = c.band.alert %}
+    <div class="band band-checkin" data-testid="user-reminder" role="region" aria-labelledby="band-{{ a.id }}">
+      <p class="eyebrow">Check-in · {{ c.merchant }} · sent by email, SMS and in-app <span class="delivery" data-testid="delivery">{{ delivery_text(a.delivery) }}</span></p>
+      <h3 id="band-{{ a.id }}">Keep it or cancel?</h3>
+      <p class="check-body">{{ a.body }}</p>
+      <p class="usage" data-testid="reminder-usage"><span class="chip">Your usage</span> {{ c.band.usage }}</p>
+      <p class="advice" data-testid="reminder-advice"><span class="chip chip-advice">Advice</span>
+        <strong>SubGuard suggests: {{ c.band.suggest }}. You decide.</strong> <span class="muted">{{ c.band.reason }}</span></p>
+      <p class="muted small">Answer for Priya:</p>
+      <div class="row band-actions">
+        <button class="btn btn-ghost" data-alert="{{ a.id }}" data-action="keep" data-testid="alert-keep">Keep</button>
+        <button class="btn btn-danger" data-alert="{{ a.id }}" data-action="cancel" data-testid="alert-cancel">Cancel trial</button>
+      </div>
+    </div>
+    {% endfor %}
+    {% for c in handed %}{% set h = c.handoff %}{% set a = h.alert %}
+    <div class="band band-action" data-testid="action-needed" data-poll-sub="{{ c.id }}" role="region" aria-labelledby="an-{{ a.id }}">
+      <h3 id="an-{{ a.id }}">{{ a.title }}</h3>
+      <p>{{ a.body }}</p>
+      <div class="row">
+        <a class="btn btn-danger" href="{{ h.url }}" target="_blank" rel="noopener" data-testid="action-autopay">Open PayPal Automatic payments ↗</a>
+        {% if h.notice_id %}<button type="button" class="btn btn-ghost" data-email-open="{{ h.notice_id }}" data-testid="action-review-email">Review email</button>{% endif %}
+      </div>
+      <p class="muted small" data-testid="layer2-waiting"><span class="pulse-dot" aria-hidden="true"></span>
+        Waiting for PayPal to show {{ h.merchant }} as CANCELLED. SubGuard checks PayPal every few seconds.</p>
+    </div>
+    {% endfor %}
+    {% if not asked and not handed and not proof and not drafts %}
+    <p class="demo-empty muted" data-testid="demo-priya-empty">{% if cards %}Nothing to answer right now. When SubGuard
+      asks Priya "Keep it or cancel?", the question appears here so you can answer for her.{% else %}Priya has no
+      subscriptions yet. Press <strong>Play Priya's story</strong>, or open a shop above and start a free trial.{% endif %}</p>
+    {% endif %}
+    {% if cards %}<ul class="demo-subs" data-testid="demo-subs">
+      {% for c in cards %}<li><strong>{{ c.merchant }}</strong> <span class="pill pill-{{ c.status | lower }}">{{ c.status }}</span>
+        <span class="sub-headline tone-{{ c.headline.tone }}">{{ c.headline.text }}</span></li>{% endfor %}
+    </ul>{% endif %}
+    </div>
+  </section>
+
+  <aside class="demo-results" aria-label="Results">
+    <section class="card kpi" id="live-kpis" data-live data-celebrate data-testid="user-protected">
+      <span class="kpi-label">Charges avoided</span>
+      <span class="kpi-value" id="kpi-protected" data-countup data-testid="user-avoided">{{ avoided }}</span>
+      {% if not cards %}<span class="kpi-sub" data-testid="user-year-one">No trials yet</span>
+      {% elif nothing_avoided %}<span class="kpi-sub" data-testid="user-year-one">Nothing charged yet. Watching up to {{ at_stake }} in year one</span>
+      {% else %}<span class="kpi-sub" data-testid="user-year-one">up to {{ protected }} in year one</span>{% endif %}
+    </section>
+    <section class="card did-card" id="live-did" data-live aria-labelledby="did-h">
+      <div class="card-head">
+        <h2 id="did-h">What SubGuard did</h2>
+        <span class="chain {{ 'ok' if chain_ok else 'bad' }}" data-testid="audit-chain-mini" title="SHA-256 hash chain over the audit log">{{ "chain verified ✓" if chain_ok else "chain BROKEN ✗" }}</span>
+      </div>
+      <ol class="did" data-testid="audit-summary">
+        {% for r in did %}<li class="did-row" data-testid="audit-summary-row"><span class="who who-{{ r.kind }}">{{ r.who }}</span>
+          <span class="did-text">{{ r.text }}{% if r.rule_id %} <span class="rule-chip">{{ r.rule_id }}</span>{% endif %}</span>
+          <span class="muted tiny did-when">{{ r.when }}</span></li>
+        {% else %}<li class="muted">Nothing yet.</li>{% endfor %}
+      </ol>
+      <button type="button" class="link-btn" data-open-audit data-testid="audit-full-toggle">Show all →</button>
+    </section>
+  </aside>
+</div>
+</details>
+</div>
+{% include "_dialogs.html" %}
+{% endblock %}
+{% block scripts %}
+<script src="/static/home.js"></script>
+<script src="/static/presenter.js"></script>
+<script src="/static/autoplay_sandbox.js"></script>
+<script src="/static/autoplay.js"></script>
+{% endblock %}

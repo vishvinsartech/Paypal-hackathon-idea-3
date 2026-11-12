@@ -1,0 +1,48 @@
+{# D-173: the product landing section at the top of the Live demo page (the hosted link). Plain language; the same
+   hero sentence and Priya's card open the README and the video. Numbers come from settings.pricing (landing.py). #}
+{% from "_hero.html" import hero %}{% from "_steps.html" import steps %}
+{% set L = landing %}
+<section class="landing" id="about" aria-labelledby="hero-h" data-testid="landing">
+  <div class="landing-top">
+    {% call hero() %}<a class="btn btn-ghost" href="/shop/penwright?user={{ uid }}" target="_blank" rel="noopener"
+           data-testid="hero-try">Try it yourself: open the checkout ↗</a>{% endcall %}
+
+    <article class="card priya-card" data-testid="priya-card" aria-labelledby="priya-card-h">
+      <h2 id="priya-card-h">Meet Priya</h2>
+      <p class="offer">She wants <strong>Penwright Studio</strong>, a writing app:
+        <span class="offer-quote">"{{ L.trial_days }}-day free trial, $0 today"</span></p>
+      <p class="muted small traps-h">The fine print says:</p>
+      <ol class="traps" data-testid="priya-traps">
+        <li>After {{ L.trial_days }} days it costs <strong>{{ L.intro }} a month</strong>, then
+          <strong>{{ L.step_up }} a month</strong> from month {{ L.intro_months + 1 }}.</li>
+        <li>She must cancel by email <strong>{{ L.notice_days }} days before</strong> the first charge, so her real
+          last day is <strong>Day {{ L.terms_last_day }}</strong>, not Day {{ L.trial_days }}.</li>
+        <li>There is <strong>no cancel button</strong>: email, or phone on weekdays only.</li>
+      </ol>
+      <p class="priya-money" data-testid="priya-money">
+        <span class="without">Without SubGuard: <strong>{{ L.year_one }}</strong> in year one.</span>
+        <span class="with">With SubGuard: <strong>{{ L.zero }}</strong>.</span></p>
+    </article>
+  </div>
+
+  {{ steps([
+    ("Before you pay", "It reads the terms, checks them against the PayPal plan, and gives you the real last day to cancel."),
+    ("Before the deadline", "It asks you once: keep the trial or cancel it? You decide."),
+    ("At the deadline", "If you said cancel, it cancels in PayPal before the first charge, and drafts the email the terms ask for."),
+  ]) }}
+
+  <div class="landing-foot">
+    <ul class="built" aria-label="Built with" data-testid="built-with">
+      <li class="built-h">Built with</li>
+      <li>PayPal Subscriptions API</li>
+      <li>PayPal JS SDK</li>
+      <li>PayPal MCP server</li>
+      <li data-testid="built-ai">{{ L.ai_model }}</li>
+      <li class="built-rule">AI proposes, code decides</li>
+    </ul>
+    <p class="honest muted small" data-testid="honest-note">Priya, Penwright and Quillnote are made up.
+      {% if settings.is_sandbox %}Payments run in the PayPal Sandbox, so no real money moves.{% else %}PayPal is
+      simulated on this server (the sandbox version uses the real PayPal Sandbox); no real money moves.{% endif %}
+      Days are simulated: the demo moves a clock forward.</p>
+  </div>
+</section>

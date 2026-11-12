@@ -1,0 +1,20 @@
+{% extends "shop_base.html" %}
+{% block title %}Demo shop{% endblock %}
+{% block content %}
+{# U19: two product cards, no spoilers. What each page hides is for SubGuard (and the evidence page) to show. #}
+<section data-testid="shop-index">
+  <h1>Demo shop</h1>
+  <p>The two fictional merchants used in the SubGuard demo. Neither is a real company.</p>
+  {% set pitch = {"penwright": "An AI writing studio for drafts, outlines and rewrites.",
+                  "quillnote": "Turns meeting scribbles into tidy, searchable notes."} %}
+  <div class="shop-cards">
+    {% for mch in merchants if mch.id in ("penwright", "quillnote") %}
+    <article class="shop-card" data-testid="shop-merchant-{{ mch.id }}">
+      <h2>{{ mch.name }}</h2>
+      <p>{{ pitch[mch.id] }}</p>
+      <a class="btn" href="/shop/{{ mch.id }}">Start the free trial</a>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

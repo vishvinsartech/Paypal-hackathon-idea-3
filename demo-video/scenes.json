@@ -1,0 +1,168 @@
+{
+  "title": "SubGuard: AI reads the fine print. PayPal enforces the outcome.",
+  "version": 2,
+  "base_url": "http://127.0.0.1:8000",
+  "app_viewport": {"width": 1600, "height": 900},
+  "stage": {"size": [1920, 1080], "fps": 30, "hole": [320, 244, 1280, 720]},
+  "voice": "en-US-JennyNeural",
+  "words_per_minute": 125,
+  "max_total_seconds": 175,
+  "links": {"github": "github.com/vishvinsartech/Paypal-hackathon-idea-3", "hosted": ""},
+  "_kinds": "kind: card (title/end card) | slide (motion-graphic slide) | app (the app, recorded, shown in the browser frame) | paypal (real PayPal sandbox pages in the frame; sandbox takes only, in mock mode its time goes to mock_fallback). card/slide name their <section id=\"slide-<slide>\"> in stage/stage.html.",
+  "_narration": "The narration IS the headline, revealed word by word with the voice. *word* or *several words* = accent colour. {on:N} = the calendar date N days after a sign-up made today (spoken 'November 18'); {fact:key} = the app's own number from landing_view (prices are never typed here). {sub:<plan>} in a goto = the subscription a scene's setup made.",
+  "_cues": "cues: [{word, show}] = element #show in the slide appears when that word is spoken (cues match in order).",
+  "_actions": "app/paypal actions: {action: goto|click|hover|type|press|wait_for|wait|scroll_to|highlight, target: data-testid, ...}. highlight = a thick yellow glow for about 2.5 s. mock_only skips an action in sandbox. type: {text, delay (ms per key, default 90)}; text \"{demo_password}\" = DEMO_PASSWORD from .env, filled in by the recorder (only into login-password, a masked field; the password is never written here). setup (off screen, before the scene): reset | day: N | subscribe: <plan> | signed_out (drop the browser's sg_session cookie, so the scene starts at the intro). sandbox_subscribe: after the scene, register the pre-approved sandbox subscription. zoom: {at, rect: [x, y, w, h] in app_viewport pixels, dur} = a slow zoom in and back out inside the frame.",
+  "scenes": [
+    {
+      "id": "01_title", "kind": "card", "slide": "title", "chapter": "Title", "duration": 6,
+      "kicker": "// PayPal AI Hackathon 2026",
+      "narration": "*SubGuard*: AI reads the fine print, PayPal enforces the outcome."
+    },
+    {
+      "id": "02_problem", "kind": "slide", "slide": "problem", "chapter": "Problem", "duration": 16,
+      "kicker": "// the problem",
+      "narration": "Free trials are built to be *forgotten*. Priya starts one with PayPal. The fine print hides a *short notice* period, a *step-up price*, and an *auto-renew*.",
+      "cues": [
+        {"word": "Priya", "show": "pb-priya"},
+        {"word": "PayPal.", "show": "pb-checkout"},
+        {"word": "fine", "show": "pb-cards"},
+        {"word": "notice", "show": "pb-x-notice"},
+        {"word": "step-up", "show": "pb-x-stepup"},
+        {"word": "auto-renew", "show": "pb-x-renew"}
+      ]
+    },
+    {
+      "id": "03_problem_cost", "kind": "slide", "slide": "cost", "chapter": "Problem", "duration": 14,
+      "kicker": "// the problem",
+      "narration": "She only finds out on her *statement*: the first charge, already taken. No reminder. No warning. Just a bill she never meant to pay.",
+      "cues": [
+        {"word": "statement", "show": "st-card"},
+        {"word": "charge,", "show": "st-row"},
+        {"word": "reminder.", "show": "st-no1"},
+        {"word": "warning.", "show": "st-no2"}
+      ]
+    },
+    {
+      "id": "04_how", "kind": "slide", "slide": "how", "chapter": "How it works", "duration": 22,
+      "kicker": "// how it works",
+      "narration": "Here's how it works. Priya pays with *PayPal*. *SubGuard* reads the terms with AI and quotes them word for word. Then *code decides*, not the AI. And *PayPal cancels* before the deadline, only with her OK or a safety timer she saw.",
+      "cues": [
+        {"word": "Priya", "show": "hw-priya"},
+        {"word": "PayPal.", "show": "hw-paypal"},
+        {"word": "SubGuard", "show": "hw-subguard"},
+        {"word": "quotes", "show": "hw-quote"},
+        {"word": "code", "show": "hw-code"},
+        {"word": "cancels", "show": "hw-cancel"},
+        {"word": "OK", "show": "hw-consent"}
+      ]
+    },
+    {
+      "id": "05_signin", "kind": "app", "chapter": "Live product", "duration": 10,
+      "kicker": "// live · sign in", "setup": {"signed_out": true},
+      "narration": "Priya opens SubGuard and signs in. Her dashboard is empty: no trials yet.",
+      "actions": [
+        {"action": "goto", "url": "/"},
+        {"action": "click", "target": "intro-signin"},
+        {"action": "type", "target": "login-email", "text": "priya@subguard-demo.example", "delay": 40},
+        {"action": "type", "target": "login-password", "text": "{demo_password}", "delay": 50},
+        {"action": "click", "target": "login-submit"},
+        {"action": "wait_for", "target": "hi-name"}
+      ]
+    },
+    {
+      "id": "06_shop", "kind": "app", "chapter": "Live product", "duration": 22,
+      "kicker": "// live · the shop", "sandbox_subscribe": "penwright-pro",
+      "narration": "Priya opens Penwright: *ten days free*. The real terms hide in tiny grey text. She clicks PayPal, and SubGuard reads it first: *high risk*. Act by *{on:7}* (the terms allow {on:8}). PayPal's own plan confirms the charge.",
+      "zoom": {"at": 1.0, "rect": [740, 40, 640, 360], "dur": 4.5},
+      "actions": [
+        {"action": "goto", "url": "/shop/penwright"},
+        {"action": "highlight", "target": "shop-fineprint"},
+        {"action": "click", "target": "shop-paypal-btn"},
+        {"action": "wait_for", "target": "companion-risk", "timeout": 60},
+        {"action": "highlight", "target": "companion-risk"},
+        {"action": "highlight", "target": "companion-deadline"},
+        {"action": "highlight", "target": "finding-TERMS_MISMATCH"}
+      ]
+    },
+    {
+      "id": "07_approve", "kind": "app", "chapter": "Live product", "duration": 12,
+      "kicker": "// live · PayPal",
+      "narration": "She continues to PayPal and approves. Then she opens SubGuard: Penwright is on her dashboard, *watched from day one*.",
+      "actions": [
+        {"action": "click", "target": "companion-continue", "mock_only": true},
+        {"action": "wait_for", "target": "shop-welcome", "mock_only": true},
+        {"action": "highlight", "target": "shop-open-subguard", "mock_only": true},
+        {"action": "goto", "url": "/"},
+        {"action": "highlight", "target": "sub-card"}
+      ]
+    },
+    {
+      "id": "08_checkin", "kind": "app", "chapter": "Live product", "duration": 20,
+      "kicker": "// live · day 5", "setup": {"day": 5},
+      "narration": "Day five. SubGuard checks in by email, text and in the app: *keep your Penwright trial?* She's opened it twice, so SubGuard suggests cancelling. Priya taps *Cancel*. PayPal cancels first, then AI drafts her email, *quoting the clause* word for word.",
+      "actions": [
+        {"action": "goto", "url": "/"},
+        {"action": "highlight", "target": "user-reminder"},
+        {"action": "click", "target": "alert-cancel"},
+        {"action": "wait_for", "target": "confirm-card"},
+        {"action": "click", "target": "confirm-button"},
+        {"action": "wait_for", "target": "email-preview", "timeout": 60},
+        {"action": "highlight", "target": "email-paypal-done"},
+        {"action": "highlight", "target": "email-clause"}
+      ]
+    },
+    {
+      "id": "09_proof_app", "kind": "app", "chapter": "Live product", "duration": 14,
+      "kicker": "// proof", "setup": {"day": 11},
+      "narration": "Day eleven, the first charge is due. SubGuard checks PayPal: no active subscription, so *nothing to charge*. Every step is in a hash-chained audit log, and the *chain verifies*.",
+      "actions": [
+        {"action": "goto", "url": "/"},
+        {"action": "highlight", "target": "sub-headline"},
+        {"action": "highlight", "target": "sub-line"},
+        {"action": "click", "target": "nav-activity"},
+        {"action": "click", "target": "activity-raw-log"},
+        {"action": "wait_for", "target": "audit-chain"},
+        {"action": "highlight", "target": "audit-chain"}
+      ]
+    },
+    {
+      "id": "10_ai_vs_basic", "kind": "app", "chapter": "Live product", "duration": 15,
+      "kicker": "// why AI", "setup": {"reset": true, "subscribe": "quillnote-plus"},
+      "narration": "Why AI? Quillnote writes its notice period in words: *seventy-two hours*. A basic rule check misses it. The AI finds it, and code says act by *{on:4}*.",
+      "actions": [
+        {"action": "goto", "url": "/subscriptions/{sub:quillnote-plus}?user=priya"},
+        {"action": "scroll_to", "target": "ai-vs-basic"},
+        {"action": "highlight", "target": "avb-notice-quote"},
+        {"action": "highlight", "target": "avb-notice"},
+        {"action": "highlight", "target": "avb-act-by"}
+      ]
+    },
+    {
+      "id": "11_paypal_proof", "kind": "paypal", "chapter": "Live product", "duration": 10,
+      "kicker": "// proof in PayPal", "mock_fallback": "09_proof_app",
+      "narration": "And in PayPal itself, her Penwright subscription shows as *cancelled*.",
+      "actions": [
+        {"action": "goto", "url": "{paypal_autopay}"},
+        {"action": "wait", "seconds": 6}
+      ]
+    },
+    {
+      "id": "12_pillars", "kind": "slide", "slide": "pillars", "chapter": "Close", "duration": 8,
+      "kicker": "// what it means",
+      "narration": "*AI reads* the fine print. *Code decides*. *PayPal enforces* the outcome.",
+      "cues": [
+        {"word": "reads", "show": "pl-ai"},
+        {"word": "decides.", "show": "pl-code"},
+        {"word": "enforces", "show": "pl-paypal"}
+      ]
+    },
+    {
+      "id": "13_end", "kind": "card", "slide": "end", "chapter": "Close", "duration": 6,
+      "kicker": "// SubGuard",
+      "narration": "Open source and MIT licensed. *Try it live*.",
+      "cues": [
+        {"word": "Open", "show": "end-links"}
+      ]
+    }
+  ]
+}

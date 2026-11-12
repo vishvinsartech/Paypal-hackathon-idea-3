@@ -1,0 +1,20 @@
+{
+  "items": [
+    {
+      "id": "penwright",
+      "name": "Penwright Studio",
+      "tagline": "An AI writing app with a \"free trial\".",
+      "fair_trial_member": true,
+      "support_email": "cancel@penwright.example",
+      "paypal_payer_id": ""
+    },
+    {
+      "id": "quillnote",
+      "name": "Quillnote",
+      "tagline": "An AI notes app whose catches are written in plain prose.",
+      "fair_trial_member": false,
+      "support_email": "accounts@quillnote.example",
+      "paypal_payer_id": ""
+    }
+  ]
+}

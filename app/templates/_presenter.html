@@ -1,0 +1,95 @@
+{# D-167/D-173: the Live demo page's controls. Start demo, the days (forward only), the shops with one line each,
+   "Quillnote connected to SubGuard" (the Fair Trial toggle), the full record (audit log), Reset, and the 7-step story (B4: steps derived from
+   the audit log, so they tick on a manual run too). #}
+{% set uid = current_user.id if current_user else 'priya' %}
+<section class="card presenter" id="demo-bar" data-testid="demo-bar" aria-labelledby="pr-h">
+  <h2 id="pr-h" class="pr-h">Controls <span class="pr-today">· today is Day <strong data-testid="demo-day" class="js-day">{{ sim_day }}</strong></span></h2>
+  <div class="pr-start">
+    {% if settings.is_sandbox %}
+    <button class="btn btn-start" id="demo-start" data-testid="demo-start" data-sandbox="1"
+            title="Opens Penwright in a new window, which subscribes for Priya. Confirm the order in PayPal (logged in for you); the story then continues here.">&#9654; Play Priya's story</button>
+    {% else %}
+    <button class="btn btn-start" id="demo-start" data-testid="demo-start">&#9654; Play Priya's story</button>
+    {% endif %}
+  </div>
+  <ol class="pr-story" aria-label="What happens when you press Play" data-testid="story-steps">
+    <li><strong>Day 0 · Sign-up.</strong> Priya opens the Penwright checkout. SubGuard reads the fine print and checks it
+      against the real PayPal plan.</li>
+    <li class="you"><strong>Day 0 · You confirm the order.</strong> {% if settings.is_sandbox %}Approve it in PayPal's
+      window (already logged in as the sandbox buyer).{% else %}Press <em>Agree and subscribe</em> for Priya.{% endif %}
+      SubGuard sets a safety timer.</li>
+    {% set L = landing %}{% set ask = L.act_by_day - 2 %}
+    <li><strong>Days 1–{{ ask - 1 }} · The trial runs.</strong> The clock moves forward by itself.</li>
+    <li class="you"><strong>Day {{ ask }} · Check-in.</strong> SubGuard asks Priya "Keep it or cancel?". You answer for
+      her under <em>Priya's side</em>.</li>
+    <li><strong>By Day {{ L.act_by_day }} · Cancel in PayPal.</strong> If she says Cancel, SubGuard cancels the
+      subscription in PayPal before her real deadline and drafts the email the terms ask for.</li>
+    <li><strong>Day {{ L.first_charge_day }} · First charge day.</strong> The proof: PayPal takes no charge.</li>
+  </ol>
+
+  <div class="pr-time">
+    <label class="pr-label" for="sim-scrubber">Move the days yourself <span class="muted small">(days only move forward; Reset starts over)</span></label>
+    <input type="range" id="sim-scrubber" min="0" max="11" step="1" value="{{ [sim_day, 11] | min }}" data-testid="sim-scrubber"
+           aria-label="Demo day (moves forward only)" list="sim-ticks">
+    <datalist id="sim-ticks">{% for d in range(12) %}<option value="{{ d }}"></option>{% endfor %}</datalist>
+    <div class="pr-jumps demo-group" role="group" aria-label="Jump to day">
+      {% for d, what in [(0, "sign-up"), (5, "check-in"), (6, "safety timer"), (7, "act-by"), (11, "first charge")] %}
+      <button class="btn btn-ghost" data-jump="{{ d }}" data-testid="sim-jump-{{ d }}">Day {{ d }}<span class="pr-what">{{ what }}</span></button>{% endfor %}
+      <button class="btn btn-ghost" data-advance="1" data-testid="sim-plus-1" aria-label="Plus one day">+1 day</button>
+    </div>
+  </div>
+
+  <div class="pr-shops">
+    <div class="pr-shop">
+      <a class="btn btn-ghost" href="/shop/penwright?user={{ uid }}" target="_blank" rel="noopener" data-testid="demo-open-shop">Open Penwright shop ↗</a>
+      <span class="muted small">The free-trial trap. Connected to SubGuard, so SubGuard can cancel it in PayPal for her.</span>
+    </div>
+    <div class="pr-shop">
+      <a class="btn btn-ghost" href="/shop/quillnote?user={{ uid }}" target="_blank" rel="noopener" data-testid="demo-open-quillnote">Open Quillnote shop ↗</a>
+      <span class="muted small">Its traps hide in plain sentences only the AI catches. Not connected: Priya cancels with one tap in PayPal.</span>
+    </div>
+  </div>
+  <div class="pr-tools">
+    <span class="demo-group" data-testid="layer2-controls">
+      <button class="btn btn-ghost" id="toggle-fair-trial" data-merchant="quillnote" data-testid="sim-toggle-fair-trial"
+              aria-pressed="{{ 'true' if quillnote_connected else 'false' }}"
+              title="When Quillnote is connected, SubGuard can cancel it in PayPal itself, like Penwright.">Quillnote connected to SubGuard: <span class="js-ft">{{ "on" if quillnote_connected else "off" }}</span></button>
+    </span>
+    <button class="btn btn-ghost" data-open-audit data-testid="presenter-audit">See the full record</button>
+    <button class="btn btn-danger" id="demo-reset" data-testid="sim-reset">Reset</button>
+  </div>
+</section>
+
+<section class="card pipeline" id="pipeline" data-testid="pipeline" aria-labelledby="pipe-h">
+  <h2 id="pipe-h" class="pr-h">The story, step by step</h2>
+  <div class="pipe">
+    <div class="pipe-rail" aria-hidden="true"><span class="pipe-fill" id="pipe-fill"></span></div>
+    <ol class="steps" id="pipeline-steps" aria-label="Demo steps">
+      {% for key, title, hint in [("read", "Read the fine print", "Day 0"), ("approve", "Approve with PayPal", "Day 0"),
+                                  ("timer", "Safety timer set", "Day 0"), ("wait", "Days go by", "the trial"),
+                                  ("ask", "Ask Priya", "check-in day"), ("outcome", "Keep or cancel", "her choice"),
+                                  ("proof", "First charge day", "proof")] %}
+      <li class="step" data-step="{{ key }}" data-testid="step-{{ key }}" title="{{ title }}">
+        <span class="step-dot">{{ loop.index }}</span>
+        <span class="step-title">{{ title }}</span>
+        <span class="step-detail" data-hint="{{ hint }}">{{ hint }}</span>
+      </li>
+      {% endfor %}
+    </ol>
+  </div>
+  <p class="pipe-status" id="pipe-status" aria-live="polite" data-testid="pipeline-status">
+    {% if settings.is_sandbox %}Press <strong>Play Priya's story</strong>: Penwright opens in a new window and plays Priya up to
+    PayPal. Confirm the order in PayPal's window (already logged in as the sandbox buyer). The story then continues
+    here by itself and pauses once more, at the check-in, for Keep or Cancel.
+    {% else %}Press <strong>Play Priya's story</strong> to run the story. It plays itself and stops twice for you: to confirm the
+    order, and to answer Keep or Cancel for Priya below.{% endif %}
+  </p>
+  <div class="order-confirm" id="order-confirm" data-testid="order-confirm" role="group" aria-labelledby="order-h" hidden>
+    <p class="eyebrow">PayPal · simulated approval</p>
+    <h3 id="order-h">Confirm Priya's order</h3>
+    <p id="order-text" data-testid="order-text"></p>
+    <button type="button" class="btn btn-start" id="order-approve" data-testid="order-approve">Agree and subscribe</button>
+  </div>
+  <button type="button" class="btn btn-ghost" data-testid="decision-skip" id="decision-skip" hidden>Don't answer</button>
+  <div id="pipe-done"></div>
+</section>

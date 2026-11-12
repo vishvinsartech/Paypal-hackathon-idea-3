@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+{% block title %}SubGuard{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/timeline.css">
+<script>/* sidebar folded before first paint: below 1100 px it starts folded; otherwise the saved choice */
+(function () { var f = window.innerWidth < 1100; if (!f) { try { f = localStorage.getItem("sg-side") === "folded"; } catch (e) {} }
+  if (f) document.documentElement.dataset.side = "folded"; })();</script>{% endblock %}
+{% block content %}
+{% set u = current_user %}
+{% set uid = u.id if u else 'priya' %}
+{% macro icon(d) %}<svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ d | safe }}</svg>{% endmacro %}
+{# D-172 timeline: line icon + neutral label per actor; green tick = done, amber dot = needs your answer #}
+{% set actor_paths = {
+  "you": '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.6 3.1-5.5 7-5.5s7 1.9 7 5.5"/>',
+  "subguard": '<path d="M12 3l7 2.8v5.7c0 4.5-3 7.6-7 8.9-4-1.3-7-4.4-7-8.9V5.8z"/>',
+  "paypal": '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10.5h18"/>',
+  "merchant": '<path d="M4 10v10h16V10"/><path d="M3 10l2-6h14l2 6"/><path d="M10 20v-5h4v5"/>'} %}
+{% macro tl_mark(e) %}{% if e.mark == "done" %}<svg class="ac-mark ac-done" viewBox="0 0 24 24" role="img" aria-label="Done" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>{% elif e.mark == "ask" %}<span class="ac-mark ac-ask" role="img" aria-label="Needs your answer"></span>{% endif %}{% endmacro %}
+{% macro tl_line(e) %}<span class="ac-actor" data-actor="{{ e.actor }}"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">{{ actor_paths[e.actor] | safe }}</svg><span>{{ e.actor_label }}</span></span>
+<span class="ac-main"><span class="ac-text">{{ tl_mark(e) }}{{ e.text }}{% if e.answer %} <span class="ac-answer">· {{ e.answer }}</span>{% endif %}</span>{% if e.detail %}<span class="ac-detail">{{ e.detail }}</span>{% endif %}</span>{% endmacro %}
+{# D-169/D-170: each card is one story state in a dropdown: the row shows the headline; opening it shows the
+   sub-line, at most two buttons, the timeline. It opens by itself when Priya has something to do. #}
+{% macro story_button(c, b) %}{% set cls = "btn" if b.main else "btn btn-ghost" %}
+{%- if b.kind == "link" %}<a class="{{ cls }}" href="{{ b.href }}" target="_blank" rel="noopener" data-testid="{{ b.testid }}">{{ b.label }}</a>
+{%- elif b.kind == "email" %}<button type="button" class="{{ cls }}" data-email-open="{{ b.notice }}" data-testid="{{ b.testid }}">{{ b.label }}</button>
+{%- elif b.kind == "alert" %}<button type="button" class="{{ cls }}" data-alert="{{ b.alert }}" data-action="{{ b.action }}" data-testid="{{ b.testid }}">{{ b.label }}</button>
+{%- else %}<button type="button" class="{{ cls }}" data-sub-{{ b.action }}="{{ c.id }}" data-testid="{{ b.testid }}">{{ b.label }}</button>{% endif %}
+{%- endmacro %}
+{% macro story_timeline(tl) %}<div class="stl" data-testid="trial-timeline">
+  <span class="stl-line" style="left:{{ tl.line[0] }}%;right:{{ tl.line[1] }}%" aria-hidden="true"></span>
+  <span class="stl-today" style="left:{{ tl.today_pos }}%" data-testid="tl-today"><span class="stl-today-label">Today</span></span>
+  <ol class="stl-nodes" style="grid-template-columns:repeat({{ tl.nodes | length }}, minmax(0, 1fr))" aria-label="Timeline">
+    {% for n in tl.nodes %}<li class="stl-node is-{{ n.state }}{% if n.is_key %} is-key{% endif %}" data-testid="tl-{{ n.key }}">
+      <span class="stl-dot" aria-hidden="true">{{ n.mark }}</span>
+      <span class="stl-label">{{ n.label }}{% if n.note %} <span class="stl-note">{{ n.note }}</span>{% elif n.state == "done" %}<span class="sr-only"> (done)</span>{% endif %}</span>
+      {% if n.date %}<time class="stl-date">{{ n.date }}</time>{% endif %}
+    </li>{% endfor %}
+  </ol>
+</div>{% endmacro %}
+{% macro sub_card(c) %}{% set st = c.story %}
+<article class="card sub-card state-{{ st.state }}" style="--tile:{{ st.tile }}" data-testid="sub-card" data-sub="{{ c.id }}" data-state="{{ st.state }}" aria-labelledby="sub-{{ c.id }}">
+<details class="sub-fold" data-sub-details="{{ c.id }}" data-testid="sub-toggle"{% if st.open %} open{% endif %}>
+  <summary class="sub-head" data-testid="sub-row">
+    <span class="sub-tile" style="background:{{ st.tile }}" aria-hidden="true">{{ st.initials }}</span>
+    <span class="sub-id">
+      <span class="sub-name-row"><strong class="sub-name" id="sub-{{ c.id }}">{{ c.merchant }}</strong>
+        <span class="sub-plan">{{ c.plan }}{% if c.trial_dots %} · free trial{% endif %}</span></span>
+      <strong class="story-head" id="head-{{ c.id }}" data-testid="sub-headline">{% if st.head_key %}<span class="key-num" data-countup data-testid="card-never-charged">{{ st.head_key }}</span>{% endif %}{{ st.head }}</strong>
+      {% if st.plan %}<span class="my-plan" data-testid="my-plan"><svg class="plan-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 2.8v5.7c0 4.5-3 7.6-7 8.9-4-1.3-7-4.4-7-8.9V5.8z"/></svg>
+        <span>{% if st.plan.pending %}<strong>My plan:</strong> {% endif %}<span data-testid="my-plan-text">{{ st.plan.text }}</span>{% if st.plan.pending %} <a class="plan-change" href="#settings" data-go="settings" data-testid="change-plan">Change plan</a>{% endif %}</span></span>{% endif %}
+    </span>
+    {% if st.badge %}<span class="risk-badge risk-{{ st.badge.tone }}" data-testid="risk-score">{{ st.badge.text }}</span>{% endif %}
+    <svg class="sub-chev" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+    <span class="sr-only">PayPal status: <span data-testid="status-{{ c.merchant_id }}">{{ c.status }}</span>. Show details.</span>
+  </summary>
+  <div class="sub-body">
+  <div class="story"{% if st.state == "checkin" %} data-testid="user-reminder" role="region" aria-labelledby="head-{{ c.id }}"{% elif st.state == "handoff" %} data-testid="action-needed" data-poll-sub="{{ c.id }}" role="region" aria-labelledby="head-{{ c.id }}"{% endif %}>
+    {% if st.sub_parts %}<p class="story-sub" data-testid="sub-line">{% for t, txt in st.sub_parts %}<span data-testid="{{ t }}">{{ txt }}</span>{{ " " if not loop.last }}{% endfor %}</p>
+    {% elif st.state == "handoff" %}<p class="story-sub" data-testid="layer2-waiting"><span class="pulse-dot" aria-hidden="true"></span> {{ st.sub_line }}</p>
+    {% elif st.sub_line %}<p class="story-sub" data-testid="sub-line">{% if st.sub_key %}<strong class="key-num" data-countup data-testid="card-saved">{{ st.sub_key }}</strong>{% endif %}{{ st.sub_line }}</p>{% endif %}
+    {% if st.buttons %}<div class="story-actions">{% for b in st.buttons %}{{ story_button(c, b) }}{% endfor %}</div>{% endif %}
+  </div>
+  {{ story_timeline(st.timeline) }}
+  <footer class="story-foot">
+    <a href="/subscriptions/{{ c.id }}?user={{ uid }}" data-testid="view-review">See evidence</a>
+    {# U7: opening it reads the subscription live from PayPal (paypal-card.js, "lite"). #}
+    <details class="pp-foot" data-testid="paypal-verified" data-pp-sub="{{ c.id }}" data-pp-status="{{ c.status }}">
+      <summary>Verified with PayPal ✓ <code data-testid="paypal-sub-id">{{ c.paypal_id }}</code> · status read live</summary>
+      <div data-pp-body></div>
+    </details>
+  </footer>
+  </div>
+</details>
+</article>
+{% endmacro %}
+{% set drafts = notices | selectattr("status", "equalto", "draft") | list %}
+{% set L = subs_list %}
+{% macro coming_rows(rows, tid) %}<ol class="up-list">
+  {% for x in rows %}<li class="up-row{% if x.first_after_trial %} up-danger{% endif %}" data-testid="{{ tid }}">
+    <span class="up-who">{{ x.merchant }}{% if x.source == "sample" %} <span class="src-chip src-sample">Sample</span>{% endif %}</span>
+    <strong class="up-amt">{{ x.amount_text }}</strong>
+    <span class="up-date">{{ x.date_text }}{% if x.first_after_trial %} · first charge{% endif %}</span></li>
+  {% else %}<li class="muted">No charges coming up.</li>{% endfor %}
+</ol>{% endmacro %}
+{% macro nav_count(id, n) %}<span class="nav-count" id="live-count-{{ id }}" data-live>{{ n }}</span>{% endmacro %}
+<div class="dash" data-testid="user-dashboard">
+<header class="dash-head" data-testid="dash-head">
+  <h1 class="home-title">Hi <span class="hi-name" data-testid="hi-name">{{ u.name if u else "there" }}</span>, here’s your dashboard</h1>
+  <p class="dash-tagline">No surprise charges. That’s the plan</p>
+</header>
+{# D-174: a left sidebar (desktop); on phones a bottom bar with Overview, Subscriptions, Activity, Analytics, and
+   Emails / Settings under the avatar menu. The URL hash names the section (#subscriptions/trial). #}
+<nav class="sidebar" id="sidebar" aria-label="Sections" data-testid="side-nav">
+  <button type="button" class="side-toggle" id="side-toggle" data-testid="side-toggle" aria-controls="sidebar" aria-expanded="true">
+    {{ icon('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 10l-2 2 2 2"/>') }}<span class="nav-label">Collapse sidebar</span></button>
+  <ul class="side-list">
+    <li><a href="#overview" data-nav="overview" data-tip="Overview" data-testid="nav-overview" aria-current="true">
+      {{ icon('<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>') }}<span class="nav-label">Overview</span></a></li>
+    <li><a href="#subscriptions" data-nav="subscriptions" data-tip="Subscriptions" data-testid="nav-subscriptions">
+      {{ icon('<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/>') }}<span class="nav-label">Subscriptions</span>{{ nav_count("all", L.total) }}</a>
+      <ul class="side-sub" aria-label="Subscriptions by status">
+        {% for g, label in [("in_use", "In use"), ("trial", "Trials"), ("cancelled", "Cancelled")] %}
+        <li><a href="#subscriptions/{{ g }}" data-nav="subscriptions" data-filter="{{ g }}" data-testid="nav-subs-{{ g }}"><span>{{ label }}</span>{{ nav_count(g, L.counts[g]) }}</a></li>{% endfor %}
+      </ul></li>
+    <li><a href="#activity" data-nav="activity" data-tip="Activity" data-testid="nav-activity">
+      {{ icon('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>') }}<span class="nav-label">Activity</span>
+      <span class="nav-badge" id="live-badge-activity" data-live {% if not asks %}hidden{% endif %}>{{ asks }}<span class="sr-only"> waiting for your answer</span></span></a></li>
+    <li class="side-desk"><a href="#emails" data-nav="emails" data-tip="Emails" data-testid="nav-emails">
+      {{ icon('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>') }}<span class="nav-label">Emails</span>
+      <span class="nav-badge nav-badge-hot" id="live-badge-emails" data-live {% if not drafts %}hidden{% endif %}>{{ drafts | length }}<span class="sr-only"> to review</span></span></a></li>
+    <li><a href="#analytics" data-nav="analytics" data-tip="Analytics" data-testid="nav-analytics">
+      {{ icon('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>') }}<span class="nav-label">Analytics</span></a></li>
+  </ul>
+  <section class="side-coming side-desk" id="live-coming" data-live aria-labelledby="up-h" data-testid="side-coming-up">
+    <h2 id="up-h" class="ov-h">Coming up</h2>
+    {{ coming_rows(coming_up, "side-coming-up-row") }}
+  </section>
+  <ul class="side-list side-bottom side-desk">
+    <li><a href="#settings" data-nav="settings" data-tip="Settings" data-testid="nav-settings">
+      {{ icon('<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>') }}<span class="nav-label">Settings</span></a></li>
+    <li class="side-me" data-testid="side-user" data-tip="{{ (u.full_name or u.name) if u else 'You' }}"><span class="avatar avatar-sm" aria-hidden="true">{{ (u.name if u else "?")[:1] | upper }}</span>
+      <span class="nav-label side-me-text"><span>{{ (u.full_name or u.name) if u else "You" }}</span>
+        {% if last_signed_in %}<span class="muted small side-last" data-testid="side-last-signin">Last signed in {{ last_signed_in }}</span>{% endif %}</span></li>
+  </ul>
+</nav>
+
+<div class="dash-main">
+
+<div class="panel" id="panel-overview" data-panel="overview" data-testid="panel-overview">
+<div class="ov-grid">
+<section class="ov-attention" aria-labelledby="att-h">
+  <h2 id="att-h" class="ov-h">Needs your attention</h2>
+  <div class="subs" id="live-subs" data-live data-testid="attention">
+  {% if not attention %}
+  <section class="card empty-card all-clear" data-testid="user-empty">
+    <p class="all-clear-h">All clear <span aria-hidden="true">✓</span></p>
+    <p>Nothing needs you right now. When you start a free trial, SubGuard checks it before you pay.</p>
+    <a class="btn btn-ghost" href="/shop?user={{ uid }}" target="_blank" rel="noopener" data-testid="empty-open-shop">Open the demo shop ↗</a>
+  </section>
+  {% else %}
+  {% if all_clear %}<p class="all-clear-line" data-testid="all-clear">All clear <span aria-hidden="true">✓</span> Nothing needs you right now.</p>{% endif %}
+  {% for c in attention %}{{ sub_card(c) }}{% endfor %}
+  {% endif %}
+  </div>
+</section>
+
+<section class="card ov-card ov-coming" id="live-coming-m" data-live aria-labelledby="up-m-h" data-testid="coming-up">
+  <h2 id="up-m-h" class="ov-h">Coming up</h2>
+  {{ coming_rows(coming_up, "coming-up-row") }}
+</section>
+<div class="ov-pair">
+  <section class="card ov-card ov-saved" id="live-saved" data-live aria-labelledby="saved-h" data-testid="saved-so-far">
+    <h2 id="saved-h" class="ov-h">Saved so far</h2>
+    <p class="saved-total"><span data-countup data-testid="saved-total">{{ saved.total }}</span></p>
+    <p class="muted small">{{ saved.live }} in this demo{% if saved.has_sample %} · {{ saved.sample }} from sample history{% endif %}</p>
+  </section>
+  <section class="card ov-card did-card" id="live-did" data-live aria-labelledby="did-h">
+    <h2 id="did-h" class="ov-h">Recent activity</h2>
+    {# D-172: the 3 latest Activity entries, same data, same words #}
+    <ol class="did did-short" data-testid="audit-summary">
+      {% for when, e in recent %}<li class="did-row" data-testid="audit-summary-row" data-kind="{{ e.kind }}"><span class="did-when">{{ when }}</span>
+        <span class="did-text">{{ tl_mark(e) }}{{ e.text }}{% if e.answer %} <span class="ac-answer">· {{ e.answer }}</span>{% endif %}</span></li>
+      {% else %}<li class="muted">Nothing yet.</li>{% endfor %}
+    </ol>
+    <a class="link-btn" href="#activity" data-testid="audit-full-toggle">See all</a>
+  </section>
+</div>
+</div>
+</div>
+
+<div class="panel" id="panel-subscriptions" data-panel="subscriptions" data-testid="panel-subscriptions" hidden>
+<section aria-labelledby="sl-h">
+  <div class="sl-head"><h2 id="sl-h" class="ov-h">Subscriptions</h2>
+    <button type="button" class="btn btn-ghost btn-sm" data-soon data-testid="subs-add" aria-describedby="subs-add-hint">+ Add a subscription</button></div>
+  <p class="muted small sl-add-hint" id="subs-add-hint" data-testid="subs-add-hint">SubGuard adds subscriptions you start with PayPal</p>
+  <div class="sl-filters" role="group" aria-label="Filter" data-testid="subs-filters">
+    {% for g, label in [("all", "All"), ("in_use", "In use"), ("trial", "Trials"), ("cancelled", "Cancelled")] %}
+    <button type="button" class="chip-btn" data-filter="{{ g }}" data-testid="filter-{{ g }}" aria-pressed="{{ 'true' if g == 'all' else 'false' }}">{{ label }}</button>{% endfor %}
+  </div>
+  <ul class="slist" id="live-subs-list" data-live data-testid="subs-list">
+  {% for r in L.rows %}
+    <li class="sl-row" style="--tile:{{ r.tile }}" data-group="{{ r.group }}" data-source="{{ r.source }}" data-testid="subs-row" data-merchant="{{ r.merchant }}">
+      <span class="sub-tile" style="background:{{ r.tile }}" aria-hidden="true">{{ r.initials }}</span>
+      <span class="sl-id"><strong>{{ r.merchant }}</strong><span class="sl-plan">{{ r.plan }}</span>
+        <span class="src-chip src-{{ r.source }}" data-testid="subs-source">{{ r.source_label }}</span></span>
+      <span class="sl-status st-{{ r.group }}" data-testid="subs-status">{{ r.status_text }}</span>
+      <span class="sl-when"><span class="sl-k">{{ r.when_label }}</span>{{ r.when_text }}</span>
+      <span class="sl-used"><span class="sl-k">Last used</span>{{ r.last_used }}</span>
+      <span class="sl-risk">{% if r.risk is not none %}<span class="risk-badge risk-{{ r.risk_tone }}" data-testid="subs-risk">Risk {{ r.risk }}</span>{% endif %}</span>
+      <span class="sl-act">{% if r.action.href %}<a class="btn btn-ghost btn-sm" href="{{ r.action.href }}" data-testid="subs-action">{{ r.action.label }}</a>
+        {% else %}<details class="sl-more" data-sl-more="{{ r.id }}"><summary class="btn btn-ghost btn-sm" data-testid="subs-action">{{ r.action.label }}</summary>
+          <p class="sl-note">{{ r.terms_note }} <span class="muted">Sample history: not in PayPal.</span></p></details>{% endif %}</span>
+      {% if r.group == "cancelled" %}<p class="sl-ended" data-testid="subs-ended">{{ r.ended_how }}{% if r.saved_text %} · <strong class="ok">Saved {{ r.saved_text }}</strong>{% endif %}</p>{% endif %}
+    </li>
+  {% endfor %}
+  </ul>
+  <p class="muted small sl-empty" hidden data-testid="subs-empty">Nothing here.</p>
+</section>
+</div>
+
+<div class="panel" id="panel-activity" data-panel="activity" data-testid="panel-activity" hidden>
+{# D-172: ONE chronological timeline. Day headings newest first; in a day, newest first. Each entry: who, one line,
+   an optional grey detail, one action (View email / Proof ▸). Ids, statuses and rules live in Proof and the raw log. #}
+<section class="ac-wrap" aria-labelledby="act-h">
+  <h2 id="act-h" class="ac-title">Activity</h2>
+  <div id="live-timeline" data-live data-testid="activity-list">
+  {% for g in days %}
+  <section class="ac-day" data-testid="tl-day" data-day="{{ g.day }}" aria-label="{{ g.label }}">
+    <h3 class="ac-day-h"><time datetime="{{ g.iso }}">{{ g.label }}</time></h3>
+    <ol class="ac">
+    {% for e in g.entries %}
+      <li class="ac-entry" data-testid="tl-entry" data-kind="{{ e.kind }}" data-key="{{ e.key }}" data-day="{{ e.day }}">
+      {% if e.proof %}<details class="ac-proof" data-proof="{{ e.key }}"><summary class="ac-row">{{ tl_line(e) }}<span class="ac-act ac-proof-toggle" data-testid="tl-proof">Proof <span class="ac-caret" aria-hidden="true">▸</span></span></summary>
+        <dl class="ac-proof-body" data-testid="tl-proof-body">{% for r in e.proof %}<div><dt>{{ r.label }}</dt><dd>{% if r.quote %}<q>{{ r.value }}</q>{% else %}{{ r.value }}{% endif %}</dd></div>{% endfor %}</dl>
+      </details>
+      {% else %}<div class="ac-row">{{ tl_line(e) }}<span class="ac-act">{% if e.email_id %}<button type="button" class="link-btn" data-email-open="{{ e.email_id }}" data-testid="tl-email">{{ e.email_label }}</button>{% endif %}</span></div>{% endif %}
+      </li>
+    {% endfor %}
+    </ol>
+  </section>
+  {% else %}<p class="muted">Nothing yet. When you start a free trial, everything SubGuard does shows up here.</p>{% endfor %}
+  </div>
+  <p class="ac-foot"><button type="button" class="link-btn" data-open-audit data-testid="activity-raw-log">Show raw log</button></p>
+</section>
+</div>
+
+<div class="panel" id="panel-emails" data-panel="emails" data-testid="panel-emails" hidden>
+<section class="card" aria-labelledby="mail-h">
+  <h2 id="mail-h">Your cancellation emails</h2>
+  <div id="live-emails" data-live>
+  {% for n in notices %}
+  <div class="notice" data-testid="cancellation-notice">
+    <p><strong>{{ n.subject }}</strong> → {{ n.to }}<br>
+      <span class="small {{ 'ok' if n.status == 'sent' else 'muted' }}">{% if n.status == "sent" %}{{ {"gmail_compose_link": "Opened in webmail (demo)", "mailto": "Opened in your email app (demo)"}.get(n.sent_via, "Email sent (demo)") }} · edited: {{ "yes" if n.edited else "no" }}{% else %}Draft, not sent yet{% endif %} · drafted by {{ "AI" if n.draft_source == "llm" else "a standard template" }}</span></p>
+    <button class="btn btn-sm" data-email-open="{{ n.id }}">{{ "View" if n.status == "sent" else "Review & send" }}</button>
+  </div>
+  {% else %}<p class="muted">None yet. SubGuard drafts one for you after a cancel in PayPal.</p>{% endfor %}
+  </div>
+  <p class="muted tiny">Demo only. Production would send from your own email account with send-only permission.</p>
+</section>
+</div>
+
+<div class="panel" id="panel-analytics" data-panel="analytics" data-testid="panel-analytics" hidden>
+<h2 class="ov-h">Analytics</h2>
+<p class="muted small an-intro">Your live demo subscriptions plus your sample history. Amounts come from the plans, never from the AI.</p>
+<div class="an-grid">
+  <section class="card an-card" aria-labelledby="an1-h"><h3 id="an1-h">Upcoming charges, next 30 days</h3>
+    <p class="muted small" data-dchart-sub="upcoming"></p><div class="an-chart" data-dchart="upcoming" data-testid="chart-upcoming"></div></section>
+  <section class="card an-card" aria-labelledby="an2-h"><h3 id="an2-h">Monthly subscription spend, last 6 months</h3>
+    <p class="muted small" data-dchart-sub="monthly"></p><div class="an-chart" data-dchart="monthly" data-testid="chart-monthly"></div></section>
+  <section class="card an-card" aria-labelledby="an3-h"><h3 id="an3-h">Saved by SubGuard</h3>
+    <p class="muted small" data-dchart-sub="saved"></p><div class="an-chart" data-dchart="saved" data-testid="chart-saved"></div></section>
+</div>
+</div>
+
+{% include "_settings.html" %}
+</div>
+</div>
+
+{% include "_dialogs.html" %}
+{% endblock %}
+{% block scripts %}
+<script src="/static/home.js"></script>
+<script src="{{ ag_charts_url }}"></script>
+<script src="/static/dash-charts.js"></script>
+<script src="/static/presenter.js"></script>
+{% endblock %}

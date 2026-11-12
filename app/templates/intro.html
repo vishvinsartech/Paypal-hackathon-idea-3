@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}SubGuard: AI reads the fine print{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/demo.css"><link rel="stylesheet" href="/static/auth.css">{% endblock %}
+{% block content %}
+{% from "_hero.html" import hero %}{% from "_steps.html" import steps %}
+{# D-181: `/` when signed out. Short: what SubGuard is, how it works with PayPal, what the AI does, Sign in.
+   Every number comes from landing_view(settings) (D-015), never hardcoded. #}
+{% set L = landing %}
+<div class="intro-page" data-testid="intro">
+  <section class="intro-hero" aria-labelledby="hero-h">
+    {% call hero(sub=False) %}<a class="btn btn-start" href="/login" data-testid="intro-signin">Sign in</a>
+        <a class="btn btn-ghost" href="/shop" data-testid="intro-shops">Browse the demo shops</a>{% endcall %}
+  </section>
+
+  <section class="intro-sec" aria-labelledby="intro-how-h">
+    <h2 id="intro-how-h" class="intro-h">How it works with PayPal</h2>
+    {{ steps([
+      ("You subscribe with PayPal", "Start a free trial at the shop's PayPal checkout, as you normally would."),
+      ("SubGuard checks the terms", "It checks them against the real PayPal plan and tells you the real last day to cancel."),
+      ("It cancels through PayPal", "Before the deadline, and only with your OK or a safety timer you saw."),
+    ], label="How it works with PayPal") }}
+  </section>
+
+  <section class="intro-sec card intro-ai" aria-labelledby="intro-ai-h" data-testid="intro-ai">
+    <h2 id="intro-ai-h" class="intro-h">What the AI does</h2>
+    <ul class="intro-list">
+      <li><strong>Reads the fine print</strong>: the terms page and the checkout, not just the price tag.</li>
+      <li><strong>Finds the traps</strong>: short notice (cancel {{ L.notice_days }} days before the first charge, so on
+        a {{ L.trial_days }}-day trial the last day to cancel is Day {{ L.terms_last_day }}, not Day {{ L.trial_days }}) and step-up prices ({{ L.intro }} a
+        month, then {{ L.step_up }} from month {{ L.intro_months + 1 }}).</li>
+      <li><strong>Quotes them word for word</strong>, so you can check every finding against the page.</li>
+    </ul>
+    <p class="intro-rule" data-testid="intro-rule">Code, not the AI, makes every decision.</p>
+  </section>
+
+  <p class="intro-note muted small" role="note" data-testid="intro-fictional">Fictional merchant for the SubGuard demo.</p>
+</div>
+{% endblock %}

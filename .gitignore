@@ -218,3 +218,20 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- SubGuard (spec 5.2) ---
+.env*
+!.env.example
+.venv/
+.ruff_cache/
+.pytest_cache/
+node_modules/
+data/runtime/
+demo-video/out/
+demo-video/audio/*.mp3
+demo-video/audio/*.wav
+*.mp4
+*.webm
+.DS_Store
+demo-video/clips/*
+!demo-video/clips/.gitkeep

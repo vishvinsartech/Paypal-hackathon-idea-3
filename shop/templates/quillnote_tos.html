@@ -1,0 +1,22 @@
+{% extends "shop_base.html" %}
+{% block title %}Quillnote: membership terms{% endblock %}
+{% block body_class %}theme-quillnote{% endblock %}
+{% block brand %}Quillnote{% endblock %}
+{% block content %}
+<article class="tos" data-testid="shop-tos">
+  <h1>Membership terms</h1>
+  <p class="muted">Quillnote (fictional). Written for the SubGuard demo.</p>
+
+  <h2>1. Your membership</h2>
+  <p data-testid="tos-membership">When your trial wraps up, your Quillnote Plus membership simply carries on at {{ p.money(p.quillnote_intro_price) }} a month until you tell us otherwise.</p>
+
+  <h2>2. Leaving Quillnote</h2>
+  <p data-testid="tos-notice">If you decide Quillnote isn't for you, we'll need to hear from you in writing no later than {{ number_words(p.quillnote_notice_hours) }} hours before your renewal.</p>
+  <p data-testid="tos-leave">Memberships are closed by our account team, so please contact our account team at accounts@quillnote.example and they will take care of it for you.</p>
+
+  <h2>3. Your notes</h2>
+  <p>Your notebooks stay yours. You can download them at any time while your membership is open.</p>
+
+  <p><a href="/shop/quillnote">Back to Quillnote</a></p>
+</article>
+{% endblock %}

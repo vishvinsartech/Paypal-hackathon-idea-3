@@ -1,0 +1,2 @@
+# Only for making the demo video (not needed to run SubGuard). Also needs ffmpeg + ffprobe on PATH.
+edge-tts>=6.1

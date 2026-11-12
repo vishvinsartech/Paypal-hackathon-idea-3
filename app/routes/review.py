@@ -1,0 +1,133 @@
+"""Fine-print review API. The companion calls /api/review/preflight before the PayPal approval (spec 5.5)."""
+
+from __future__ import annotations
+
+import asyncio
+from typing import Any
+from urllib.parse import urlparse
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+
+from app.core.auditor import Auditor, save_review
+from app.core.sub_dates import companion_display
+from app.core.verdict import verdict
+from app.integrations.capture import CaptureError
+from app.integrations.paypal_gateway import Ctx, PayPalGateway
+from app.integrations.paypal_types import PayPalError
+from app.models import Merchant, Review
+from app.routes.deps import get_store
+from app.routes.subscriptions import get_gateway
+from app.store import JsonStore, utcnow
+
+router = APIRouter(prefix="/api")
+
+
+class PreflightIn(BaseModel):
+    merchant_url: str
+    plan_id: str | None = None
+    plan_key: str | None = None
+    user_id: str = "priya"
+
+
+def _resolve_plan(merchant: Merchant, gw: PayPalGateway, plan_key: str | None, plan_id: str | None) -> str:
+    keys = [p.key for p in merchant.plans]
+    if plan_key:
+        if plan_key not in keys:
+            raise HTTPException(404, "Unknown plan for this merchant")
+        return plan_key
+    if plan_id:
+        for key in keys:
+            try:
+                if gw.plan_id(key) == plan_id:
+                    return key
+            except PayPalError:
+                continue
+        raise HTTPException(404, "Unknown plan id for this merchant")
+    if not keys:
+        raise HTTPException(404, "This merchant has no plans")
+    return keys[0]
+
+
+@router.post("/review/preflight", response_model=None)
+async def preflight(body: PreflightIn, request: Request, store: JsonStore = Depends(get_store),
+                    gw: PayPalGateway = Depends(get_gateway)) -> dict[str, Any] | JSONResponse:
+    path = urlparse(body.merchant_url).path.rstrip("/")
+    parts = path.split("/")
+    if len(parts) < 3 or parts[1] != "shop":
+        raise HTTPException(400, "SubGuard can only review the demo shop's merchant pages")
+    merchant = next((mc for mc in store.load("merchants").items if mc.id == parts[2]), None)
+    if merchant is None:
+        raise HTTPException(404, "Unknown merchant")
+    plan_key = _resolve_plan(merchant, gw, body.plan_key, body.plan_id)
+    ctx = Ctx(actor="system", user_id=body.user_id, merchant=merchant)
+    day = store.load("state").sim_day
+    try:  # page capture (headless browser) and the PayPal plan fetch run side by side (D-119)
+        capture, plan = await asyncio.gather(request.app.state.capture.capture(path, str(request.base_url)),
+                                             gw.get_plan(gw.plan_id(plan_key), ctx))
+    except CaptureError as exc:
+        return JSONResponse({"error": "SubGuard couldn't read this page.", "detail": str(exc)}, status_code=502)
+    auditor: Auditor = request.app.state.auditor
+    data = await auditor.review(capture, plan, merchant=merchant, plan_key=plan_key, signup_day=day,
+                                user_id=body.user_id)
+    async with store.alocked():
+        review = save_review(store, data, day)
+    store.audit.append(
+        actor="system", event="review_run", user_id=body.user_id, result=data.mode,
+        reason=f"{merchant.name}: risk {data.risk_score}/100 ({data.mode_label})",
+        details={"review_id": review.id, "merchant": merchant.id, "plan_id": plan.id, "risk": data.risk_score,
+                 "types": data.types(), "capture": capture.method, "dropped_quotes": len(data.dropped_quotes),
+                 "provider": data.provider, "model": data.model,
+                 "deadline_day": data.deadlines.real_cancel_deadline_day})
+    if data.injection_flagged:
+        store.audit.append(actor="system", event="prompt_injection_flagged", user_id=body.user_id,
+                           reason="Instructions aimed at AI found in merchant page; ignored, score unchanged",
+                           details={"review_id": review.id, "merchant": merchant.id})
+    # B2: the companion shows dates relative to sign-up (now), never the internal sim days
+    display = companion_display(data.deadlines, utcnow())
+    display["verdict"] = verdict(plan.billing_cycles, request.app.state.services.money,  # U14, from the PayPal plan
+                                 display["points"]["first_charge"]["date"], data.clauses, data.paypal_check)
+    owner = next((u for u in store.load("users").items if u.id == body.user_id), None)
+    auto_send_default = bool(owner and owner.settings.auto_send_notice)  # D-174: Settings pre-ticks the D7 box
+    return {"review_id": review.id, **data.model_dump(mode="json"), "display": display,
+            "auto_send_default": auto_send_default}
+
+
+class ConsentIn(BaseModel):
+    user_id: str = "priya"
+    auto_send_notice: bool = False
+
+
+@router.post("/reviews/{review_id}/consent")
+async def review_consent(review_id: str, body: ConsentIn, store: JsonStore = Depends(get_store)) -> dict[str, Any]:
+    """D7: the companion's "send the cancellation email for me" box, saved on the review before sign-up.
+    Only for a review not yet linked to a subscription; register copies it into the consent snapshot."""
+    async with store.aedit("reviews") as reviews:
+        rev = next((r for r in reviews.items if r.id == review_id), None)
+        if rev is None:
+            raise HTTPException(404, "Unknown review")
+        if rev.subscription_id is not None:
+            raise HTTPException(409, "This review is already linked to a subscription")
+        rev.auto_send_notice = body.auto_send_notice
+    store.audit.append(actor="user", event="notice_consent", user_id=body.user_id,
+                       reason="Send the cancellation email if I don't answer: "
+                              + ("yes" if body.auto_send_notice else "no"),
+                       details={"review_id": review_id, "auto_send_notice": body.auto_send_notice})
+    return {"review_id": review_id, "auto_send_notice": body.auto_send_notice}
+
+
+@router.get("/reviews")
+def list_reviews(merchant: str | None = None, subscription_id: str | None = None,
+                 store: JsonStore = Depends(get_store)) -> list[Review]:
+    return [r for r in store.load("reviews").items
+            if (merchant is None or r.merchant_id == merchant)
+            and (subscription_id is None or r.subscription_id == subscription_id)]
+
+
+@router.get("/reviews/{review_id}")
+def get_review(review_id: str, store: JsonStore = Depends(get_store)) -> Review:
+    review = next((r for r in store.load("reviews").items if r.id == review_id), None)
+    if review is None:
+        raise HTTPException(404, "Unknown review")
+    return review

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Sign in · SubGuard{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/auth.css">{% endblock %}
+{% block content %}
+{# Phase 7: the sign-in page (D-178..D-181). One demo account, no sign-up; the password is never shown. #}
+<div class="auth-page" data-testid="login-page">
+  <section class="card auth-card" aria-labelledby="login-h">
+    <h1 id="login-h" class="auth-h">Sign in to SubGuard</h1>
+    <p class="auth-hint muted" data-testid="login-hint">Demo account: Priya</p>
+    {% if error %}<p class="auth-error" role="alert" data-testid="login-error">{{ error }}</p>{% endif %}
+    <form method="post" action="/login" class="auth-form" data-testid="login-form">
+      <input type="hidden" name="next" value="{{ next }}">
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" autocomplete="username" required value="{{ email }}"
+             data-testid="login-email" {% if sign_in_off %}disabled{% endif %}>
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required
+             data-testid="login-password" {% if sign_in_off %}disabled{% endif %}>
+      <button type="submit" class="btn auth-submit" data-testid="login-submit" {% if sign_in_off %}disabled{% endif %}>Sign in</button>
+    </form>
+    <p class="auth-back"><a href="/" data-testid="login-back">← Back</a></p>
+  </section>
+</div>
+{% endblock %}

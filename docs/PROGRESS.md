@@ -169,3 +169,7 @@ FIX_PLAN Coverage checklist): V video tooling v2, 1 auth core, 2 intro + login p
   links and focus in ink; main / secondary / danger buttons; borderless cards and pills; no all-caps; generic entrance
   and hover motion removed; dark surface raised one step. Shots: `docs/img/v5/2-type-buttons-pills/`.
   `test`: **418 passed**, 2 deselected. `lint`: clean. `ui-check`: passed.
+- [x] **Step 3. Intro** (2026-11-12). Deadline ruler under the hero headline (numbers from `landing_view`), small brand
+  lockup, plain top-bar Sign in, open how-it-works steps, borderless AI card, footer without middle dots. Shots:
+  `docs/img/v5/3-intro/`. `test`: **418 passed**, 2 deselected. `lint`: clean. `ui-check`: passed.
+  Stopped here for review (steps 4-6 not started).

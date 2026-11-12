@@ -83,7 +83,9 @@ body, .card, .topbar, .tab, .btn { transition: background-color .25s, color .25s
 .chip-advice { border-color: var(--amber); color: var(--amber); }
 .proof-banner { border-color: var(--teal); background: var(--tint); font-size: var(--t-lg); }
 .proof-banner strong { color: var(--teal); }
-.site-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; max-width: 1240px; margin: 8px auto 0; padding: 16px 20px 72px; color: var(--muted); font-size: var(--t-sm); border-top: 1px solid var(--navy-700); }
+/* the footer's middle dots are hidden: a gap separates the items (D-191) */
+.site-footer > span[aria-hidden="true"] { display: none; }
+.site-footer { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-5); max-width: 1240px; margin: 8px auto 0; padding: 16px 20px 72px; color: var(--muted); font-size: var(--t-sm); border-top: 1px solid var(--navy-700); }
 .site-footer a { color: var(--muted); }
 .site-footer a:hover { color: var(--teal); }
 .dev-menu { margin-left: auto; }

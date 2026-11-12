@@ -59,6 +59,14 @@ classes. The evidence page uses `app.css`, so it gets the new tokens for free an
   uppercase` anywhere; the entrance stagger and card hover-lift are gone. Dark `--surface` raised #1D2D30 -> #203236
   (review item 7: cards separate from the paper without borders); every pair still >= 4.5:1.
   Noticed: the font's zero is slashed (0 vs O), visible in dates and money; there is no alternate zero glyph.
+- **Step 3 intro** (2026-11-12): the deadline ruler (`_ruler.html`, `deadline_ruler(L)`; `_hero.html` takes
+  `ruler=` and only `intro.html` passes it, so the Live demo landing's markup is unchanged). One tick per day to the
+  first charge; Act by = the one teal notch (slides in from Trial ends once, 0.6 s, off with reduced motion); the
+  too-late days are a faint red band; at 390 px only Signed up / Act by / First charge are labelled (the others stay
+  for screen readers). `hero-brand` is a 28 px shield + name at `--t-lg` in ink (shared with the Live demo landing);
+  tagline `--t-lg` ink-2; headline 36-48 px at 750, 24ch. Top-bar Sign in is a plain link like Demo shops. On the
+  intro the 3 steps are open text (no cards); "What the AI does" is one borderless card, 760 px. Footer middle dots
+  hidden, a gap instead. New copy (section 7): Signed up, Act by, Terms' last day, Trial ends, First charge, Day N.
 
 ## 1. The idea: the deadline ruler
 

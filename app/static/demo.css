@@ -6,13 +6,12 @@
 /* ---- landing (D-173): hero + Meet Priya, how it works, built with. Fits 1440x900 above the fold. ---- */
 .landing { margin: 0 0 28px; }
 .landing-top { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 28px; align-items: center; }
-.hero-brand { display: flex; align-items: center; gap: 14px; margin: 0 0 6px; }
-.hero-brand img { flex: none; filter: drop-shadow(0 6px 14px var(--tint)); }
-.hero-brand-name { font-size: clamp(2.6rem, 5vw, 3.8rem); font-weight: 800; line-height: 1; letter-spacing: -.035em;
-  background: linear-gradient(120deg, var(--teal) 10%, var(--paypal) 90%); -webkit-background-clip: text; background-clip: text;
-  color: transparent; }
-.hero-tag { margin: 0 0 14px; font-size: var(--t-sm); font-weight: 700; color: var(--muted); }
-.hero-h { margin: 0 0 12px; font-size: clamp(1.6rem, 2.6vw, 2.35rem); line-height: 1.18; letter-spacing: -.02em; text-wrap: balance; }
+.hero-brand { display: inline-flex; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-5); }
+.hero-brand img { flex: none; width: 28px; height: 28px; }
+.hero-brand-name { font-size: var(--t-lg); font-weight: 700; line-height: 1; color: var(--ink); }
+.hero-tag { margin: 0 0 var(--s-3); font-size: var(--t-lg); line-height: 1.4; color: var(--ink-2); }
+.hero-h { margin: 0 0 var(--s-4); max-width: 24ch; font-size: clamp(2.25rem, 1.6rem + 2.6vw, 3rem); font-weight: 750;
+  line-height: 1.1; letter-spacing: -.015em; text-wrap: balance; }
 .hero-sub { margin: 0 0 18px; font-size: var(--t-md); line-height: 1.55; color: var(--muted); max-width: 60ch; }
 .hero-cta { display: flex; flex-wrap: wrap; gap: 10px; }
 .demo-page .hero-cta .btn { border-radius: var(--r-pill); padding: 11px 24px; font-size: var(--t-md); }
@@ -32,10 +31,10 @@
 .priya-money .with strong { color: var(--teal); }
 
 .how { list-style: none; margin: 24px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-.how li { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: var(--r-card);
-  border: 1px solid var(--navy-700); background: var(--navy-800); }
+.how li { display: flex; gap: var(--s-3); align-items: flex-start; padding: var(--s-4) var(--s-5) var(--s-5); border-radius: var(--r-card);
+  background: var(--surface); }
 .how-n { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 700;
-  font-size: var(--t-sm); color: var(--teal); border: 2px solid var(--teal); }
+  font-size: var(--t-sm); color: var(--ink); background: var(--surface-2); font-variant-numeric: tabular-nums; }
 .how h3 { margin: 2px 0 4px; font-size: var(--t-md); }
 .how p { margin: 0; font-size: var(--t-sm); line-height: 1.45; color: var(--muted); }
 

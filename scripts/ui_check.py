@@ -440,6 +440,15 @@ def mobile(base: str, headed: bool) -> None:
         if cards.count():
             box = cards.first.bounding_box()
             assert box and box["x"] >= 0 and box["x"] + box["width"] <= 390, box
+        page.get_by_test_id("user-avatar").click()  # Phase 7 Step 3: Sign out lives in the avatar menu on phones
+        out = page.get_by_test_id("avatar-signout")
+        expect(out).to_be_visible()
+        box = out.bounding_box()
+        assert box and box["height"] >= 44 and box["x"] >= 0 and box["x"] + box["width"] <= 390, f"Sign out: {box}"
+        page.get_by_test_id("avatar-settings").click()
+        expect(page.get_by_test_id("connected-accounts")).to_be_visible()
+        page.get_by_test_id("sec-password").click()  # D-182: data-soon -> one toast, nothing else
+        expect(page.get_by_test_id("toast-soon").last).to_contain_text("Not part of this demo")
         page.goto(f"{base}/?demo=1")  # D-167: the Live demo page fits the phone too
         expect(page.get_by_test_id("demo-start")).to_be_visible()
         width = page.evaluate("document.documentElement.scrollWidth")
@@ -456,7 +465,8 @@ def mobile(base: str, headed: bool) -> None:
         assert box and abs(box["y"] + box["height"] - 844) <= 2 and box["width"] >= 388, f"not a bottom sheet: {box}"
         page.keyboard.press("Escape")
         browser.close()
-        step("390x844: top bar + nav row, bottom tab bar, no sideways scroll (dashboard and Live demo), bottom sheet")
+        step("390x844: top bar + nav row, bottom tab bar, avatar menu Sign out (44 px), data-soon toast, no sideways "
+             "scroll (dashboard and Live demo), bottom sheet")
 
 
 def signed_out(base: str, headed: bool, password: str) -> None:

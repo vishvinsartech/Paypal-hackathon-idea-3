@@ -20,6 +20,7 @@ from app.core.savings import charges_avoided, money_protected, year_one_cost
 from app.core.services import Services
 from app.core.sub_dates import day_text
 from app.core.timeline import by_day, date_label, timeline
+from app.routes.account_view import account_context
 from app.routes.actions import get_services
 from app.routes.dashboard_view import dashboard_context
 from app.routes.deps import get_settings, get_store
@@ -67,6 +68,8 @@ def home(
     merchants = store.load("merchants").items
     if not demo:  # D-174: the dashboard's sidebar sections
         ctx.update(dashboard_context(svc, user, subs, cards))
+        cu = ctx["current_user"]
+        ctx.update(account_context(settings, store, user, cu.email if cu else ""))
     if demo:  # D-173: the landing section above the controls, and the Quillnote "connected" toggle's state
         ctx.update(landing=landing_view(settings),
                    quillnote_connected=any(m.id == "quillnote" and m.fair_trial_member for m in merchants))

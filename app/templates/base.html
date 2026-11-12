@@ -62,10 +62,14 @@
                  title="{{ current_user.full_name if current_user and current_user.full_name else (current_user.name if current_user else 'You') }}"
                  aria-label="{{ current_user.name if current_user else 'You' }}'s menu">{{ (current_user.name if current_user else "?")[:1] | upper }}</summary>
         <div class="menu-body menu-right">
-          <p class="menu-name">{{ current_user.full_name or current_user.name if current_user else "You" }}</p>
+          <p class="menu-name" data-testid="avatar-signed-in">Signed in as {{ current_user.name if current_user else "you" }}{% if current_user and current_user.email %}<span class="menu-email"> · {{ current_user.email | short_email }}</span>{% endif %}</p>
           <a href="/?user={{ uid }}#overview" data-testid="avatar-dashboard">Dashboard</a>
-          <a href="/?user={{ uid }}#emails" data-testid="avatar-emails">Emails</a>
-          <a href="/?user={{ uid }}#settings" data-testid="avatar-settings">Settings</a>
+          <a href="/?user={{ uid }}#settings" data-go="settings" data-testid="avatar-profile">Profile</a>
+          <a href="/?user={{ uid }}#emails" data-go="emails" data-testid="avatar-emails">Emails</a>
+          <a href="/?user={{ uid }}#settings" data-go="settings" data-testid="avatar-settings">Settings</a>
+          <button type="button" class="menu-item" data-help data-testid="avatar-help">Help</button>
+          {# Phase 7 Step 3: Sign out is a POST (no GET logout); on phones this menu is where it lives #}
+          <form method="post" action="/logout" class="menu-form"><button type="submit" class="menu-item menu-signout" data-testid="avatar-signout">Sign out</button></form>
         </div>
       </details>
       {% endif %}
@@ -77,6 +81,8 @@
   <footer class="site-footer" data-testid="footer">
     <span>Fictional merchant</span><span aria-hidden="true">·</span>
     <span>PayPal Sandbox</span><span aria-hidden="true">·</span>
+    <a href="#help" data-soon data-testid="footer-help">Help center</a><span aria-hidden="true">·</span>
+    <a href="#privacy" data-soon data-testid="footer-privacy">Privacy</a><span aria-hidden="true">·</span>
     <a href="{{ settings.repo_url }}/blob/main/LICENSE" target="_blank" rel="noopener" data-testid="footer-license">MIT</a><span aria-hidden="true">·</span>
     <a href="{{ settings.repo_url }}" target="_blank" rel="noopener" data-testid="footer-github">GitHub</a><span aria-hidden="true">·</span>
     <details class="dev-menu" data-testid="dev-menu">
@@ -99,6 +105,7 @@
   <script src="/static/grids.js"></script>
   <script src="/static/chat.js"></script>
   {% endif %}
+  <script src="/static/user-nav.js"></script>{# the data-soon toast (D-182) on every page; the sections on the dashboard #}
   {% block scripts %}{% endblock %}
 </body>
 </html>

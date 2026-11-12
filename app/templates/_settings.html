@@ -1,0 +1,57 @@
+{# Priya's Settings section (home.html). Real: the alert preferences, Connected accounts (mode and Zapier state from
+   the same source as /healthz) and Download my activity (the audit CSV). Demo-only controls carry data-soon (D-182):
+   user-nav.js shows "Not part of this demo" and nothing else happens (R7). #}
+{% set P = prefs %}
+<div class="panel" id="panel-settings" data-panel="settings" data-testid="panel-settings" hidden>
+<section class="card set-card" id="profile" aria-labelledby="prof-h" data-testid="profile-card">
+  <h2 id="prof-h" class="ov-h">Profile</h2>
+  <div class="set-row"><span class="set-text"><strong>{{ (u.full_name or u.name) if u else "You" }}</strong>
+    <span class="muted small" data-testid="profile-email">{{ masked_email }}</span></span>
+    <button type="button" class="btn btn-ghost btn-sm" data-soon data-testid="profile-edit">Edit name or photo</button></div>
+</section>
+
+<section class="card set-card" aria-labelledby="set-h">
+  <h2 id="set-h" class="ov-h">Settings</h2>
+  <form class="settings" id="settings-form" data-testid="settings-form">
+    <label class="set-row"><span class="set-text"><strong>Cancel trials automatically if I don't answer</strong>
+      <span class="muted small">SubGuard asks you first. If you don't reply, it cancels the trial in PayPal before the first charge.</span></span>
+      <input type="checkbox" class="switch" name="auto_cancel_trials" data-testid="settings-auto-cancel" {% if not P or P.auto_cancel_trials %}checked{% endif %}></label>
+    <label class="set-row"><span class="set-text"><strong>Send the cancellation email for me</strong>
+      <span class="muted small">If you don't answer, SubGuard also sends the email the merchant's terms ask for. You can still change this at each checkout.</span></span>
+      <input type="checkbox" class="switch" name="auto_send_notice" data-testid="settings-auto-send" {% if P and P.auto_send_notice %}checked{% endif %}></label>
+    <fieldset class="set-row set-remind"><legend><strong>Remind me by</strong></legend>
+      <label><input type="checkbox" checked disabled> App <span class="muted small">(always)</span></label>
+      <label><input type="checkbox" name="remind_by_email" data-testid="settings-remind-email" {% if not P or "email" in P.channels %}checked{% endif %}> Email</label>
+    </fieldset>
+  </form>
+  <p class="muted small" id="settings-status" aria-live="polite" data-testid="settings-status"></p>
+</section>
+
+<section class="card set-card" aria-labelledby="conn-h" data-testid="connected-accounts">
+  <h2 id="conn-h" class="ov-h">Connected accounts</h2>
+  <div class="set-row"><span class="set-text"><strong>PayPal</strong>
+    <span class="muted small" data-testid="conn-paypal-mode">{{ connected.paypal_mode }}</span></span>
+    <span class="conn-state conn-ok" data-testid="conn-paypal">Connected</span></div>
+  <div class="set-row"><span class="set-text"><strong>Email and SMS alerts</strong>
+    <span class="muted small">{{ "Sent through Zapier" if connected.zapier else "Zapier is mocked: alerts go to the demo outbox" }}</span></span>
+    <span class="conn-state {{ 'conn-ok' if connected.zapier else 'conn-mock' }}" data-testid="conn-zapier">{{ "Connected" if connected.zapier else "Mocked" }}</span></div>
+</section>
+
+<section class="card set-card" aria-labelledby="sec-h" data-testid="security-card">
+  <h2 id="sec-h" class="ov-h">Security</h2>
+  <div class="set-row"><span class="set-text"><strong>Password</strong></span>
+    <button type="button" class="btn btn-ghost btn-sm" data-soon data-testid="sec-password">Change password</button></div>
+  <div class="set-row"><span class="set-text"><strong>Two-step sign-in</strong></span>
+    <button type="button" class="btn btn-ghost btn-sm" data-soon data-testid="sec-2fa">Turn on two-step sign-in</button></div>
+</section>
+
+<section class="card set-card" aria-labelledby="data-h" data-testid="data-card">
+  <h2 id="data-h" class="ov-h">Your data</h2>
+  <div class="set-row"><span class="set-text"><strong>Download my activity</strong>
+    <span class="muted small">Everything SubGuard did for you, from the audit log, as a CSV file.</span></span>
+    <a class="btn btn-ghost btn-sm" href="/api/audit-log.csv?user={{ uid }}" download data-testid="download-activity">Download</a></div>
+  <div class="set-row"><span class="set-text"><strong>Delete account</strong>
+    <span class="muted small">This is a shared demo account.</span></span>
+    <button type="button" class="btn btn-ghost btn-sm" data-soon disabled data-testid="delete-account">Demo account</button></div>
+</section>
+</div>

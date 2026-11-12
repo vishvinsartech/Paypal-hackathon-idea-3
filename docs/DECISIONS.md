@@ -979,6 +979,18 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   the theme toggle. No Presenter menu, avatar, chat or dashboard scripts (they call `/api/*`, which is 401 signed
   out), and no `data-user` on `<body>`. The sign-in page extends `base.html`: labelled fields (16 px, 44 px tall),
   the error line, "Demo account: Priya" (never the password, no sign-up link) and a Back link to `/`.
+- **D-182 Demo-only controls use `data-soon`.** The account controls a real product has but this demo does not
+  (+ Add a subscription, Profile's Edit name or photo, Settings → Security's Change password and Turn on two-step
+  sign-in, the footer's Help center and Privacy) are real `<button>`s or `<a>`s with one `data-soon` attribute. One
+  click handler in `user-nav.js` (loaded on every page by `base.html`) shows the toast "Not part of this demo" and
+  does nothing else: no request, no state change, no success wording (R7). "Delete account" is a disabled button
+  labelled "Demo account". The real ones: the avatar menu ("Signed in as Priya · priya@…", the local part only;
+  Profile and Settings open the Settings section, Help opens Ask SubGuard, Sign out is a POST form to `/logout`,
+  44 px rows, so it is reachable on phones where the avatar menu also holds Emails and Settings); Settings →
+  Connected accounts (PayPal Connected plus "Demo data" or "PayPal Sandbox", and the email and SMS alerts row
+  Connected or Mocked, both from `integration_states`, the source `/healthz` uses; no keys or URLs); Download my
+  activity (`/api/audit-log.csv?user=`); "Last signed in <date>, <time> UTC" in the sidebar chip from the latest
+  `signed_in` audit entry, hidden if there is none (`app/routes/account_view.py`).
 
 ## v3 Phase 7 Step V: video tooling v2 (2026-11-12, docs/PHASE7_PLAN.md)
 

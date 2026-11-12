@@ -16,6 +16,7 @@ from app.core.sub_dates import day_text, sub_act_by
 from app.core.verdict import verdict
 from app.models import Subscription
 from app.review_types import TYPE_LABELS, ReviewData
+from app.routes.account_view import short_email
 from app.routes.actions import get_services
 from app.routes.deps import get_settings, get_store
 from app.store import JsonStore
@@ -23,6 +24,7 @@ from app.store import JsonStore
 router = APIRouter()
 SOURCE_LABELS = {"llm": "AI", "paypal_check": "PayPal", "code": "Code check", "rules": "Code check"}  # U24
 templates = Jinja2Templates(directory=ROOT_DIR / "app" / "templates")
+templates.env.filters["short_email"] = short_email  # "priya@…" in the avatar menu
 AG_GRID_URL = "/static/vendor/ag-grid-community-36.2.0.min.js"  # U30: vendored, no CDN at runtime (D-108)
 AG_CHARTS_URL = "/static/vendor/ag-charts-community-14.2.0.min.js"
 

@@ -148,6 +148,22 @@
 .menu-body a:hover { background: var(--tint); color: var(--teal); }
 .menu-name { margin: 2px 12px 6px; font-weight: 700; font-size: .9rem; }
 .avatar-menu > summary.avatar { display: grid; }
+.menu-email { font-weight: 500; color: var(--muted); }
+.menu-form { margin: 0; border-top: 1px solid var(--line); padding-top: 4px; margin-top: 2px; }
+.menu-item { display: block; width: 100%; min-height: 44px; padding: 8px 12px; border: 0; border-radius: 8px; background: none;
+  color: var(--text); font: inherit; font-weight: 500; text-align: left; cursor: pointer; }
+.menu-item:hover { background: var(--tint); color: var(--teal); }
+.menu-body a { min-height: 44px; display: flex; align-items: center; box-sizing: border-box; }
+
+/* ---- Phase 7 Step 3: account bits (Settings cards, Add a subscription, Last signed in) ---- */
+.panel > .set-card + .set-card { margin-top: 16px; }
+.sl-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.sl-add-hint { margin: 2px 0 10px; }
+.conn-state { flex: none; padding: 3px 10px; border-radius: 999px; font-size: .82rem; font-weight: 600; }
+.conn-ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.conn-mock { color: var(--muted); background: var(--navy-700); }
+.side-me-text { display: grid; min-width: 0; }
+.side-last { font-weight: 400; font-size: .74rem; }
 
 @media (max-width: 1100px) {
   .sl-row { grid-template-columns: 40px minmax(0, 1fr) auto auto; }

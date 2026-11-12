@@ -4,6 +4,22 @@
 // Old hashes (#history, #messages) land on Activity.
 (function () {
   "use strict";
+  // ---- every page (D-182): demo-only controls carry data-soon. One toast, nothing else happens (R7). ----------
+  document.addEventListener("click", (ev) => {
+    const soon = ev.target.closest("[data-soon]");
+    if (soon) {
+      ev.preventDefault();
+      if (window.SG) window.SG.toast("Not part of this demo", {testid: "toast-soon"});
+      return;
+    }
+    const menu = ev.target.closest(".avatar-menu .menu-body a, .avatar-menu [data-help]");
+    if (menu) menu.closest("details").open = false;
+    if (ev.target.closest(".avatar-menu [data-help]")) {  // Help: Ask SubGuard answers questions about the demo
+      const chat = document.getElementById("chat-open");
+      if (chat) chat.click();
+    }
+  });
+
   const nav = document.querySelector("[data-testid=side-nav]");
   if (!nav) return;
   const links = Array.from(nav.querySelectorAll("[data-nav]"));

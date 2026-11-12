@@ -118,7 +118,8 @@
     <li><a href="#settings" data-nav="settings" data-tip="Settings" data-testid="nav-settings">
       {{ icon('<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>') }}<span class="nav-label">Settings</span></a></li>
     <li class="side-me" data-testid="side-user" data-tip="{{ (u.full_name or u.name) if u else 'You' }}"><span class="avatar avatar-sm" aria-hidden="true">{{ (u.name if u else "?")[:1] | upper }}</span>
-      <span class="nav-label">{{ (u.full_name or u.name) if u else "You" }}</span></li>
+      <span class="nav-label side-me-text"><span>{{ (u.full_name or u.name) if u else "You" }}</span>
+        {% if last_signed_in %}<span class="muted small side-last" data-testid="side-last-signin">Last signed in {{ last_signed_in }}</span>{% endif %}</span></li>
   </ul>
 </nav>
 
@@ -168,7 +169,9 @@
 
 <div class="panel" id="panel-subscriptions" data-panel="subscriptions" data-testid="panel-subscriptions" hidden>
 <section aria-labelledby="sl-h">
-  <h2 id="sl-h" class="ov-h">Subscriptions</h2>
+  <div class="sl-head"><h2 id="sl-h" class="ov-h">Subscriptions</h2>
+    <button type="button" class="btn btn-ghost btn-sm" data-soon data-testid="subs-add" aria-describedby="subs-add-hint">+ Add a subscription</button></div>
+  <p class="muted small sl-add-hint" id="subs-add-hint" data-testid="subs-add-hint">SubGuard adds subscriptions you start with PayPal</p>
   <div class="sl-filters" role="group" aria-label="Filter" data-testid="subs-filters">
     {% for g, label in [("all", "All"), ("in_use", "In use"), ("trial", "Trials"), ("cancelled", "Cancelled")] %}
     <button type="button" class="chip-btn" data-filter="{{ g }}" data-testid="filter-{{ g }}" aria-pressed="{{ 'true' if g == 'all' else 'false' }}">{{ label }}</button>{% endfor %}
@@ -249,25 +252,7 @@
 </div>
 </div>
 
-<div class="panel" id="panel-settings" data-panel="settings" data-testid="panel-settings" hidden>
-<section class="card set-card" aria-labelledby="set-h">
-  <h2 id="set-h" class="ov-h">Settings</h2>
-  {% set P = prefs %}
-  <form class="settings" id="settings-form" data-testid="settings-form">
-    <label class="set-row"><span class="set-text"><strong>Cancel trials automatically if I don't answer</strong>
-      <span class="muted small">SubGuard asks you first. If you don't reply, it cancels the trial in PayPal before the first charge.</span></span>
-      <input type="checkbox" class="switch" name="auto_cancel_trials" data-testid="settings-auto-cancel" {% if not P or P.auto_cancel_trials %}checked{% endif %}></label>
-    <label class="set-row"><span class="set-text"><strong>Send the cancellation email for me</strong>
-      <span class="muted small">If you don't answer, SubGuard also sends the email the merchant's terms ask for. You can still change this at each checkout.</span></span>
-      <input type="checkbox" class="switch" name="auto_send_notice" data-testid="settings-auto-send" {% if P and P.auto_send_notice %}checked{% endif %}></label>
-    <fieldset class="set-row set-remind"><legend><strong>Remind me by</strong></legend>
-      <label><input type="checkbox" checked disabled> App <span class="muted small">(always)</span></label>
-      <label><input type="checkbox" name="remind_by_email" data-testid="settings-remind-email" {% if not P or "email" in P.channels %}checked{% endif %}> Email</label>
-    </fieldset>
-  </form>
-  <p class="muted small" id="settings-status" aria-live="polite" data-testid="settings-status"></p>
-</section>
-</div>
+{% include "_settings.html" %}
 </div>
 </div>
 
@@ -275,7 +260,6 @@
 {% endblock %}
 {% block scripts %}
 <script src="/static/home.js"></script>
-<script src="/static/user-nav.js"></script>
 <script src="{{ ag_charts_url }}"></script>
 <script src="/static/dash-charts.js"></script>
 <script src="/static/presenter.js"></script>

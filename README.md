@@ -28,8 +28,8 @@ OpenAI, set in `.env`). AI proposes, code decides. Tagline: *AI reads the fine p
 
 | | |
 |---|---|
-| **Hosted demo** | _URL to be added after the Render deploy_ (`https://<service>.onrender.com/`); sign-in details are in the submission text |
-| **Video** | _YouTube link to be added_ |
+| **Hosted demo** | (`[https://<service>.onrender.com/](https://subguard-demo.onrender.com)`); sign-in details are in the submission text |
+| **Video** | [_YouTube link to be added_](https://youtu.be/-u4FxRx2Ddc?is=C3-kPcfUVKgmvUnD) |
 | **Repo** | https://github.com/vishvinsartech/Paypal-hackathon-idea-3 |
 
 ## Contents

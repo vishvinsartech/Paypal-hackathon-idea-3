@@ -322,7 +322,7 @@ merged into `main` and Render deploys `main`. Each step is detailed in `docs/PHA
 | V1–V3 video tooling | [x] | 83e3e19 | 10 beats, 170 s with clip (155 s without); recorder (mock + sandbox pre-approved subs), voice-over, ffprobe < 180 s; check passes, clip is a human task (D-160..D-164) |
 | P7-V video tooling v2 | [x] | 33ca54f | scenes.json v2 (13 scenes, 175 s), frame-stepped stage, word timings, overlay build, preview ~45 s; 05_signin pending until Step 6 (D-184..D-187) |
 | P7-1 auth core | [x] | dc17e9f | DEMO_PASSWORD / SESSION_SECRET / SESSION_HOURS, HMAC sg_session cookie, /login + /logout, 5 fails/min/IP, access middleware (303 / 401 / ?user= 403), audited; fixtures sign in, anon_client, smoke tests; ui-check + video tools sign in (D-178..D-180) |
-| P7-2 intro + login pages | [ ] | | |
+| P7-2 intro + login pages | [x] | e9087ae | signed-out `/` = intro (numbers from landing_view), shared _hero/_steps macros (Live demo markup unchanged), styled login (auth.css: 16 px fields, 44 px button), signed-out top bar; `/?demo=1` still needs sign-in (D-181) |
 | P7-3 dashboard additions | [ ] | | |
 | P7-4 shop + session | [ ] | | |
 | P7-5 mobile pass | [ ] | | |

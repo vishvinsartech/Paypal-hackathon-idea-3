@@ -95,3 +95,12 @@ FIX_PLAN Coverage checklist): V video tooling v2, 1 auth core, 2 intro + login p
   `record_demo.py` and `check_scenes.py` sign in via `scripts/signin.py` (DEMO_PASSWORD from .env, clear error if
   missing); `record_stage.py` needed no change (only `/healthz`). `test`: **374 passed** (was 356), 2 deselected.
   `lint`: clean. `ui-check`: passed. `demo-video-check`: passes (same two warnings).
+- [x] **Step 2. Intro + login pages** (2026-11-12, commit `e9087ae`, DECISIONS D-181). Signed out, `/` renders
+  `intro.html` (what SubGuard is + tagline, how it works with PayPal in 3 steps, what the AI does, Sign in and Browse
+  the demo shops, the fictional-merchant note; every number from `landing_view`). Signed in, `/` is still the
+  dashboard; `/?demo=1` still redirects to sign-in. Hero and steps are shared macros (`_hero.html`, `_steps.html`);
+  the Live demo's landing markup is unchanged (whitespace-normalised diff against the previous commit). `login.html`
+  extends `base.html`, styled by `auth.css`. Signed-out top bar: brand, mode badge, Demo shops, Sign in, theme
+  toggle. New `tests/test_intro.py`; `ui_check.py` walks intro -> Sign in -> dashboard at 1440 and 390 px. No
+  selector changes for signed-in pages, so `scenes.json` is unchanged. `test`: **391 passed** (was 374),
+  2 deselected. `lint`: clean. `ui-check`: passed.

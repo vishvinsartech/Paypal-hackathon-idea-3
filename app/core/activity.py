@@ -27,6 +27,7 @@ class Activity(BaseModel):
     text: str
     rule_id: str | None = None
     subscription_id: str | None = None
+    short: str = ""  # D-169: the few words "What SubGuard did" shows on the Overview
 
 
 def _d(e: AuditEntry, key: str, default: Any = "") -> Any:
@@ -97,11 +98,48 @@ EVENTS: dict[str, Describe] = {
 }
 
 
+def _short_cancel(e: AuditEntry) -> str:
+    if not (e.result or "").startswith("ok"):
+        return "Cancel failed in PayPal"
+    return "Cancelled in PayPal"
+
+
+# D-169: the Overview's "What SubGuard did" lines: a few words each, no ids, no "(demo outbox, edited: no)".
+SHORT: dict[str, Callable[[AuditEntry], str]] = {
+    "review_run": lambda e: "Read the fine print before PayPal",
+    "prompt_injection_flagged": lambda e: "Ignored hidden instructions on the page",
+    "subscription_registered": lambda e: "You started the trial in PayPal",
+    "consent_snapshot": lambda e: "Saved the price you agreed to",
+    "timer_created": lambda e: "Set a safety timer",
+    "timer_not_created": lambda e: "No safety timer for this one",
+    "timer_warned": lambda e: "Asked you: keep or cancel?",
+    "timer_warning_failed": lambda e: "Couldn't reach you, so no auto-cancel",
+    "alert_action": lambda e: {"keep": "You chose Keep", "cancel": "You chose Cancel",
+                               "review_email": "You opened your email", "open_autopay": "You opened PayPal"}
+    .get(_d(e, "action"), "You answered an alert"),
+    "timer_kept": lambda e: "You kept it",
+    "keep_subscription": lambda e: "You kept it",
+    "keep_too_late": lambda e: "Keep came after the cancel",
+    "timer_fired": lambda e: "No answer, so the safety timer acted (R2)",
+    "paypal_cancel": _short_cancel,
+    "cancellation_email_drafted": lambda e: "Drafted your cancellation email",
+    "cancellation_email_sent": lambda e: "Cancellation email sent",
+    "cancellation_email_app_opened": lambda e: "Email opened in your email app",
+    "cancellation_email_gmail_opened": lambda e: "Email opened in webmail",
+    "notice_auto_sent": lambda e: "Sent your cancellation email for you",
+    "charge_blocked": lambda e: "First charge blocked: nothing to charge",
+    "charge_due": lambda e: "First charge taken, as you agreed",
+    "essential_tag": lambda e: "You marked it essential" if _d(e, "essential") else "You unmarked essential",
+}
+
 def _timer_text(e: AuditEntry, sub: Subscription) -> str:
     """timer_created with calendar dates (B2): "check in on Nov 16, cancel on Nov 17 if you don't answer"."""
     def on(key: str) -> str:
         day = _d(e, key, None)
         return day_text(sub, int(day)) if isinstance(day, int) else "?"
+    if _d(e, "auto_cancel", True) is False:  # D-177: Settings had auto-cancel off
+        return (f"Set a check-in and told you about it: check in on {on('reminder_day')}; auto-cancel is off, so "
+                f"you decide (act by {on('deadline_day')}).")
     return (f"Set a safety timer and told you about it: check in on {on('reminder_day')}, cancel on {on('fire_day')} "
             f"if you don't answer (act by {on('deadline_day')}).")
 
@@ -122,6 +160,7 @@ def activity_for(svc: Services, user_id: str) -> list[Activity]:
         who, kind, text = res
         if e.event == "timer_created" and (sub := subs.get(e.subscription_id or "")) is not None:
             text = _timer_text(e, sub)
+        brief = SHORT.get(e.event)
         out.append(Activity(day=e.sim_day, seq=e.seq, who=who, kind=kind, text=text, rule_id=e.rule_id,
-                            subscription_id=e.subscription_id))
+                            subscription_id=e.subscription_id, short=brief(e) if brief else text))
     return out

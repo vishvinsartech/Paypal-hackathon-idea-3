@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from app.llm.base import ChatMessage, ChatTurn, LLMError, ToolCall
 from app.llm.tools_schema import ToolSpec
-from tests.story_helpers import ACT_BY, add_user, advance_to, alerts, audit, on, sub, subscribe
+from tests.story_helpers import ACT_BY, add_user, advance_to, alerts, allow_many, audit, on, sub, subscribe
 
 
 def chat(c: TestClient, message: str, user: str = "priya") -> list[dict[str, Any]]:
@@ -64,7 +64,7 @@ def test_cancel_by_chat_needs_confirm_then_cancels(demo_client: TestClient) -> N
 
 def test_ambiguous_cancel_asks_which_one(demo_client: TestClient) -> None:
     """Corner case 33: 'the writing one' matches two Penwright subscriptions -> ask, no card."""
-    subscribe(demo_client)
+    subscribe(allow_many(demo_client))
     subscribe(demo_client, review=False)
     events = chat(demo_client, "Cancel the writing one")
     assert "Which one do you mean?" in text(events) and cards(events) == []

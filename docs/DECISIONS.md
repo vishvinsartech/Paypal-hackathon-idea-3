@@ -498,6 +498,10 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   run), default/none took 8-10 s and ~1k output tokens, while "low" took 17-19 s and ~1.6k tokens. The LLM
   call's time is mostly writing the JSON answer, and OpenAI's speed varies, so a slow call can still pass 20 s;
   the browser limit (20 s) is shorter than the server's worst case (2 x LLM_TIMEOUT_SECONDS). Open item.
+  **Closed (2026-11-12):** a cold first check (Chromium launch + first OpenAI connection) still hit 20 s. Now
+  `LLM_TIMEOUT_SECONDS` is the review's TOTAL LLM budget: the retry gets only what's left and is skipped under
+  5 s, then the basic check answers. The companion waits 50 s (> capture + 30 s budget), so a slow AI shows a
+  "basic check" result instead of "SubGuard couldn't check this page", which is kept for real failures.
 - **D-120 Manual shop visits log in as the sandbox buyer too.** In sandbox mode, when
   PAYPAL_SANDBOX_BUYER_EMAIL / _PASSWORD are set, the shop's "Continue to PayPal" shows the same "Subscribe with
   PayPal" button as the live demo (D-117): the server opens PayPal's approval page in its own window, already
@@ -777,6 +781,159 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   "Opened in webmail (demo)"). The `/api/notices/{id}/gmail` endpoint and its tests stay (API only, no UI) so old
   notices and the outbox format keep working. `ui-check` now drives Open in my email app and checks the mailto: link
   carries the edited text.
+- **D-166 Subscriptions as a list; header nav (overrides parts of U1, U7, U8 and U27).** Overview shows one
+  collapsed row per subscription (logo initial, name, plan, a one-phrase headline from code such as "Act by Nov 18",
+  status, risk, chevron); the details open in place (`<details data-sub-details>`, state kept across live refreshes).
+  The details replace the cost sentence with labelled tiles (`verdict.cost_facts`: Today · First charge · After N
+  months · Year one; cancelled: "Charge on <date> $0, $24.99 blocked"), then the act-by callout, the dots, a small
+  Status / Safety timer list, the actions and the PayPal footer. The check-in band and the Layer 2 ACTION NEEDED band
+  stay above the row (always visible); the check-in's Keep / Cancel buttons now live in its band (still one pair).
+  The top bar gets three links: Live demo (`/?demo=1`), Priya's dashboard (`/`), Demo shops (`/shop`, new tab), so
+  more products can be subscribed at any time. On phones the links form a slim second row (top bar <= 100 px).
+- **D-167 The Live demo is its own page (overrides U6 and the D key).** `/?demo=1` renders `demo.html`, not Priya's
+  dashboard: full-size Controls (big demo day, Start demo, a full-width day scrubber with labelled jumps, both shops,
+  the Fair Trial toggle, audit log, Reset), "The story, step by step" (the 7 steps at normal size), "Priya's side"
+  (her open check-in with the only Keep / Cancel pair, any Layer 2 ACTION NEEDED, the Day 11 proof, a one-line list
+  of her subscriptions) and the results (Charges avoided, What SubGuard did). Start demo pauses there for the
+  judge to answer for Priya. `/` no longer carries any presenter controls and the D key is gone. Same URL, same
+  context (`user_page.home`), so the video scenes, README links and `[data-live]` refresh keep working.
+- **D-168 The Live demo plays itself except two steps (overrides part of D-104 and D-117 on `/?demo=1` only).**
+  Start demo stops only for a person to (1) confirm the order and (2) choose Keep or Cancel (or "Don't answer").
+  Mock mode now pauses at a "Confirm Priya's order" card (simulated PayPal approval, the companion's verdict line)
+  before `mock-approve`; sandbox mode's Penwright window clicks "Subscribe with PayPal" itself, so the presenter only
+  confirms in PayPal's window (a retry after PayPal says no stays a manual click). After the Cancel tap, the
+  confirmation card confirms itself after a short beat (still the R3 token through `/api/agent/confirm`; the tap on
+  Cancel is Priya's consent, R1) and the email preview stays up ~3 s, presses Send (demo outbox) and closes. Keyed on
+  the Live demo page (`[data-testid=live-demo]`), so Priya's dashboard `/`, the chat and the video keep every click.
+  With "Don't answer" the R2 auto-cancel's draft still waits for review (D-133).
+- **D-169 Priya's Overview is a story-state card (overrides D-166 and parts of U7, U9, U12).** Each card shows one
+  headline, one sub-line and at most two buttons for its state (`app/routes/story_card.py`): trial "Free until
+  {trial_end}, then $24.99/month" (Cancel trial / Keep), check-in "Keep your Penwright trial?" (her usage, the advice,
+  when the timer acts; SubGuard's suggestion is the main button), cancelled "You won't be charged" ("$24.99 saved now
+  · up to $524.88 this year", the Charges avoided KPI merged in; Review & send email while a draft waits), proof
+  "$24.99 never charged"; plus kept and the Layer 2 handoff. Gone from `/`: the top status banners (proof, email
+  ready), the cost tiles, the Status row, Next decision, the KPI card and the collapse chevron; the PayPal status
+  stays for screen readers only. The timeline is evenly spaced (Signed up ✓ -> Checked in ✓ -> Cancelled ✓ -> Email
+  sent ✓ -> First charge ✗ blocked, or Check-in -> Act by -> First charge during the trial) with labels and dates
+  below the line, done = grey tick, the key event in teal and a labelled Today pin placed by date. After a cancel the
+  risk badge is a grey "Risk was 87". Merchant tile = coloured initials. Start a new trial is a text link. The right
+  column is only What SubGuard did: 5 short dated lines (`Activity.short`), newest first, no chain badge, no
+  "(demo outbox, edited: no)". One font everywhere (`--font`, also buttons, pills and ids), weights capped at 700;
+  teal only for the key number, the main button and the key event. The Live demo page (D-167) is unchanged.
+- **D-170 Dropdown cards, a structured companion, one click to PayPal (overrides parts of D-169, U14, D-113,
+  D-117).** Priya's cards are dropdowns: the row shows tile, name, plan, the headline and the risk badge; the
+  sub-line, buttons, timeline and footer open below. A card opens by itself only when she has something to do
+  (check-in, Layer 2 handoff, an email draft to send). The companion's title reads "SubGuard is checking this
+  offer…" while the review runs and "SubGuard checked this offer" only after it (error: "SubGuard couldn't check
+  this offer"). Its body is four labelled sections: What you'll pay, Key dates (Act by in red with "terms allow",
+  Trial ends, First charge, as three tiles; the promise under them), Watch out for (3 one-line items), PayPal check;
+  then the injection note, the consent box and the folded evidence. In sandbox, "Continue to PayPal" goes straight to
+  PayPal's confirmation: with the sandbox buyer in `.env` (and in the live demo) the server opens the logged-in
+  approval page at once (the Subscribe button stays only to retry); without it the shop page goes to PayPal's own
+  approval page (server-created subscription with return/cancel URLs) and registers it on return
+  (`?approved=1&subscription_id=`, the pending id and review kept in sessionStorage). The PayPal JS SDK button is
+  no longer used. A person still confirms in PayPal; SubGuard never clicks consent.
+- **D-171 Live demo page styling.** `/?demo=1` gets its own stylesheet, `app/static/demo.css` (loaded through a
+  `head` block in `base.html`, every rule scoped under `.demo-page`, so Priya's dashboard is unchanged). It uses
+  softer cards, a thin amber-to-teal accent on Controls instead of the dashed amber border, a segmented day picker,
+  pill-shaped secondary tools with Reset as an outline, a left-accent check-in band, and a dot timeline for
+  "What SubGuard did". Only the styling changed: the markup and test ids are the same, plus a "Presenter view" kicker.
+- **D-172 Activity is ONE timeline; one Penwright per run; one calendar per run (overrides U9, U10's Activity
+  sections, and D-169's 5-row "What SubGuard did" on the Overview).** The Activity tab drops "Messages to you",
+  "Your subscriptions" and "Everything SubGuard did" for one chronological list (`app/core/timeline.py`), grouped by
+  calendar day, newest first. Each entry: actor (You / SubGuard / PayPal / the merchant, line icon + neutral label),
+  one line of at most 70 characters, an optional grey detail, and one action: "View email" or "Proof ▸" (inline:
+  PayPal subscription id, status change, the safety rule in words, the fine-print quote). Messages become entries
+  with her answer on the same line ("You chose: Cancel") and only the channels that delivered ("App · Email"). It
+  de-duplicates: one review per subscription (hidden AI instructions folded in), one check-in, one answer however
+  many taps, and the timer-set / cancelled / charge-blocked messages join their event. Ids, ACTIVE → CANCELLED, rule
+  chips and "(demo outbox, edited: no)" live only in Proof and the raw log ("Show raw log" link at the bottom). The
+  Overview's "What SubGuard did" shows the 3 latest entries, then "See all". Green tick = done, amber dot = needs your
+  answer; no card borders or coloured stripes; max 760 px; `timeline.css`.
+  **Data fixes.** (1) Reset could fail halfway on Windows (WinError 32: a page poll was reading the audit log while
+  Reset renamed it), leaving the earlier run's subscription in place; renames/deletes now retry briefly
+  (`app/fsutil.py`). (2) "Kept on Nov 12" before the Nov 17 check-in: a second Penwright trial, started on sim Day 5,
+  mapped Day N to dates from its own sign-up moment, so its Day 5 was Nov 12 while the first trial's Day 5 was Nov 17
+  (and it was then kept from the card at once). Every run now has one calendar (`State.day0_at`, copied to each
+  subscription as `day0_at`), and a second subscription to the same merchant in one run is refused with 409 before
+  anything is created in PayPal ("Press Reset…"; `ONE_SUB_PER_MERCHANT=true`). The cancelled card's "Start a new
+  trial" link is gone. `/api/activity` and `/api/subscription-history` stay as APIs.
+- **D-173 The Live demo page opens as a product landing page; one story across page, README and video (overrides
+  D-167/D-171's "Presenter view" header and Day tile).** `/?demo=1` (the hosted link) starts with `_landing.html`:
+  the hero sentence "SubGuard reads the fine print on free trials, and uses PayPal to stop the charge you didn't agree
+  to.", one sub-line, "▶ Play Priya's story" (clicks Start demo in the same gesture, so sandbox mode's PayPal window
+  still opens) and "Try it yourself: open the checkout"; a "Meet Priya" card (the Penwright offer, three traps,
+  "Without SubGuard: $524.88 in year one. With SubGuard: $0." from `settings.pricing`, `app/routes/landing.py`);
+  "How it works" in three columns; a "Built with" strip (Subscriptions API, JS SDK, MCP server, the configured AI
+  model, mock mode says "recorded answers here"; "AI proposes, code decides"); an honest note (fictional, sandbox or
+  simulated PayPal, simulated days). Fits 1440x900 above the fold. The demo sits under a `<details open>` "Run the
+  demo yourself"; any Start scrolls to the controls, and "↑ What is SubGuard?" returns to the hero. Controls: no Day
+  tile or gradient/dashed border (today's day is a small label, `demo-day` kept), one line under each shop, the Fair
+  Trial toggle reads "Quillnote connected to SubGuard: on/off" (state from the merchant), "Show audit log" is "See the
+  full record". The step tracker fills in order (the rail stops at the first step with no state; derived steps
+  after a gap wait), and a skipped step keeps its number and says "skipped: <reason>". The README opens with the
+  same sentence and Priya's card; the video's first 10 s (`01_hook`) is the same sentence over her checkout.
+- **D-174 Priya's dashboard gets a left sidebar, sample history, Analytics and Settings (overrides U10's tabs,
+  U11's "No subscriptions yet.", U25's "no charts on `/`", D-166's three top-bar links, and D-090 for sample data
+  only).** Sidebar: Overview; Subscriptions with In use / Trials / Cancelled and counts; Activity; Emails; Analytics;
+  Settings and her name at the bottom. Phones (<= 640 px): a bottom bar with Overview, Subscriptions, Activity,
+  Analytics; Emails and Settings under the avatar menu. The top bar keeps her dashboard link; Live demo and Demo
+  shops move into a small "Presenter" menu. **Sample history:** Framewise (in use, $12/mo, honest terms, risk 15,
+  used yesterday), Lumen Notes (cancelled Sep 8 after a flagged $12 -> $19 rise, saved $84 a year), Stillwater Audio
+  (trial cancelled by SubGuard Oct 3, saved $14.99) live in `data/seed/sample_history.json`, read by
+  `app/core/sample_history.py`. They are not runtime data and not in PayPal, so Start demo and Reset can't change
+  them, and no policy, timer or PayPal code sees them. Labelled "Sample history"; Penwright and Quillnote are
+  labelled "Live in PayPal Sandbox ✓" in sandbox mode and "Live demo · simulated PayPal" in mock mode (R7: mock
+  PayPal isn't the sandbox). Only Priya's page shows them (R5). **Overview:** "Needs your attention" (Penwright's
+  card always first during the demo, then any other live card she must act on; "All clear ✓" when nothing needs
+  her), "Coming up" (next 3 charges), "Saved so far" (live charges avoided + sample savings, split shown), "Recent
+  activity" (3 lines + See all). A finished Layer 2 cancel leaves the attention list and shows in Subscriptions.
+  **Subscriptions:** one list with filter chips; each row has tile, plan, source label, status, next charge or
+  cancelled date, last used, risk chip, one action (live: See evidence; sample: Details); cancelled rows add how it
+  ended and the amount saved. **Analytics** (`/api/dashboard/analytics`, `dash-charts.js`): upcoming charges (next
+  30 days), monthly spend (last 6 months, charges that happened), saved by SubGuard (trials stopped vs price rises
+  avoided); amounts from code. **Settings** (`POST /api/settings`, audited `settings_changed`): "Cancel trials
+  automatically if I don't answer" = new `UserSettings.auto_cancel_trials` (default on; off -> R2 blocks the trial
+  timer's auto-cancel with an audited reason, and the timer message and timeline say so); "Send the cancellation
+  email for me" = new `UserSettings.auto_send_notice` (default off; pre-ticks the companion's D7 box via
+  `auto_send_default`; the consent snapshot taken at sign-up still decides); "Remind me by" App (always) / Email =
+  `UserSettings.channels` (SMS left as it was).
+- **D-175 Dashboard layout: greeting header, collapsible sidebar, "Coming up" in the sidebar (overrides D-174's
+  Overview layout).** A full-width header row under the top bar: "Hi Priya, here’s your dashboard" / "No surprise
+  charges. That’s the plan"; the sidebar starts below it. A toggle at the top folds the sidebar to a 56 px icon strip
+  (labels as tooltips; sub-items, counts and "Coming up" hidden). State in `localStorage["sg-side"]` (try/catch),
+  applied before first paint; below 1100 px it always starts folded (the saved choice applies only on wide screens).
+  "Coming up" (next 3 charges) sits under the nav, above Settings; every live trial's first charge is in the danger
+  colour with "first charge" (Penwright, and Quillnote while its trial runs). Main area: "Needs your attention" full
+  width, then "Saved so far" and "Recent activity" side by side (stacked at 641-860 px). Phones (<= 640 px): bottom
+  bar, no sidebar, "Coming up" as a card in Overview after the attention list.
+- **D-176 A more colourful dashboard; a coin burst when money is saved in the Live demo.** Priya's name in the
+  greeting is gradient text (teal -> sky -> violet), no highlighter mark. The header row is a card with soft colour washes.
+  Each sidebar section has its own colour (Overview teal, Subscriptions sky, Activity amber, Emails pink, Analytics
+  violet, Settings grey) on a tinted icon square; Overview cards carry their section colour as a dot and a soft wash
+  (attention amber, Coming up sky, Saved green, Recent activity violet); subscription cards and rows get a left stripe in
+  the merchant's tile colour. Extra hues (`--c-sky`, `--c-violet`, `--c-pink`) live only in `dashboard.css`, with
+  light-theme values. **Live demo:** `SG.celebrate(el, amount)` (app.js) bursts 12 coins and floats "+amount saved"
+  (amount text from the server, R7). It runs at Play Priya's story's final step ("charge never taken", which now has a
+  green seal) and on the "Charges avoided" card when its amount rises outside autoplay (`data-celebrate`). Decoration
+  only: `aria-hidden`, skipped with reduced motion.
+- **D-177 The subscription card says "My plan"; compact card; new timeline (overrides D-169's trial sub-line and
+  timeline).** Under the headline, a shield icon and one line in SubGuard's voice, built from the timer and Settings
+  (`my_plan` in `story_card.py`), never from the LLM (R7). Auto-cancel on: "My plan: I'll check in with you on
+  {check-in}. No answer? I'll cancel it in PayPal on {timer}, a day before your {act by} deadline." The gap is computed
+  ("2 days" when it is 2). Layer 2 merchants (Quillnote) can't be cancelled by SubGuard, so they read "On {timer} I'll
+  draft your cancellation email and send you a one-tap PayPal link". Auto-cancel off (or essential, R6): "...and
+  remind you again on {act by}. I won't cancel without you." That promise is real: a new `act_by_reminder` alert
+  goes out on the Act by day when auto-cancel is off (`escalation.act_by_reminder`). Once the check-in day has
+  passed, it reads "I checked in with you on ...". After her answer: "You chose to keep it. I'll stop asking." or
+  "Cancelled in PayPal on {date}." "Change plan" (only while the plan is pending) opens Settings. The trial sub-line
+  is just "Up to $524.88 this year if you keep it."; the terms' own last day stays on See evidence. The check-in
+  sub-line drops "No answer by ... SubGuard cancels" (My plan says it). **Timeline:** Signed up -> Check-in ->
+  Auto-cancel ("if no answer"; left out when off) -> Act by -> First charge. Future steps are hollow, done steps are
+  filled with a tick, and Act by is a hollow accent ring. `timer_created` now records `auto_cancel`, and Activity
+  says "Set a check-in ... auto-cancel is off, so you decide" when it was off. **Tile:** Penwright is "Pw", not "PS"
+  (too close to Priya's "P" avatar), kept in purple, unlike her teal avatar. **Compact:** smaller paddings, tile and
+  dots; the sub-line and buttons share one row; smaller timeline and footer.
 
 ## Not used in v1 (sponsor tools)
 

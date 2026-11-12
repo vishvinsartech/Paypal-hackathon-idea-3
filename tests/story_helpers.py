@@ -20,6 +20,12 @@ def on(days: int) -> str:
 ACT_BY = f"Act by {on(7)} (the terms allow {on(8)})"  # D6 wording for a Day 0 Penwright sign-up
 
 
+def allow_many(client: TestClient) -> TestClient:
+    """Lift D-172's one-subscription-per-merchant rule, for tests that need two Penwright subscriptions."""
+    client.app.state.services.settings.one_sub_per_merchant = False  # type: ignore[attr-defined]
+    return client
+
+
 def subscribe(client: TestClient, merchant: str = "penwright", plan_key: str = "penwright-pro", user: str = "priya",
               review: bool = True) -> dict[str, Any]:
     """What the shop does: companion preflight -> create -> mock approve -> register."""

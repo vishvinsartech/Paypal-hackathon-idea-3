@@ -14,7 +14,7 @@ from app.core.policy import MAX_WRITES_PER_MINUTE, Decision, Policy
 from app.core.services import Services
 from app.models import Subscription, Timer, User
 from app.store import JsonStore
-from tests.story_helpers import add_user, advance_to, alerts, audit, sub, subscribe
+from tests.story_helpers import add_user, advance_to, alerts, allow_many, audit, sub, subscribe
 
 
 def svc_of(c: TestClient) -> Services:
@@ -88,7 +88,7 @@ def test_r2_price_rise_allowed_with_setting(store: JsonStore) -> None:
 # ---- R3 tokens ---------------------------------------------------------------------------------
 def test_r3_expired_reused_mismatched_and_foreign_tokens(demo_client: TestClient) -> None:
     c = demo_client
-    main = subscribe(c)
+    main = subscribe(allow_many(c))
     fw = subscribe(c, review=False)  # a second Penwright subscription
     intruder = add_user(c)
     store = svc_of(c).store
@@ -163,7 +163,7 @@ def test_r6_essential_never_auto_cancelled_but_manual_ok(demo_client: TestClient
 # ---- R7 / corner case 34: per-item results, nothing claimed that PayPal didn't confirm ---------------
 def test_r7_partial_failure_reports_per_item(demo_client: TestClient) -> None:
     c = demo_client
-    main, second = subscribe(c), subscribe(c, review=False)
+    main, second = subscribe(allow_many(c)), subscribe(c, review=False)
     svc_of(c).gw.mock.inject_failure("cancel", status=500, times=4)  # type: ignore[union-attr]
     ids = sorted([main["id"], second["id"]])
     status, body = confirm(c, ids, propose(c, ids)["token"])

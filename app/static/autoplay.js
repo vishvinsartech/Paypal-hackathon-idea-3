@@ -1,8 +1,10 @@
 // "Start demo": runs Priya's story through the same APIs the UI uses, with an animated stepper. Mock mode does
 // steps 1-2 here; sandbox mode opens a real Penwright window for them (autoplay_sandbox.js, D-116).
-// Day 0 review -> PayPal approval -> safety timer -> days pass -> PAUSE at the check-in for Priya's choice
-// (Keep / Cancel on her card, or "Don't answer" in the presenter bar) -> the rest of the timeline to the first charge day.
-// A cancel still needs the confirmation card's tap (R1/R3); nothing here bypasses the policy.
+// Day 0 review -> PAUSE for the order confirmation (mock: the PayPal approval card here; sandbox: PayPal's window)
+// -> safety timer -> days pass -> PAUSE at the check-in for Priya's choice (Keep / Cancel under Priya's side, or
+// "Don't answer") -> the rest of the timeline to the first charge day. Everything else plays itself (D-168): after
+// her Cancel tap the confirmation card confirms itself and her email is sent to the demo outbox. A cancel still
+// goes through the confirmation card's token (R1/R3); nothing here bypasses the policy.
 (function () {
   "use strict";
   const btn = document.getElementById("demo-start");
@@ -18,14 +20,8 @@
 
   // ---- stepper ------------------------------------------------------------------------------
   function mark(name, state, detail) {
-    const i = steps.findIndex((s) => s.dataset.step === name);
-    const el = steps[i];
-    el.classList.remove("is-active", "is-done", "is-skipped", "is-warn");
-    if (state) el.classList.add("is-" + state);
-    if (detail != null) el.querySelector(".step-detail").textContent = detail;
-    if (state === "done" || state === "warn" || state === "skipped") el.querySelector(".step-dot").textContent = state === "skipped" ? "–" : "✓";
-    const reached = steps.reduce((n, s, k) => (s.matches(".is-active, .is-done, .is-warn, .is-skipped") ? k : n), 0);
-    fill.style.width = (reached / (steps.length - 1)) * 100 + "%";
+    window.SGSteps.set(steps.find((s) => s.dataset.step === name), state, detail);
+    window.SGSteps.fill(steps, fill);
   }
   function resetSteps() {
     steps.forEach((s, k) => {
@@ -51,8 +47,8 @@
   const openCheckin = async (id) => (await api(`/api/alerts?user=${user}`))
     .find((a) => a.kind === "reminder" && a.subscription_id === id && !a.acknowledged_at);
 
-  // ---- Priya's choice (U8): she answers on her card's "Keep it or cancel?" band, the only Keep / Cancel on
-  // screen. The presenter bar offers "Don't answer". We wait for the answer to land (and any dialog to close).
+  // ---- Priya's choice (U8, D-167): answered on the "Keep it or cancel?" band under Priya's side, the only Keep /
+  // Cancel on screen. The story panel offers "Don't answer". We wait for the answer to land (and any dialog to close).
   const skipBtn = document.getElementById("decision-skip");
   async function decide(alert, fireText) {
     skipBtn.textContent = `Don't answer (SubGuard acts on ${fireText})`;
@@ -81,7 +77,17 @@
     }
   }
 
-  // Steps 1-2 in mock mode: the review and a mock PayPal approval, all in this page.
+  // The order confirmation (D-168): one of the two steps the demo leaves to a person. Resolves on "Agree".
+  function confirmOrder(text) {
+    const box = document.getElementById("order-confirm");
+    const go = document.getElementById("order-approve");
+    document.getElementById("order-text").textContent = text;
+    box.hidden = false;
+    box.scrollIntoView({block: "center", behavior: reduce ? "auto" : "smooth"});
+    return new Promise((resolve) => go.addEventListener("click", () => { box.hidden = true; resolve(); }, {once: true}));
+  }
+
+  // Steps 1-2 in mock mode: the review, then the order confirmation (a simulated PayPal approval), all in this page.
   async function mockStart() {
     mark("read", "active", "reading…");
     say("<strong>Day 0.</strong> Priya clicks PayPal on Penwright. SubGuard reads the fine print first…");
@@ -91,9 +97,13 @@
     say(esc(pre.summary));
     await sleep(1600);
 
-    mark("approve", "active", "PayPal…");
-    say("Priya approves the trial (simulated PayPal approval; sandbox mode shows the real PayPal window).");
+    mark("approve", "active", "confirm the order");
     const created = await post("/api/checkout/create", {merchant_id: "penwright", plan_key: "penwright-pro", user_id: user});
+    say("<strong>Your turn: confirm the order.</strong> PayPal asks Priya to approve the trial " +
+      "(simulated here; sandbox mode shows the real PayPal window).");
+    const v = pre.display && pre.display.verdict;
+    await confirmOrder(`Penwright Studio, Pro plan: ${v && v.line ? v.line : "free trial"}.`);
+    mark("approve", "active", "PayPal…");
     await post("/api/checkout/mock-approve", {paypal_id: created.paypal_id});
     const sub = await post("/api/subscriptions/register", {paypal_id: created.paypal_id, merchant_id: "penwright",
       plan_key: "penwright-pro", user_id: user, review_id: pre.review_id});
@@ -138,7 +148,7 @@
     let choice = "none";
     if (alert) {
       mark("ask", "active", `Day ${alert.sim_day}`);
-      say(`<strong>Day ${alert.sim_day}.</strong> SubGuard asks Priya by email, SMS and in-app. She answers on her card: <strong>Keep</strong> or <strong>Cancel trial</strong>.`);
+      say(`<strong>Day ${alert.sim_day}.</strong> SubGuard asks Priya by email, SMS and in-app. <strong>Your turn:</strong> answer for her under <strong>Priya's side</strong>, <strong>Keep</strong> or <strong>Cancel trial</strong>. The rest plays itself.`);
       await sleep(700);
       const row = (await api(`/api/view/subscriptions?user=${user}`)).rows.find((r) => r.id === sub.id);
       choice = await decide(alert, row && row.timer ? row.timer.fire_text : `Day ${fireDay}`);
@@ -146,7 +156,7 @@
       mark("ask", choice === "cancel_failed" ? "warn" : "done", null);
       say(esc(said));
     } else {
-      mark("ask", "skipped", "no check-in");
+      mark("ask", "skipped", "no check-in day");
     }
 
     mark("outcome", "active");
@@ -161,7 +171,7 @@
         mark("outcome", "done", null);
         say(`<strong>Day ${d}.</strong> Cancelled in PayPal. Priya won't be charged. ` + (s.cancelled_by === "timer"
           ? "Her cancellation email is drafted and waits for her to review and send it."
-          : "Her cancellation email was drafted for her to review and send."));
+          : "Her cancellation email was drafted and sent to the demo outbox."));
         await sleep(1500);
       } else if (!outcome && choice === "keep") {
         outcome = "Kept";
@@ -178,7 +188,10 @@
     if (final.status === "CANCELLED") {
       mark("proof", "done", "Checked PayPal: no charge");
       say(`<strong>Day ${billing}.</strong> First charge due today. Checked PayPal: no active subscription, so no charge can be taken.`);
-      doneBox.innerHTML = `<p class="pipe-done" data-testid="pipeline-done"><strong>${esc(kpi.charges_avoided_text)} charge never taken</strong> (${esc(kpi.year_one_text)}). Every step is in the audit log below.</p>`;
+      doneBox.innerHTML = `<p class="pipe-done pipe-saved" data-testid="pipeline-done"><span class="saved-seal" aria-hidden="true">✓</span><span><strong>${esc(kpi.charges_avoided_text)} charge never taken</strong> (${esc(kpi.year_one_text)}). Every step is in the full record.</span></p>`;
+      await refresh();
+      window.SG.celebrate(doneBox.querySelector(".pipe-done"), kpi.charges_avoided_text);
+      window.SG.celebrate(document.getElementById("live-kpis"), null);
     } else {
       const row = (await api(`/api/view/subscriptions?user=${user}`)).rows.find((r) => r.id === sub.id);
       mark("proof", "warn", null);
@@ -191,17 +204,20 @@
     // Sandbox: open the Penwright window now, inside the click, or the browser blocks it as a pop-up.
     const win = btn.dataset.sandbox ? window.open("about:blank", "penwright-demo", "popup,width=1180,height=900") : null;
     if (btn.dataset.sandbox && !win) {
-      say("Your browser blocked the Penwright window. Allow pop-ups for this page, then press Start demo again.");
+      say("Your browser blocked the Penwright window. Allow pop-ups for this page, then press Play Priya's story again.");
       return;
     }
+    document.body.dataset.autoplay = "1";
     try {
       await run(win);
     } catch (err) {
       if (win && !win.closed) win.close();
+      document.getElementById("order-confirm").hidden = true;
       say(`The demo stopped: ${esc(err.message)}`);
       toast(err.message, {level: "urgent"});
     } finally {
       await refresh();
+      delete document.body.dataset.autoplay;
       btn.disabled = false;
       btn.innerHTML = "&#8635; Run again";
     }

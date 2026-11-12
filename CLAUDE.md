@@ -6,7 +6,7 @@ Current plan: `docs/FIX_PLAN.md` (v3 phases). Progress: `docs/PROGRESS.md`. Deci
 
 SubGuard = AI helper that reads subscription fine print, checks it against the real PayPal plan,
 scores risk, checks in before the real deadline, and cancels trials through PayPal before it.
-Demo story: one persona, **Priya** (id `priya`, D-130). `/` is her SubGuard; presenter controls behind `?demo=1` / D.
+Demo story: one persona, **Priya** (id `priya`, D-130). `/` is her SubGuard; the Live demo page (controls, story, her check-in) is `/?demo=1` (D-167).
 - **Penwright Studio** (Fair Trial member, Layer 1): SubGuard cancels in PayPal. Terms' last day is **Day 8**
   (first charge Day 11 - 3 days' notice); SubGuard says **act by Day 7** (one-day margin, `terms_last_day`, D-132),
   e.g. "Act by Nov 18 (the terms allow Nov 19)". Optional consent box sends the email if she doesn't answer (D-133).
@@ -80,7 +80,8 @@ to the audit log with its rule id. No suspend/pause anywhere in v1. The only Pay
 Never use real brands, logos or company names in the app, dummy shop or video. Every merchant page
 shows the banner "Fictional merchant for the SubGuard demo." Merchant: Penwright Studio (trap
 "free trial") and Quillnote (Layer 2, not Fair Trial: D-142). User: Priya. No other merchants, users, add-ons,
-price rises or renewal reminders (D-090).
+price rises or renewal reminders (D-090), except Priya's read-only **sample history** (D-174: Framewise, Lumen Notes,
+Stillwater Audio in `data/seed/sample_history.json`, labelled "Sample history", never in PayPal or runtime data).
 
 ## Key numbers (assert in tests, with the DEFAULT prices)
 Prices and terms are `.env` variables (`app/pricing.py`, DECISIONS D-015). Code reads them via
@@ -107,7 +108,7 @@ Prices and terms are `.env` variables (`app/pricing.py`, DECISIONS D-015). Code 
 - `setup` venv + deps + `playwright install chromium`
 - `dev` -> http://127.0.0.1:8000/ (mock), `dev-sandbox`
 - `test`, `lint`, `ui-check`, `shots`, `seed`, `sandbox-check`, `sandbox-ui-check`, `reset`, `demo-video-check`, `demo-video`
-- Demo: `http://127.0.0.1:8000/?demo=1`; dummy shop at `/shop`.
+- Live demo: `http://127.0.0.1:8000/?demo=1`; Priya's dashboard `/`; dummy shop at `/shop`.
 
 ## MCP notes
 - `.mcp.json` registers the PayPal MCP server via `node scripts/mcp_paypal.mjs` (reads `.env`, gets a fresh sandbox

@@ -21,7 +21,11 @@ UTC_DATETIME = "%a %d %b %Y, %H:%M UTC"
 
 
 def date_of_day(sub: Subscription, day: int) -> datetime | None:
-    """The calendar moment of sim day `day` for this subscription (None if its sign-up time wasn't recorded)."""
+    """The calendar moment of sim day `day` for this subscription (None if its sign-up time wasn't recorded).
+    D-172: on the run's one calendar (`day0_at`), so a trial started on sim Day 5 reads Day 5 as the same date as
+    every other subscription's Day 5. Older data without it falls back to its own sign-up moment."""
+    if sub.day0_at is not None:
+        return sub.day0_at + timedelta(days=day)
     if sub.registered_at is None:
         return None
     return sub.registered_at + timedelta(days=day - sub.signup_day)
@@ -122,6 +126,15 @@ def _days_left(day: int, today: int) -> str:
     return "Today" if left == 0 else ("Passed" if left < 0 else f"{left} day{'s' if left != 1 else ''} left")
 
 
+def signup_moment(sub: Subscription) -> datetime | None:
+    """Sign-up date on the run's calendar (D-172), with the real time of day SubGuard recorded the approval."""
+    base = date_of_day(sub, sub.signup_day)
+    if base is None or sub.registered_at is None:
+        return base
+    at = sub.registered_at
+    return base.replace(hour=at.hour, minute=at.minute, second=at.second, microsecond=at.microsecond)
+
+
 def _cancel_moment(sub: Subscription) -> datetime | None:
     """Cancel date = the sim day it happened, with the real time of day of the PayPal cancel."""
     base = date_of_day(sub, sub.cancelled_day) if sub.cancelled_day is not None else None
@@ -138,7 +151,7 @@ def key_dates(svc: Services, sub: Subscription, view: dict[str, Any], timer: Tim
     today, active = svc.day, sub.status == "ACTIVE"
     cancelled, kept = sub.cancelled_day is not None, sub.kept_day is not None
     rows = [_row(sub, "subscribed", "Subscribed", sub.signup_day, "done", "Approved in PayPal",
-                 at=sub.registered_at, with_time=True)]
+                 at=signup_moment(sub), with_time=True)]
     if timer and timer.kind == "trial":
         reminder = timer.reminder_day
         if reminder is not None:
@@ -150,8 +163,11 @@ def key_dates(svc: Services, sub: Subscription, view: dict[str, Any], timer: Tim
             note = "Cancelled in time ✓" if met else ("You kept it" if kept else _days_left(deadline_day, today))
             rows.append(_row(sub, "deadline", "Real last day to cancel", deadline_day,
                              "done" if met or kept else _when(deadline_day, today), note))
+        owner = svc.user(sub.owner_id)
+        auto = owner is None or owner.settings.auto_cancel_trials  # D-174: the Settings switch
         timer_note, timer_state = {
-            "PENDING": ("Cancels in PayPal unless you tap Keep", _when(timer.fire_day, today)),
+            "PENDING": ("Cancels in PayPal unless you tap Keep", _when(timer.fire_day, today)) if auto
+            else ("Off in Settings: SubGuard waits for your answer", "off"),
             "FIRED": ("Cancelled by your safety timer", "done"),
             "KEPT": ("Off: you kept it", "off"),
             "CANCELLED": ("Not needed: you cancelled", "off"),

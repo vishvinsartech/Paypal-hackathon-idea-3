@@ -88,7 +88,10 @@ async def preflight(body: PreflightIn, request: Request, store: JsonStore = Depe
     display = companion_display(data.deadlines, utcnow())
     display["verdict"] = verdict(plan.billing_cycles, request.app.state.services.money,  # U14, from the PayPal plan
                                  display["points"]["first_charge"]["date"], data.clauses, data.paypal_check)
-    return {"review_id": review.id, **data.model_dump(mode="json"), "display": display}
+    owner = next((u for u in store.load("users").items if u.id == body.user_id), None)
+    auto_send_default = bool(owner and owner.settings.auto_send_notice)  # D-174: Settings pre-ticks the D7 box
+    return {"review_id": review.id, **data.model_dump(mode="json"), "display": display,
+            "auto_send_default": auto_send_default}
 
 
 class ConsentIn(BaseModel):

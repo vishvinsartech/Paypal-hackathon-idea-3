@@ -198,7 +198,8 @@ def test_voiceover_never_longer_than_its_scene() -> None:
     problems = vo.check(rows, SCENES)
     assert len(problems) == 1 and problems[0].startswith("02_shop: voice-over is 15.40 s but the scene is 15 s")
     subs = vo.captions(rows, SCENES)
-    assert subs.startswith("1\n00:00:00,000 --> 00:00:09,800\nFree trials") and "00:00:10,000 --> 00:00:25,000" in subs
+    assert subs.startswith("1\n00:00:00,000 --> 00:00:09,800\nSubGuard reads the fine print")
+    assert "00:00:10,000 --> 00:00:25,000" in subs
 
 
 def test_sandbox_recording_needs_the_pre_approved_subscriptions(tmp_path: Path) -> None:

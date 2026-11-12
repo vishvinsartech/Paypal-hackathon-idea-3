@@ -3,11 +3,12 @@
 One merged card per subscription (U7): merchant · plan, status, risk; a big cost line; the act-by line; the five
 dots; one pair of actions; a quiet "Verified with PayPal" footer. On the check-in day the card's top becomes the
 "Keep it or cancel?" band and its buttons become that decision (U8). A Layer 2 handoff takes the card's place for
-actions (A5). The right column: Charges avoided, Next decision, What SubGuard did (U9). All text from code.
+actions (A5). The Overview renders each card as a story state (story_card.py, D-169). All text from code.
 """
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any
 
 from app.core import timers as tm
@@ -15,9 +16,9 @@ from app.core.activity import Activity, activity_for
 from app.core.layer2 import open_handoffs
 from app.core.savings import year_one_cost
 from app.core.services import Services
-from app.core.sub_dates import day_text, key_dates, stamp, sub_act_by
+from app.core.sub_dates import day_text, key_dates, signup_moment, stamp, sub_act_by
 from app.core.usage import SIMULATED_SOURCE, last_open_day, opens_between, times
-from app.core.verdict import cost_line, sub_line
+from app.core.verdict import cost_facts, cost_line, sub_line
 from app.integrations.paypal_types import first_paid_price
 from app.models import Alert, Subscription
 from app.routes.views import current_timer, sub_view
@@ -58,7 +59,7 @@ def check_in(svc: Services, alerts: list[Alert]) -> dict[str, Any] | None:
     used = f"You opened it {times(opens)} in {days} days" if opens else f"You haven't opened it in {days} days"
     reason = used + (f", and keeping it costs {svc.money(cost)} in the first paid year." if cost else ".")
     source = SIMULATED_SOURCE.format(name=tm.short(merchant.name))  # D8: say where the usage numbers come from
-    return {"alert": alert, "subscription_id": sub.id, "merchant": merchant.name,
+    return {"alert": alert, "subscription_id": sub.id, "merchant": merchant.name, "used": used,
             "usage": (f"Opened {times(opens)} in {days} days" if opens else f"Not opened in {days} days")
             + (f", last on {day_text(sub, last)} ({source})" if opens and last is not None else "") + ".",
             "suggest": suggest, "reason": reason}
@@ -111,39 +112,38 @@ def card(svc: Services, sub: Subscription, band: dict[str, Any] | None = None,
         next_charge = f"{first_text} · blocked (no active PayPal subscription)"
     can_decide = active and sub.kept_day is None and handoff is None
     level = "high" if (view["risk"] or 0) >= 60 else ("mid" if (view["risk"] or 0) >= 30 else "low")
+    trial_end_text = day_text(sub, view["trial_end_day"]) if view.get("trial_end_day") is not None else ""
+    show_act_by = can_decide and deadline is not None and svc.day <= deadline
+    facts = cost_facts(cycles, svc.money, first_text, trial_end_text) if active else []
+    if not active and cycles and first is not None and sub.cancelled_day is not None and sub.cancelled_day < first:
+        facts = [{"key": "next", "label": f"Charge on {first_text}", "value": svc.money(Decimal("0")),
+                  "note": f"{svc.money(first_paid_price(cycles))} blocked in PayPal", "tone": "ok"}]
     return {**view, "deadline_day": deadline, "next_charge_text": next_charge, "dated": {r["key"]: r["when"]
             for r in dates}, "cost_line": cost, "cost_sub": sub_line(cycles, svc.money) if cycles and active
             and sub.kept_day is None else "", "act_by_text": sub_act_by(sub, deadline) if deadline is not None
-            else "", "trial_end_text": day_text(sub, view["trial_end_day"]) if view.get("trial_end_day") is not None
-            else "", "subscribed": stamp(sub.registered_at, with_time=True), "can_decide": can_decide,
-            "show_act_by": can_decide and deadline is not None and svc.day <= deadline, "risk_level": level,
+            else "", "trial_end_text": trial_end_text, "subscribed": stamp(signup_moment(sub), with_time=True),
+            "can_decide": can_decide, "show_act_by": show_act_by, "risk_level": level, "facts": facts,
+            "headline": headline(sub, band, handoff, deadline if show_act_by else None, first_text),
             "band": band, "handoff": handoff, "outcome": outcome(svc, sub),
             "kept": sub.kept_day is not None, "cancelled": sub.status == "CANCELLED"}
 
 
-def next_decision(svc: Services, cards: list[dict[str, Any]]) -> dict[str, str]:
-    """U9 "Next decision": the earliest thing Priya needs to decide, from the timers (code, not the LLM)."""
-    for c in cards:
-        if c["handoff"]:
-            return {"when": "Now", "what": f"Cancel {c['merchant']} in PayPal", "note": "One tap opens PayPal."}
-        if c["band"]:
-            return {"when": "Now", "what": f"Keep or cancel {c['merchant']}", "note": c["act_by_text"] + "."}
-    upcoming = []
-    for c in cards:
-        t, sub = c["timer"], svc.sub(c["id"])
-        if not c["can_decide"] or not t or t["status"] != "PENDING" or sub is None:
-            continue
-        timer = current_timer(svc.store.load("timers").items, c["id"])
-        rem = timer.reminder_day if timer else None
-        if rem is not None and rem >= svc.day:
-            upcoming.append((rem, {"when": day_text(sub, rem), "what": "Keep or cancel",
-                                   "note": f"SubGuard checks in with you about {c['merchant']}. {c['act_by_text']}."}))
-        elif t["fire_day"] >= svc.day:
-            upcoming.append((t["fire_day"], {"when": day_text(sub, t["fire_day"]), "what": "Keep or cancel",
-                                             "note": f"SubGuard cancels {c['merchant']} unless you keep it."}))
-    if upcoming:
-        return min(upcoming, key=lambda x: x[0])[1]
-    return {"when": "", "what": "Nothing to decide", "note": "SubGuard is watching your subscriptions."}
+def headline(sub: Subscription, band: dict[str, Any] | None, handoff: dict[str, Any] | None,
+             act_by: int | None, first_text: str | None) -> dict[str, str]:
+    """The one phrase on the collapsed row: what matters about this subscription right now."""
+    if handoff:
+        return {"text": "Action needed: cancel in PayPal", "tone": "urgent"}
+    if band:
+        return {"text": "Check-in: keep it or cancel?", "tone": "warn"}
+    if act_by is not None:
+        return {"text": f"Act by {day_text(sub, act_by)}", "tone": "urgent"}
+    if sub.cancelled_day is not None:
+        return {"text": f"Cancelled {day_text(sub, sub.cancelled_day)}" + (
+            " · no charge" if sub.next_billing_day is not None and sub.cancelled_day < sub.next_billing_day
+            else ""), "tone": "ok"}
+    if sub.kept_day is not None:
+        return {"text": f"Kept · first charge {first_text}" if first_text else "Kept", "tone": "muted"}
+    return {"text": "Watching for you", "tone": "muted"}
 
 
 def did_rows(svc: Services, user: str) -> list[dict[str, Any]]:

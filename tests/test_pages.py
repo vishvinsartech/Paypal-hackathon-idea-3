@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -9,20 +10,25 @@ SHOP_PAGES = ["/shop", "/shop/penwright", "/shop/penwright/terms", "/shop/penwri
 BANNER = "Fictional merchant for the SubGuard demo."
 
 
+def greeting(name: str) -> str:
+    return f'Hi <span class="hi-name" data-testid="hi-name">{name}</span>, here’s your dashboard'
+
+
 def test_dashboard(client: TestClient) -> None:
-    """U1: logo, one status badge, Ask SubGuard, the theme icon, Priya's avatar. No page tabs, no shop link."""
+    """U1: logo, one status badge, Ask SubGuard, the theme icon, Priya's avatar; D-166: the three nav links."""
     r = client.get("/")
     assert r.status_code == 200
-    for testid in ("brand", "mode-badge", "chat-open", "theme-toggle", "user-avatar"):
+    for testid in ("brand", "mode-badge", "chat-open", "theme-toggle", "user-avatar", "topnav-demo",
+                   "topnav-dashboard", "topnav-shop"):
         assert f'data-testid="{testid}"' in r.text, testid
-    for gone in ("nav-tabs", "tab-demo", "tab-user", "view-shop", "Live demo"):
+    for gone in ("nav-tabs", "tab-demo", "tab-user", "view-shop"):
         assert gone not in r.text, gone
     assert "Demo data" in r.text and "Mock mode" not in r.text and "AI: mock" not in r.text  # A6
 
 
 def test_dashboard_is_priyas_with_no_user_switcher(client: TestClient) -> None:
     text = client.get("/").text
-    assert "Hi Priya, here's your SubGuard." in text and "user-switch" not in text
+    assert greeting("Priya") in text and "user-switch" not in text
 
 
 @pytest.mark.parametrize("path", SHOP_PAGES)
@@ -112,24 +118,55 @@ def test_static_assets(client: TestClient) -> None:
         assert client.get(path).status_code == 200
 
 
-DASHBOARD_TESTIDS = ("brand", "mode-badge", "user-dashboard", "demo-bar", "demo-open-shop", "sim-scrubber",
-                     "sim-plus-1", "sim-jump-0", "sim-jump-5", "sim-jump-6", "sim-jump-7", "sim-jump-11",
-                     "presenter-audit", "sim-toggle-fair-trial", "audit-log-grid", "audit-log-export", "audit-routine",
-                     "pipeline", "demo-start", "decision-skip", "chat-open", "chat-input", "chat-send", "footer",
-                     "dev-menu", "nav-overview", "nav-activity", "nav-emails")
+DEMO_TESTIDS = ("brand", "mode-badge", "live-demo", "demo-bar", "demo-open-shop", "demo-open-quillnote", "sim-scrubber",
+                "sim-plus-1", "sim-jump-0", "sim-jump-5", "sim-jump-6", "sim-jump-7", "sim-jump-11", "sim-reset",
+                "presenter-audit", "sim-toggle-fair-trial", "audit-log-grid", "audit-log-export", "audit-routine",
+                "pipeline", "demo-start", "decision-skip", "demo-priya", "demo-open-dashboard", "user-protected",
+                "audit-summary", "chat-open", "chat-input", "chat-send", "footer", "dev-menu")
+# D-167: Priya's dashboard and the Live demo are separate pages; neither carries the other's parts.
+DASHBOARD_ONLY = ("user-dashboard", "nav-overview", "nav-activity", "nav-emails")
 # U9/U10/U25: no lone KPI grid, no Analytics section on `/` (charts are on the evidence page).
 NOT_ON_LIVE_DEMO = ("subs-grid", "chart-cost", "chart-risk", "kpi-patterns", "kpi-watches", 'id="notices"',
                     "ag-charts-community", "nav-analytics", "nav-history", "nav-messages", "decision-dialog")
 
 
+HERO = "SubGuard reads the fine print on free trials, and uses PayPal to stop the charge you didn't agree to."
+
+
+def test_live_demo_opens_with_landing(client: TestClient) -> None:
+    """D-173: hero, Priya's card (default prices), how it works, built with, honest note; then the demo, collapsible."""
+    text = client.get("/?demo=1").text
+    assert text.index('data-testid="landing"') < text.index('data-testid="run-demo"') < text.index('id="demo-bar"')
+    assert " ".join(HERO.split()) in " ".join(text.split())
+    for testid in ("hero-brand", "hero-try", "story-steps", "priya-card", "priya-traps", "how-it-works",
+                   "built-with", "honest-note", "what-is-subguard"):
+        assert 'data-testid="hero-play"' not in text  # one start button: Play Priya's story in the controls
+        assert f'data-testid="{testid}"' in text, testid
+    money = text.split('data-testid="priya-money"', 1)[1].split("</p>", 1)[0]
+    assert "$524.88" in money and "$0" in money
+    assert "Day 8</strong>, not Day 10" in text  # first charge Day 11 - 3 days' notice
+    assert "APIs and safety rules" not in text and "Presenter view" not in text and "pr-day" not in text
+    assert "Quillnote connected to SubGuard" in text and "See the full record" in text
+    assert "Fair Trial: Quillnote" not in text and "Show audit log" not in text
+    assert 'id="run-demo" open' in text
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+    assert HERO in readme.split("## Contents", 1)[0] and "Meet Priya" in readme
+
+
 def test_dashboard_selector_contract(client: TestClient) -> None:
     """Static part of the selector contract (spec 7.5); the rest is rendered by JS (scripts/ui_check.py)."""
     text = client.get("/?demo=1").text
-    for testid in DASHBOARD_TESTIDS:
+    for testid in DEMO_TESTIDS:
         assert f'data-testid="{testid}"' in text, testid
+    for testid in DASHBOARD_ONLY:
+        assert f'data-testid="{testid}"' not in text, testid
     bar = re.compile(r'<section[^>]*id="demo-bar"[^>]*>')
     assert "hidden" not in bar.search(text).group(0)  # type: ignore[union-attr]
-    assert "hidden" in bar.search(client.get("/").text).group(0)  # type: ignore[union-attr]  # hidden without ?demo=1
+    home = client.get("/").text
+    for testid in DASHBOARD_ONLY[:4]:
+        assert f'data-testid="{testid}"' in home, testid
+    for gone in ("demo-bar", "demo-start", "pipeline", "sim-scrubber", "autoplay.js"):
+        assert gone not in home, gone  # no presenter controls on Priya's dashboard
     assert 'src="/static/vendor/ag-grid-community-36.2.0.min.js"' in text and "cdn.jsdelivr" not in text  # U30
     for gone in ("sim-jump-15", "sim-jump-21", "sim-jump-27", "sim-price-rise", "user-switch", *NOT_ON_LIVE_DEMO):
         assert gone not in text, gone
@@ -199,12 +236,17 @@ def test_subscription_page(demo_client: TestClient) -> None:
 
 def test_start_demo_pipeline_on_dashboard(client: TestClient) -> None:
     """Start demo + the step indicator are in the presenter bar (U6); at the check-in it waits for Priya's answer
-    on her card (U8: one Keep / Cancel pair on screen), or "Don't answer" in the bar."""
+    under Priya's side on the Live demo page (U8, D-167: one Keep / Cancel pair on screen), or "Don't answer"."""
     text = client.get("/?demo=1").text
-    assert re.search(r'<button class="btn btn-sm btn-start" id="demo-start" data-testid="demo-start">', text)
+    assert re.search(r'<button class="btn btn-start" id="demo-start" data-testid="demo-start">', text)
     for testid in ("pipeline", "step-read", "step-ask", "step-proof", "decision-skip"):
         assert f'data-testid="{testid}"' in text, testid
     assert "decision-dialog" not in text and "decision-keep" not in text
+    for testid in ("order-confirm", "order-text", "order-approve"):  # D-168: the order waits for a person
+        assert f'data-testid="{testid}"' in text, testid
     js = client.get("/static/autoplay.js").text
     assert "/api/agent/confirm" not in js  # a cancel goes through the confirmation card (R1/R3), never directly
+    assert "confirmOrder(" in js and js.index("confirmOrder(`") < js.index("/api/checkout/mock-approve")
+    app_js = client.get("/static/app.js").text
+    assert "{auto: liveDemo()}" in app_js and 'data-testid=live-demo' in app_js  # auto-confirm on the Live demo only
     assert "decision-skip" in js and "pipeline-done" in js and "acknowledged_at" in js

@@ -20,7 +20,7 @@ from app.core.audit_log import mask_email
 from app.core.paypal_card import paypal_card
 from app.core.policy import Decision
 from app.core.services import Services
-from app.core.signup import OwnershipError, register_active
+from app.core.signup import AlreadySubscribed, OwnershipError, check_not_subscribed, register_active
 from app.integrations.paypal_gateway import Ctx, PayPalGateway
 from app.integrations.paypal_types import PayPalError, SubscriptionView
 from app.models import Merchant, Subscription
@@ -52,6 +52,14 @@ def _check_user(store: JsonStore, user_id: str) -> None:
         raise HTTPException(404, "Unknown user")
 
 
+def _one_per_run(request: Request, user_id: str, merchant: Merchant) -> None:
+    """D-172: refuse before anything is created in PayPal (Reset starts a new run)."""
+    try:
+        check_not_subscribed(request.app.state.services, user_id, merchant)
+    except AlreadySubscribed as exc:
+        raise HTTPException(409, str(exc)) from None
+
+
 class CheckoutIn(BaseModel):
     merchant_id: str
     plan_key: str
@@ -78,6 +86,7 @@ async def checkout_create(body: CheckoutIn, request: Request, store: JsonStore =
     _check_user(store, body.user_id)
     if not any(p.key == body.plan_key for p in merchant.plans):
         raise HTTPException(404, "Unknown plan for this merchant")
+    _one_per_run(request, body.user_id, merchant)
     base = str(request.base_url).rstrip("/")
     ctx = Ctx(actor="user", user_id=body.user_id, merchant=merchant)
     if body.js_sdk:  # the PayPal JS SDK button opens the approval window itself; no redirect URLs (D-113)
@@ -122,6 +131,7 @@ async def demo_paypal_window(body: DemoWindowIn, request: Request, store: JsonSt
                                  "(the sandbox Personal account) so the PayPal window can log in")
     merchant = _merchant(store, body.merchant_id)
     _check_user(store, body.user_id)
+    _one_per_run(request, body.user_id, merchant)
     if _demo_window.locked():
         raise HTTPException(409, "The PayPal window is already open. Confirm the subscription there.")
     where = "Live demo" if body.source == "demo" else "Shop"
@@ -153,7 +163,7 @@ async def demo_paypal_window(body: DemoWindowIn, request: Request, store: JsonSt
     try:
         sub, _ = await register_active(svc, active, merchant_id=merchant.id, plan_key=body.plan_key,
                                        user_id=body.user_id, review_id=body.review_id)
-    except OwnershipError as exc:
+    except (OwnershipError, AlreadySubscribed) as exc:
         raise HTTPException(409, str(exc)) from None
     return sub
 
@@ -186,7 +196,7 @@ async def register(body: RegisterIn, request: Request, store: JsonStore = Depend
     try:
         sub, _ = await register_active(svc, view, merchant_id=merchant.id, plan_key=body.plan_key,
                                        user_id=body.user_id, review_id=body.review_id)
-    except OwnershipError as exc:
+    except (OwnershipError, AlreadySubscribed) as exc:
         raise HTTPException(409, str(exc)) from None
     return sub
 

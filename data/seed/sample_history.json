@@ -1,0 +1,56 @@
+{
+  "_note": "D-174: Priya's sample history. Fictional merchants, never in PayPal, read-only: Start demo and Reset never change this file. Dates are calendar dates; 'last_used_days_ago' is relative to the demo's today.",
+  "items": [
+    {
+      "id": "sample-framewise",
+      "merchant": "Framewise",
+      "category": "Design app",
+      "plan": "Monthly",
+      "price": "12.00",
+      "status": "ACTIVE",
+      "kind": "paid",
+      "risk": 15,
+      "terms_note": "Honest terms: the price, the renewal date and an online cancel button are all on the checkout page.",
+      "started": "2026-01-20",
+      "billing_day": 20,
+      "last_used_days_ago": 1
+    },
+    {
+      "id": "sample-lumen",
+      "merchant": "Lumen Notes",
+      "category": "Notes app",
+      "plan": "Monthly",
+      "price": "12.00",
+      "new_price": "19.00",
+      "status": "CANCELLED",
+      "kind": "paid",
+      "risk": 58,
+      "terms_note": "The price went up from $12 to $19 a month with only an in-app notice. SubGuard flagged it.",
+      "started": "2026-02-10",
+      "billing_day": 10,
+      "last_used": "2026-09-02",
+      "ended": "2026-09-08",
+      "ended_how": "Cancelled after a price rise from $12 to $19 a month that SubGuard flagged",
+      "saved": "84.00",
+      "saved_per": "a year",
+      "saved_kind": "price_rise"
+    },
+    {
+      "id": "sample-stillwater",
+      "merchant": "Stillwater Audio",
+      "category": "Meditation audio",
+      "plan": "Premium, free trial",
+      "price": "14.99",
+      "status": "CANCELLED",
+      "kind": "trial",
+      "risk": 64,
+      "terms_note": "A 7-day free trial that turned into $14.99 a month unless cancelled by phone.",
+      "started": "2026-09-26",
+      "last_used": "2026-09-29",
+      "ended": "2026-10-03",
+      "ended_how": "Trial cancelled by SubGuard before the first charge",
+      "saved": "14.99",
+      "saved_kind": "trial"
+    }
+  ]
+}

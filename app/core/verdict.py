@@ -55,6 +55,29 @@ def step_up_text(cycles: Sequence[BillingCycleDef], money: Money) -> str | None:
     return f"Rises to {money(paid[1].price)} after {n} {unit}{'s' if n != 1 else ''}"
 
 
+def cost_facts(cycles: Sequence[BillingCycleDef], money: Money, first_charge: str | None,
+               trial_end: str | None) -> list[dict[str, str]]:
+    """Priya's card as labelled tiles instead of a sentence: Today · First charge · After N months · Year one."""
+    paid = _paid(cycles)
+    if not paid:
+        return []
+    per = UNIT[paid[0].interval_unit]
+    out = []
+    if cycles and cycles[0].price == 0:
+        out.append({"key": "today", "label": "Today", "value": money(Decimal("0")),
+                    "note": f"free trial until {trial_end}" if trial_end else "free trial"})
+        out.append({"key": "first", "label": "First charge", "value": f"{money(paid[0].price)}/{per}",
+                    "note": f"from {first_charge}" if first_charge else "after the trial"})
+    else:
+        out.append({"key": "first", "label": "Price", "value": f"{money(paid[0].price)}/{per}", "note": "from today"})
+    if len(paid) > 1 and paid[0].total_cycles and paid[1].price != paid[0].price:
+        n = paid[0].total_cycles
+        out.append({"key": "step", "label": f"After {n} {per}{'s' if n != 1 else ''}",
+                    "value": f"{money(paid[1].price)}/{per}", "note": "the price rises", "tone": "warn"})
+    out.append({"key": "year", "label": "Year one", "value": money(year_one_cost(cycles)), "note": "if you keep it"})
+    return out
+
+
 def sub_line(cycles: Sequence[BillingCycleDef], money: Money) -> str:
     parts = [p for p in (step_up_text(cycles, money), f"up to {money(year_one_cost(cycles))} in year one") if p]
     return " · ".join(parts)

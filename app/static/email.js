@@ -2,6 +2,8 @@
 // Open in my email app (a mailto: link with the CURRENT edited text; U13), or Close
 // (the draft is kept). The quoted clause is highlighted inside the body (a mirrored backdrop behind the textarea).
 // Nothing is sent without a click; a second Send shows the email already sent. Exposes SG.openEmail(id, opts).
+// Live demo page only (D-168, opts.auto): after Priya's Cancel the demo plays her part here too: the draft stays up
+// to be read, Send is pressed for her (demo outbox), and the window closes itself.
 (function () {
   "use strict";
   if (!window.SG) return;
@@ -104,6 +106,18 @@
 
   dlg.addEventListener("close", () => { if (done) { const d = done; done = null; d(); } });
 
+  function autoSend() {
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    (async () => {
+      await wait(3000);
+      const send = dlg.open && dlg.querySelector("[data-testid=email-send]");
+      if (send && !send.disabled) send.click();
+      for (let i = 0; i < 40 && dlg.open && !dlg.querySelector("[data-testid=email-sent]"); i++) await wait(250);
+      await wait(2000);
+      if (dlg.open) dlg.close();
+    })();
+  }
+
   // Opens the preview for a notice; resolves when it's closed.
   async function openEmail(noticeId, opts) {
     const n = (await api(`/api/notices?user=${user}`)).find((x) => x.id === noticeId);
@@ -112,6 +126,7 @@
     if (n.status === "sent") sentView(n, just); else editView(n, just);
     if (dlg.open) dlg.close();
     dlg.showModal();
+    if (opts && opts.auto) autoSend();
     return new Promise((resolve) => { done = resolve; });
   }
 

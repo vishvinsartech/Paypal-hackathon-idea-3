@@ -30,7 +30,7 @@ Windows without make: `python scripts/tasks.py demo-video [--require-clips --bur
 
 | # | s | Beat |
 |---|---|---|
-| 01_hook | 10 | "Free trials are designed to be forgotten." Priya's empty SubGuard |
+| 01_hook | 10 | The hero sentence (same as the Live demo page and the README) over Priya's Penwright checkout |
 | 02_shop | 15 | Penwright checkout, fine print, Terms |
 | 03_companion | 25 | Verdict, act by Nov 18 (the terms allow Nov 19), PayPal check, injection ignored, consent box |
 | 03b_paypal_approval | 15 | **Clip** recorded by hand: the real PayPal sandbox approval |

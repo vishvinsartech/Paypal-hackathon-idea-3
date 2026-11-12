@@ -62,12 +62,15 @@ async def create_trial_timer(svc: Services, sub: Subscription) -> Timer | None:
                   created_day=svc.day, deadline_day=d.real_cancel_deadline_day, reminder_day=d.reminder_day,
                   billing_day=sub.next_billing_day, layer2=d.layer2)
     name = short(merchant.name)
+    owner = svc.user(sub.owner_id)
+    auto = owner is None or owner.settings.auto_cancel_trials  # D-174: Settings can turn auto-cancel off (R2)
+    then = (f"If I don't hear back, I'll cancel {name} on {day_text(sub, timer.fire_day)} so you're not charged."
+            if auto else "Auto-cancel is off in your Settings, so I won't cancel without your answer.")
     alert, _ = await send_alert(
         svc, user_id=sub.owner_id, key=f"timer-set:{sub.id}", kind="timer_set", level="info",
         title="I'll check with you before your trial runs out.",
         body=(f"To cancel {name}: {sub_act_by(sub, d.real_cancel_deadline_day)}. The first charge is on "
-              f"{day_text(sub, d.first_charge_day)}. I'll ask you on {day_text(sub, timer.reminder_day)}. If I don't "
-              f"hear back, I'll cancel {name} on {day_text(sub, timer.fire_day)} so you're not charged."),
+              f"{day_text(sub, d.first_charge_day)}. I'll ask you on {day_text(sub, timer.reminder_day)}. {then}"),
         subscription_id=sub.id)
     timer.shown_to_user = alert.delivery.get("in_app") == "shown"
     async with svc.store.aedit("timers") as timers:
@@ -76,7 +79,7 @@ async def create_trial_timer(svc: Services, sub: Subscription) -> Timer | None:
                            rule_id="R2", details={"timer_id": timer.id, "kind": "trial", "fire_day": timer.fire_day,
                                                   "deadline_day": timer.deadline_day,
                                                   "reminder_day": timer.reminder_day, "layer2": timer.layer2,
-                                                  "shown_to_user": timer.shown_to_user})
+                                                  "shown_to_user": timer.shown_to_user, "auto_cancel": auto})
     return timer
 
 

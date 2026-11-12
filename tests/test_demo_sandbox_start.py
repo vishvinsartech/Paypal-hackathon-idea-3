@@ -156,7 +156,7 @@ def test_no_usage_reads_naturally(client: TestClient) -> None:
     (check,) = alerts(client, kind="reminder")
     assert "You haven't opened it yet." in check["body"] and "opened it never" not in check["body"]
     html = client.get("/user").text
-    assert "Not opened in 5 days." in html and "You haven&#39;t opened it in 5 days" in html  # Jinja escapes '
+    assert "You haven&#39;t opened it in 5 days." in html  # D-169 card sub-line; Jinja escapes '
 
 
 def test_playwright_helpers_work_under_a_selector_loop() -> None:

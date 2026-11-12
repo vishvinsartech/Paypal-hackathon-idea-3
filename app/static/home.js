@@ -64,6 +64,11 @@
     const [, pre, num, post] = m;
     const to = parseFloat(num.replace(/,/g, ""));
     if (to === from) return;
+    // money went up on a card that celebrates it (the Live demo's "Charges avoided"); Play Priya's story does its own
+    // at the final step instead (autoplay.js)
+    if (to > from && card && card.hasAttribute("data-celebrate") && !document.body.dataset.autoplay && window.SG) {
+      setTimeout(() => window.SG.celebrate(card, text), 900);
+    }
     const decimals = (num.split(".")[1] || "").length;
     const fmt = (v) => pre + v.toLocaleString("en-US", {minimumFractionDigits: decimals, maximumFractionDigits: decimals}) + post;
     const start = performance.now();
@@ -111,12 +116,13 @@
         const fresh = doc.getElementById(el.id);
         if (!fresh || fresh.innerHTML === served.get(el)) return;  // compare server HTML with server HTML
         served.set(el, fresh.innerHTML);
-        const open = new Set([...el.querySelectorAll("details[open]")].map((d) => d.dataset.ppSub || d.querySelector("summary")?.textContent));
+        const key = (d) => d.dataset.ppSub || d.dataset.subDetails || d.dataset.proof || d.querySelector("summary")?.textContent;
+        const open = new Set([...el.querySelectorAll("details[open]")].map(key));
         const before = numberIn(el.querySelector("[data-countup]"));
         el.innerHTML = fresh.innerHTML;
         el.hidden = fresh.hidden;
         el.querySelectorAll("details").forEach((d) => {
-          if (open.has(d.dataset.ppSub || d.querySelector("summary")?.textContent)) d.open = true;
+          if (open.has(key(d))) d.open = true;
         });
         localize(el);
         const counter = el.querySelector("[data-countup]");

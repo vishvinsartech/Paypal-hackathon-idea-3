@@ -12,11 +12,11 @@ import re
 from app.core import timers as tm
 from app.core.alerts import action, send_alert
 from app.core.services import Services
-from app.core.sub_dates import day_text
+from app.core.sub_dates import day_text, sub_act_by
 from app.core.usage import exports
 from app.integrations.paypal_gateway import Ctx
 from app.integrations.paypal_types import DAYS_PER_UNIT, PayPalError, cycle_days
-from app.models import Subscription
+from app.models import Subscription, Timer
 from app.store import utcnow
 
 
@@ -88,6 +88,25 @@ async def run_timers(svc: Services, day: int) -> None:
                 await tm.warn(svc, timer, day)
     for timer in [t for t in svc.store.load("timers").items if t.status == "PENDING" and day >= t.fire_day]:
         await tm.fire(svc, timer, day)
+    for timer in [t for t in svc.store.load("timers").items if t.status == "PENDING" and t.deadline_day == day]:
+        await act_by_reminder(svc, timer, day)
+
+
+async def act_by_reminder(svc: Services, timer: Timer, day: int) -> None:
+    """D-177: with auto-cancel off in Settings, the card's "My plan" promises a second reminder on the Act by day."""
+    sub = svc.sub(timer.subscription_id)
+    owner = svc.user(sub.owner_id) if sub else None
+    if sub is None or owner is None or sub.status != "ACTIVE" or timer.kind != "trial" \
+            or (owner.settings.auto_cancel_trials and not sub.essential):
+        return
+    if day >= (timer.billing_day or sub.next_billing_day or day + 1):
+        return
+    name = tm.short(svc.merchant(sub.merchant_id).name)
+    await send_alert(svc, user_id=sub.owner_id, key=f"act-by:{timer.id}", kind="act_by_reminder", level="warning",
+                     title=f"{name}: today is your last day to cancel",
+                     body=(f"{sub_act_by(sub, day)}. Auto-cancel is off in your Settings, so I won't cancel without "
+                           "you. Keep it or cancel?"),
+                     actions=[action("keep", "Keep"), action("cancel", "Cancel")], subscription_id=sub.id)
 
 
 async def layer2_urgent(svc: Services, day: int) -> None:

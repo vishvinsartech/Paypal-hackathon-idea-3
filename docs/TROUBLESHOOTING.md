@@ -12,7 +12,7 @@ Moved out of the README to keep it short. Every `make <target>` also runs as `py
 | Review says "basic check (AI unavailable)"; audit log shows `OpenAI API error 404: Your organization must be verified` | Verify the organization at platform.openai.com (Settings -> General), or set `OPENAI_MODEL` to a model your key can use, then restart. |
 | A health dot is red / `PayPal MCP unavailable, using SDK` | Node/`npx` is missing or the MCP server failed to start. Everything still works through the SDK. |
 | Port 8000 is already in use | Stop the other server, or run `python -m uvicorn app.main:app --port 8001` from the venv. |
-| The demo state looks odd after many runs | Press **Reset** in the presenter bar (`?demo=1`, or press D), or `make reset` and restart. |
+| The demo state looks odd after many runs | Press **Reset** on the Live demo page (`?demo=1`), or `make reset` and restart. |
 | `make` isn't available (Windows) | Use `python scripts/tasks.py <target>`. |
 | Pop-ups blocked when Start demo opens the shop | Allow pop-ups for 127.0.0.1. |
 | PayPal's window closed or "Cancel and return" chosen | Nothing was set up. Click Subscribe again. |

@@ -45,6 +45,7 @@ from app.review_types import (
 from app.store import JsonStore, utcnow
 
 BASIC_LABEL = "basic check (AI unavailable)"
+MIN_RETRY_S = 5.0  # don't start a second LLM attempt with less than this much of the review budget left
 NOTICE_DAYS_RE = re.compile(r"(\d+)\s+(?:calendar\s+|business\s+)?days?\b", re.I)
 PLAN_MONEY_TYPES = ("AUTO_RENEW", "INTRO_PRICE_STEP_UP")
 
@@ -80,11 +81,16 @@ class Auditor:
         feedback: str | None = None
         dropped: list[str] = []
         partial: ReviewResult | None = None
+        # D-119: self.timeout is the TOTAL budget for both attempts, so the review always answers (AI or basic
+        # check) before the companion gives up waiting; a retry only runs if enough of the budget is left.
+        deadline = time.perf_counter() + self.timeout
         for attempt in (1, 2):
             started = time.perf_counter()
+            left = deadline - started
+            if attempt == 2 and left < min(MIN_RETRY_S, self.timeout / 2):
+                break
             try:
-                result = await asyncio.wait_for(self.provider.extract_findings(capture, feedback=feedback),
-                                                self.timeout)
+                result = await asyncio.wait_for(self.provider.extract_findings(capture, feedback=feedback), left)
             except (LLMError, TimeoutError) as exc:
                 self._audit_llm(user_id, False, started, {}, type(exc).__name__ + ":" + str(exc)[:120])
                 continue

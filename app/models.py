@@ -33,12 +33,18 @@ class State(BaseModel):
     last_tick_at: datetime | None = None
     pricing_fingerprint: str | None = None  # which .env prices this runtime data was built with
     demo_seeded: bool = False  # Priya's scripted Penwright usage created (mock mode, DEMO_SEED)
+    day0_at: datetime | None = None  # D-172: the run's calendar: sim day N is day0_at + N days (set at 1st sign-up)
     reminders: list[Reminder] = Field(default_factory=list)
     webhook_event_ids: list[str] = Field(default_factory=list)  # last 500 PayPal webhook ids (dedupe)
 
 
 # ---- users.json -------------------------------------------------------------
 class UserSettings(BaseModel):
+    # D-174 Settings, in plain words. "Cancel trials automatically if I don't answer" (R2 trial timers),
+    # "Send the cancellation email for me" (pre-ticks the companion's D7 box; the consent snapshot still decides),
+    # "Remind me by" = channels (in_app always on).
+    auto_cancel_trials: bool = True
+    auto_send_notice: bool = False
     auto_cancel_price_rises: bool = False
     channels: list[Literal["in_app", "email", "sms"]] = Field(default_factory=lambda: ["in_app", "email"])
 
@@ -112,6 +118,7 @@ class Subscription(BaseModel):
     kept_day: int | None = None  # sim day the user tapped Keep (no more prompts after that)
     consent_snapshot: ConsentSnapshot | None = None
     registered_at: datetime | None = None
+    day0_at: datetime | None = None  # D-172: the run's Day 0 (State.day0_at), so all subscriptions share one calendar
     cancel_requested_at: datetime | None = None  # duplicate-cancel claim (released on failure)
     cancelled_at: datetime | None = None
     cancelled_day: int | None = None

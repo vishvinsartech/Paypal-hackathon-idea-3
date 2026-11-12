@@ -1,8 +1,9 @@
 """Priya's SubGuard at `/`: the product view (FIX_PLAN U5, D-148). `/user` and `/me` redirect here.
 
-Server-rendered: the subscription cards (with the check-in band and the Layer 2 handoff), the right column
-(Charges avoided, Next decision, What SubGuard did), the Activity and Emails sections. `?demo=1` (or the D key)
-shows the presenter bar. The page refreshes its `[data-live]` parts from this same HTML (home.js).
+Server-rendered: one story-state card per subscription (D-169: trial / check-in / cancelled / proof, plus kept and the
+Layer 2 handoff), the right column (What SubGuard did), the Activity and Emails sections. `?demo=1` renders the Live
+demo page instead (D-167: controls, the 7-step story, Priya's check-in, results), from the same context.
+The page refreshes its `[data-live]` parts from this same HTML (home.js).
 """
 
 from __future__ import annotations
@@ -17,15 +18,19 @@ from app.core.activity import Activity, activity_for
 from app.core.savings import charges_avoided, money_protected, year_one_cost
 from app.core.services import Services
 from app.core.sub_dates import day_text
+from app.core.timeline import by_day, date_label, timeline
 from app.routes.actions import get_services
+from app.routes.dashboard_view import dashboard_context
 from app.routes.deps import get_settings, get_store
-from app.routes.home_view import card, check_in, delivery_text, did_rows, handoffs, history_row, next_decision, proof
+from app.routes.home_view import card, check_in, delivery_text, did_rows, handoffs, history_row, proof
+from app.routes.landing import landing_view
 from app.routes.pages import _base, templates
+from app.routes.story_card import story
 from app.store import JsonStore
 
 router = APIRouter()
-DID_ROWS = 5  # U9: "What SubGuard did" shows the 5 latest meaningful events
-GRID_AFTER = 5  # U10: the history grid only under "Show all" when there are more rows than this
+DID_ROWS = 5  # the Live demo page's "What SubGuard did" (demo.html) shows the 5 latest meaningful events
+RECENT = 3  # D-172: the Overview's "What SubGuard did": the 3 latest Activity entries
 
 
 def _subs(store: JsonStore, user: str) -> list[Any]:
@@ -45,18 +50,26 @@ def home(
     band = check_in(svc, alerts)
     hand = handoffs(svc, alerts, user)
     cards = [card(svc, s, band if band and band["subscription_id"] == s.id else None, hand.get(s.id)) for s in subs]
-    acts = activity_for(svc, user)
-    history = [history_row(c, [a for a in acts if a.subscription_id == c["id"]]) for c in cards]
-    did = did_rows(svc, user)
+    for c, s in zip(cards, subs, strict=True):
+        c["story"] = story(svc, s, c, notices, alerts)  # D-169: the Overview's story-state card
+    did = did_rows(svc, user)  # the Live demo page's list (demo.html)
+    entries = timeline(svc, user)  # D-172: Activity and the Overview's "What SubGuard did" share this
     verify = store.audit.verify()
 
     def alert_when(a: Any) -> str:
         sub = svc.sub(a.subscription_id or "")
         return day_text(sub, a.sim_day) if sub else f"Day {a.sim_day}"
 
-    ctx.update(demo=bool(demo), merchants=store.load("merchants").items, cards=cards, notices=notices,
-               alerts=alerts, proof=proof(svc, alerts), next=next_decision(svc, cards), did=did[:DID_ROWS],
-               did_all=did, history=history, grid_after=GRID_AFTER, delivery_text=delivery_text,
+    merchants = store.load("merchants").items
+    if not demo:  # D-174: the dashboard's sidebar sections
+        ctx.update(dashboard_context(svc, user, subs, cards))
+    if demo:  # D-173: the landing section above the controls, and the Quillnote "connected" toggle's state
+        ctx.update(landing=landing_view(settings),
+                   quillnote_connected=any(m.id == "quillnote" and m.fair_trial_member for m in merchants))
+    ctx.update(demo=bool(demo), merchants=merchants, cards=cards, notices=notices,
+               alerts=alerts, proof=proof(svc, alerts), did=did[:DID_ROWS], delivery_text=delivery_text,
+               days=by_day(svc, entries), recent=[(date_label(svc, e.day), e) for e in entries[:RECENT]],
+               asks=sum(1 for e in entries if e.mark == "ask"),
                chain_ok=verify.ok, alert_when=alert_when, chain_entries=verify.entries,
                protected=svc.money(money_protected(subs, user, settings.pricing.demo_currency)),
                avoided=svc.money(avoided := charges_avoided(subs, user, settings.pricing.demo_currency)),
@@ -65,7 +78,7 @@ def home(
                                        if s.status == "ACTIVE" and s.kept_day is None and s.consent_snapshot),
                                       start=year_one_cost([]))),
                cancelled=sum(1 for s in subs if s.status == "CANCELLED"))
-    return templates.TemplateResponse(request, "home.html", ctx)
+    return templates.TemplateResponse(request, "demo.html" if demo else "home.html", ctx)
 
 
 @router.get("/user")

@@ -6,7 +6,7 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
-from tests.story_helpers import advance_to, alerts, audit, cancel_via_alert, on, subscribe
+from tests.story_helpers import advance_to, alerts, allow_many, audit, cancel_via_alert, on, subscribe
 
 NOISE = ("paypal_call", "clock_advanced", "demo_control", "paypal_subscription_verified", "confirm_token_issued")
 
@@ -49,7 +49,7 @@ def test_cancel_run_reads_as_a_short_story(demo_client: TestClient) -> None:
 
 
 def test_only_the_latest_run(demo_client: TestClient) -> None:
-    c = demo_client
+    c = allow_many(demo_client)  # two runs without a Reset in between
     first = subscribe(c)
     advance_to(c, 5)
     cancel_via_alert(c, alerts(c, kind="reminder")[0])
@@ -78,7 +78,7 @@ def test_live_demo_page_has_summary_and_folded_full_log(client: TestClient) -> N
     for t in ("audit-summary", "audit-full-toggle", "audit-log-grid", "audit-log-export", "audit-chain",
               "audit-drawer", "audit-routine", "presenter-audit"):
         assert f'data-testid="{t}"' in html, t
-    assert '<dialog id="audit-drawer"' in html and html.count("data-open-audit") >= 3
+    assert '<dialog id="audit-drawer"' in html and html.count("data-open-audit") >= 2
     assert "/static/presenter.js" in html  # the step indicator reads /api/audit-log/summary
 
 

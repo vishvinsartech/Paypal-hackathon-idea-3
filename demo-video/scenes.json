@@ -14,12 +14,12 @@
     {
       "id": "01_hook",
       "duration": 10,
-      "on_screen": "Free trials are designed to be forgotten.",
-      "narration": "Free trials are designed to be forgotten. This is Priya's SubGuard. Nothing to watch yet.",
+      "on_screen": "SubGuard reads the fine print on free trials, and uses PayPal to stop the charge you didn't agree to.",
+      "narration": "SubGuard reads the fine print on free trials, and uses PayPal to stop the charge you didn't agree to.",
       "actions": [
-        {"action": "goto", "url": "/"},
-        {"action": "highlight", "target": "user-empty"},
-        {"action": "highlight", "target": "mode-badge"}
+        {"action": "goto", "url": "/shop/penwright"},
+        {"action": "highlight", "target": "shop-headline"},
+        {"action": "highlight", "target": "shop-plan"}
       ]
     },
     {
@@ -28,8 +28,6 @@
       "on_screen": "Penwright Studio: \"10-day free trial, $0 today\"",
       "narration": "Priya wants Penwright, a fictional AI writing app. Ten days free, nothing today. The real terms hide in tiny grey text and a folded Terms section.",
       "actions": [
-        {"action": "goto", "url": "/shop/penwright"},
-        {"action": "highlight", "target": "shop-headline"},
         {"action": "hover", "target": "shop-fineprint"},
         {"action": "highlight", "target": "shop-fineprint"},
         {"action": "click", "target": "shop-terms-toggle"},
@@ -46,7 +44,7 @@
         {"action": "click", "target": "shop-paypal-btn"},
         {"action": "wait_for", "target": "companion-risk", "timeout": 60},
         {"action": "highlight", "target": "companion-verdict"},
-        {"action": "highlight", "target": "companion-act-by"},
+        {"action": "highlight", "target": "companion-deadline"},
         {"action": "highlight", "target": "finding-TERMS_MISMATCH"},
         {"action": "highlight", "target": "finding-PROMPT_INJECTION_ATTEMPT"},
         {"action": "highlight", "target": "companion-auto-send"},
@@ -139,7 +137,7 @@
         {"action": "click", "target": "sim-jump-11"},
         {"action": "wait", "seconds": 2},
         {"action": "goto", "url": "/"},
-        {"action": "highlight", "target": "proof-banner"},
+        {"action": "highlight", "target": "sub-headline"},
         {"action": "wait", "seconds": 4}
       ]
     },

@@ -56,6 +56,7 @@ class Settings(BaseSettings, PricingFields):
     zapier_catch_hook_url: str = ""
     log_all_requests: bool = False  # true: show every request in the terminal, including background polling
     demo_seed: bool = True  # mock mode: script Priya's Penwright usage on first start / reset
+    one_sub_per_merchant: bool = True  # D-172: one subscription per merchant per demo run (Reset starts a new run)
     render_api_key: str = ""
 
     @field_validator("llm_provider")

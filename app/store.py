@@ -12,7 +12,6 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-import shutil
 import threading
 from collections.abc import AsyncIterator, Callable, Iterator
 from contextlib import asynccontextmanager, contextmanager
@@ -22,6 +21,7 @@ from typing import Any, TypeVar, cast
 
 from pydantic import BaseModel, ValidationError
 
+from app import fsutil
 from app import models as m
 from app.core.audit_log import AuditLog
 from app.pricing import Pricing
@@ -46,10 +46,10 @@ def atomic_write_text(path: Path, text: str) -> None:
             f.write(text)
             f.flush()
             os.fsync(f.fileno())
-        os.replace(tmp, path)
+        fsutil.replace(tmp, path)  # retries while a reader has `path` open (Windows)
     finally:
         if tmp.exists():
-            tmp.unlink(missing_ok=True)
+            fsutil.unlink(tmp)
 
 
 class JsonStore:
@@ -201,10 +201,10 @@ class JsonStore:
                 )
                 if keep:
                     continue
-                if entry.is_dir():
-                    shutil.rmtree(entry)
+                if entry.is_dir():  # retried: a page poll may be reading it (Windows, D-172)
+                    fsutil.rmtree(entry)
                 else:
-                    entry.unlink()
+                    fsutil.unlink(entry)
             self.warnings.clear()
             self.audit.reload()
             self.ensure_all()

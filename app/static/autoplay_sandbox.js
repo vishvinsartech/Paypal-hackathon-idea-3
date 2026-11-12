@@ -1,6 +1,7 @@
 // "Start demo" in sandbox mode (D-116/D-117), steps 1-2 of the stepper. Penwright opens in its own window and
-// plays Priya: the SubGuard companion reviews the page (real LLM) and "Continue to PayPal". The presenter clicks
-// "Subscribe with PayPal" and confirms in PayPal's window, which opens already logged in as the sandbox buyer.
+// plays Priya: the SubGuard companion reviews the page (real LLM), "Continue to PayPal" and "Subscribe with PayPal".
+// The presenter only confirms the order in PayPal's window, which opens already logged in as the sandbox buyer
+// (D-168).
 // The window reports each stage here with postMessage, shows the live PayPal card, and closes itself.
 (function () {
   "use strict";
@@ -24,12 +25,12 @@
           mark("read", "done", `Risk ${review.risk_score}` + (review.display ? ` · act by ${review.display.points.act_by.date}` : ""));
           say(esc(review.summary || ""));
         } else if (d.stage === "ready") {
-          mark("approve", "active", "click Subscribe");
-          say("In the Penwright window, click <strong>Subscribe with PayPal</strong>.");
+          mark("approve", "active", "Subscribe…");
+          say("Priya clicks <strong>Subscribe with PayPal</strong>. PayPal's window opens next.");
         } else if (d.stage === "approving") {
-          mark("approve", "active", "confirm in PayPal");
-          say("PayPal's window is open, logged in as Priya's sandbox account. <strong>Confirm the subscription " +
-            "there</strong>; the demo continues here once PayPal says yes.");
+          mark("approve", "active", "confirm the order");
+          say("<strong>Your turn: confirm the order.</strong> PayPal's window is open, logged in as Priya's sandbox " +
+            "account. Confirm the subscription there; the demo continues here once PayPal says yes.");
         } else if (d.stage === "retry") {
           mark("approve", "active", "not confirmed");
           say(esc(d.message) + " Click <strong>Subscribe with PayPal</strong> in the Penwright window to try again.");

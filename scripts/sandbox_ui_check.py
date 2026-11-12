@@ -174,7 +174,7 @@ async def run(base: str, headed: bool, shots: Path | None) -> None:
         await shot(shop, "s3_shop_subscribed")
 
         me = watch(await ctx.new_page())
-        await me.goto(f"{base}/?demo=1")
+        await me.goto(f"{base}/")  # Priya's dashboard: the story card (D-169)
         foot = me.get_by_test_id("paypal-verified").first  # U7: the card's quiet footer (lite, no ids)
         sub_id_text = await foot.get_by_test_id("paypal-sub-id").inner_text()
         await foot.locator("summary").click()

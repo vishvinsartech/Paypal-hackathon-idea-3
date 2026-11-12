@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.config import Settings
 from tests.review_helpers import capture_page
+from tests.story_helpers import allow_many
 from tests.test_checkout import buy
 
 
@@ -56,7 +57,7 @@ def test_register_links_the_preflight_review(client: TestClient) -> None:
         "user_id": "priya", "review_id": review_id}).json()
     review = client.get(f"/api/reviews/{review_id}").json()
     assert review["subscription_id"] == sub["id"]
-    _, other = buy(client)  # a second subscription without a preflight review still registers
+    _, other = buy(allow_many(client))  # a second subscription without a preflight review still registers
     assert other.status_code == 200  # type: ignore[attr-defined]
 
 

@@ -62,7 +62,7 @@ def derive_steps(svc: Services, sub: Subscription | None, entries: list[AuditEnt
     if warned is not None:
         steps["ask"] = Step(key="ask", state="done", detail=f"Asked {day_text(sub, warned.sim_day)}")
     elif decided_day is not None:
-        steps["ask"] = Step(key="ask", state="skipped", detail="decided before")
+        steps["ask"] = Step(key="ask", state="skipped", detail="she decided first")
 
     if sub.cancelled_day is not None:
         when = day_text(sub, sub.cancelled_day)

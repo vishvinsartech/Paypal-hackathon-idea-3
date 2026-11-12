@@ -140,6 +140,8 @@ class Policy:
         billing = timer.billing_day if timer.billing_day is not None else sub.next_billing_day
         if billing is None or day >= billing or sub.next_billing_day != billing:
             return block("R2", "Too late: the billing date has been reached")
+        if timer.kind == "trial" and not user.settings.auto_cancel_trials:
+            return block("R2", "Settings: \"Cancel trials automatically if I don't answer\" is off")
         if timer.kind == "price_rise" and not user.settings.auto_cancel_price_rises:
             return block("R2", "auto_cancel_price_rises is off for this user")
         why = "trial before the first charge" if timer.kind == "trial" else "price rise the user didn't agree to"

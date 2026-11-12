@@ -20,6 +20,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from app import fsutil
+
 GENESIS = "0" * 64
 Actor = Literal["user", "agent", "policy", "timer", "merchant_sim", "system"]
 Decision = Literal["allowed", "blocked", "n/a"]
@@ -176,7 +178,7 @@ class AuditLog:
                 return None
             stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
             target = self.path.with_name(f"audit_log.{stamp}.jsonl")
-            os.replace(self.path, target)
+            fsutil.replace(self.path, target)  # retries while a page poll reads the log (Windows, D-172)
             self.reload()
             return target
 

@@ -1,14 +1,30 @@
 # SubGuard
 
-**AI reads the fine print. PayPal enforces the outcome.**
+**SubGuard reads the fine print on free trials, and uses PayPal to stop the charge you didn't agree to.**
 
-"Free trials" are designed to be forgotten. SubGuard reads a merchant's checkout and terms before you subscribe,
-checks every claim against the real PayPal plan, and tells you the *real* last day to cancel.
-Before that day it asks "keep it?", and if you say no (or don't answer, when you agreed to that) it cancels
-through PayPal and drafts the written notice the terms require.
+Before you pay, it tells you the real last day to cancel. Before that day, it asks if you want to keep the trial.
+If you say no, it cancels the subscription in PayPal before the first charge.
+
+### Meet Priya
+
+She wants **Penwright Studio**, a writing app: *"10-day free trial, $0 today"*. The fine print says:
+
+1. After 10 days it costs **$24.99 a month**, then **$49.99 a month** from month 4.
+2. She must cancel by email **3 days before** the first charge, so her real last day is **Day 8**, not Day 10.
+3. There is **no cancel button**: email, or phone on weekdays only.
+
+**Without SubGuard: $524.88 in year one. With SubGuard: $0.**
+
+| Before you pay | Before the deadline | At the deadline |
+|---|---|---|
+| It reads the terms, checks them against the PayPal plan, and gives you the real last day to cancel. | It asks you once: keep the trial or cancel it? You decide. | If you said cancel, it cancels in PayPal before the first charge, and drafts the email the terms ask for. |
+
+Built with the PayPal Subscriptions API, the PayPal JS SDK, the PayPal MCP server and an AI model (Anthropic or
+OpenAI, set in `.env`). AI proposes, code decides. Tagline: *AI reads the fine print. PayPal enforces the outcome.*
 
 > Everything in the demo is fictional (Priya, Penwright Studio, Quillnote) and runs on the **PayPal sandbox**.
-> No real brands, money or people.
+> No real brands, money or people. Days are simulated: the demo moves a clock forward. Prices are the defaults in
+> `.env.example`.
 
 | | |
 |---|---|
@@ -39,7 +55,8 @@ python scripts/tasks.py dev          # or `make dev`: http://127.0.0.1:8000/
 
 Open:
 
-- **http://127.0.0.1:8000/?demo=1**: Priya's SubGuard with the presenter bar (press **D** to show or hide it)
+- **http://127.0.0.1:8000/?demo=1**: the Live demo page: what SubGuard is, then **Run the demo yourself** (Start demo, day controls, the 7-step story, and Priya's check-in to answer)
+- **http://127.0.0.1:8000/**: Priya's dashboard (what she sees)
 - http://127.0.0.1:8000/shop: the fictional merchant shop
 - http://127.0.0.1:8000/healthz and `/docs`: health and API docs
 
@@ -66,7 +83,7 @@ The AI review scores **73** and says **act by Day 4**; the regex-only basic chec
 too late. Quillnote isn't a Fair Trial merchant, so **Cancel** drafts the email and shows **ACTION NEEDED** with a
 one-tap link to PayPal's Automatic payments page, then reads PayPal (read-only) until it shows CANCELLED.
 
-**Reset:** the presenter bar's **Reset**, or `make reset` and restart.
+**Reset:** **Reset** under *Run the demo yourself*, or `make reset` and restart.
 
 ### Sandbox mode (real PayPal sandbox + real AI)
 

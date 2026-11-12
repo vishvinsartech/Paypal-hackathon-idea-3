@@ -62,10 +62,13 @@
   }
 
   // Renders the card into `host`; resolves with the /api/agent/confirm result, or null if dismissed.
-  function showCard(card, host) {
+  // Live demo page (D-168): Priya's Cancel tap was her choice, so the card confirms itself after a short beat.
+  const liveDemo = () => !!document.querySelector("[data-testid=live-demo]");
+  function showCard(card, host, opts) {
     host.innerHTML = cardHtml(card);
     return new Promise((resolve) => {
       const btn = host.querySelector("[data-testid=confirm-button]");
+      if (opts && opts.auto) setTimeout(() => { if (!btn.disabled && host.isConnected) btn.click(); }, 1400);
       host.querySelector("[data-role=dismiss]").addEventListener("click", () => { host.innerHTML = ""; resolve(null); });
       btn.addEventListener("click", async () => {
         btn.disabled = true;
@@ -93,7 +96,7 @@
     const host = document.createElement("div");
     dlg.appendChild(host);
     dlg.showModal();
-    const out = await showCard(card, host);
+    const out = await showCard(card, host, {auto: liveDemo()});
     dlg.close();
     if (out) {
       // Success goes straight to the email preview (no extra pop-up); only problems are toasted.
@@ -109,7 +112,7 @@
   async function openDrafts(out) {
     for (const r of (out && out.results) || []) {
       // Layer 2 (A5): no PayPal cancel happened, so don't say "Cancelled in PayPal"
-      if (r.notice_id && window.SG.openEmail) await window.SG.openEmail(r.notice_id, {justCancelled: r.ok});
+      if (r.notice_id && window.SG.openEmail) await window.SG.openEmail(r.notice_id, {justCancelled: r.ok, auto: liveDemo()});
     }
   }
 
@@ -166,7 +169,46 @@
   if (toggleBtn) toggleBtn.addEventListener("click", () => setTheme(theme() === "light" ? "dark" : "light"));
   paintToggle();
 
+  // Top bar menus (D-174: Presenter, avatar): one open at a time; outside click, Escape or a link closes them.
+  const menus = () => Array.from(document.querySelectorAll("details.menu[open]"));
+  document.addEventListener("click", (ev) => {
+    menus().forEach((m) => { if (!m.contains(ev.target) || ev.target.closest(".menu-body a")) m.open = false; });
+  });
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key !== "Escape") return;
+    menus().forEach((m) => { m.open = false; m.querySelector("summary").focus(); });
+  });
+
+  // Money saved: a short burst of coins out of `el` and a "+amount" that floats up (decoration only, aria-hidden;
+  // skipped with reduced motion). `label` is the amount text from the server, never computed here (R7).
+  function celebrate(el, label) {
+    if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    el.querySelectorAll(".coin-burst").forEach((b) => b.remove());
+    const burst = document.createElement("span");
+    burst.className = "coin-burst";
+    burst.setAttribute("aria-hidden", "true");
+    const sym = (label && label.match(/^[^\d\s-]+/)) ? label.match(/^[^\d\s-]+/)[0] : "$";
+    for (let i = 0; i < 12; i++) {
+      const c = document.createElement("span");
+      const a = (-160 + (140 * i) / 11) * Math.PI / 180; // a fan, up and out
+      const r = 70 + Math.random() * 50;
+      c.className = "coin";
+      c.textContent = sym;
+      c.style.cssText = `--dx:${Math.cos(a) * r}px;--dy:${Math.sin(a) * r}px;--rot:${Math.random() * 360 - 180}deg;--d:${i * 35}ms`;
+      burst.appendChild(c);
+    }
+    if (label) {
+      const plus = document.createElement("span");
+      plus.className = "coin-plus";
+      plus.textContent = `+${label} saved`;
+      burst.appendChild(plus);
+    }
+    el.classList.remove("is-celebrating"); void el.offsetWidth; el.classList.add("is-celebrating");
+    el.appendChild(burst);
+    setTimeout(() => { burst.remove(); el.classList.remove("is-celebrating"); }, 2200);
+  }
+
   window.SG = {user, esc, api, toast, onRefresh, refresh, showCard, resultLines, confirmInDialog, proposeCancel, openDrafts,
-               theme, setTheme};
+               theme, setTheme, celebrate};
   loadHealth();
 })();

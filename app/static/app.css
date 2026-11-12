@@ -10,6 +10,7 @@
   --red: #ff5a5f;
   --red-dark: #b3313a;
   --amber: #f5b942;
+  --ok: #4cc38a;  /* the "done" tick (D-172) */
   --radius: 10px;
   --today: #ffffff;
   --paypal: #8fb4ff;
@@ -18,7 +19,8 @@
   --overlay: rgba(6,16,33,.65);
   --tint: rgba(46,196,182,.1);
   color-scheme: dark;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;  /* the one font, pills and code too (D-169) */
+  font-family: var(--font);
 }
 /* Light theme (D-109): same token names, light values. Set by the top-right toggle on <html data-theme>. */
 :root[data-theme="light"] {
@@ -33,6 +35,7 @@
   --red: #c8323a;
   --red-dark: #b3313a;
   --amber: #8a5a00;
+  --ok: #18794e;
   --today: #102036;
   --paypal: #1f4fbf;
   --mint: #0b7f76;
@@ -47,7 +50,8 @@
 body { margin: 0; background: var(--navy-900); color: var(--text); line-height: 1.5; }
 a { color: var(--teal); }
 :focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
-code, pre { font-family: ui-monospace, Consolas, monospace; font-size: .82rem; }
+code, pre { font-family: var(--font); font-size: .85rem; font-variant-numeric: tabular-nums; }
+button, input, select, textarea { font-family: var(--font); }
 pre { white-space: pre-wrap; background: var(--navy-900); padding: 10px; border-radius: 6px; }
 kbd { border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; }
 h2 { font-size: 1.1rem; margin: 0 0 10px; }
@@ -78,7 +82,7 @@ select, input[type=search], .chat-form input { background: var(--navy-700); colo
 .dot.unavailable { background: var(--red); }
 
 /* ---- buttons ---- */
-.btn { display: inline-block; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--teal); background: var(--teal); color: var(--navy-900); font: 600 .9rem system-ui, sans-serif; text-decoration: none; cursor: pointer; }
+.btn { display: inline-block; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--teal); background: var(--teal); color: var(--navy-900); font: 600 .9rem var(--font); text-decoration: none; cursor: pointer; }
 .btn:disabled { opacity: .55; cursor: default; }
 .btn-ghost { background: transparent; color: var(--teal); }
 .btn-danger { background: var(--red-dark); border-color: var(--red); color: #fff; }
@@ -125,8 +129,8 @@ main { max-width: 1280px; margin: 0 auto; padding: 20px 20px 16px; }
 .risk-high .risk-fill { background: var(--red); }
 .risk-mid .risk-fill { background: var(--amber); }
 .risk-low .risk-fill { background: var(--teal); }
-.risk-num { font-weight: 800; font-variant-numeric: tabular-nums; }
-.risk-big { font-weight: 800; padding: 3px 12px; border-radius: 999px; margin: 0 8px; color: #fff; }
+.risk-num { font-weight: 700; font-variant-numeric: tabular-nums; }
+.risk-big { font-weight: 700; padding: 3px 12px; border-radius: 999px; margin: 0 8px; color: #fff; }
 .risk-big.risk-high { background: var(--red-dark); }
 .risk-big.risk-mid { background: #8a5a00; }
 .risk-big.risk-low { background: var(--teal-dark); }
@@ -246,7 +250,7 @@ main > :nth-child(4) { animation-delay: .15s; } main > :nth-child(5) { animation
 .pipe-fill { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--teal-dark), var(--teal)); border-radius: 2px; transition: width .8s cubic-bezier(.2,.8,.2,1); }
 .steps { position: relative; list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
 .step { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; color: var(--muted); font-size: .82rem; }
-.step-dot { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; background: var(--navy-900); border: 2px solid var(--line); color: var(--muted); transition: background-color .3s, border-color .3s, color .3s; }
+.step-dot { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; background: var(--navy-900); border: 2px solid var(--line); color: var(--muted); transition: background-color .3s, border-color .3s, color .3s; }
 .step-title { font-weight: 600; color: var(--text); opacity: .6; transition: opacity .3s; }
 .step-detail { min-height: 1.2em; font-size: .75rem; }
 .step.is-active .step-dot { border-color: var(--teal); color: var(--teal); animation: glow 1.2s ease-out infinite; }

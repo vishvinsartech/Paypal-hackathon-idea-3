@@ -35,6 +35,7 @@ from app.routes import (
     analytics,
     api,
     chat,
+    dashboard_api,
     demo,
     layer2,
     notices,
@@ -141,6 +142,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.mount("/shop/static", FreshStatic(directory=ROOT_DIR / "shop" / "static"), name="shop_static")
     app.include_router(pages.router)
     app.include_router(user_page.router)
+    app.include_router(dashboard_api.router)
     app.include_router(api.router)
     app.include_router(demo.router)
     app.include_router(subscriptions.router)

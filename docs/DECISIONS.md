@@ -968,6 +968,17 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   `check_scenes.py --base-url` read it from the environment or `.env` (`scripts/signin.py`) and stop with a clear
   message when it is missing; `check_scenes.py` without `--base-url` signs in to its own throwaway app.
   `record_stage.py` only reads `/healthz` (public) and needs no sign-in.
+- **D-181 `/` switches between the intro and the dashboard.** One URL, two pages: signed out, `home()` renders
+  `intro.html` (what SubGuard is, how it works with PayPal in 3 steps, what the AI does, Sign in and Browse the demo
+  shops, the fictional-merchant note); signed in, `/` stays Priya's dashboard, so the URLs in the tests, the video
+  and CLAUDE.md still hold. The middleware treats `/` as public except `/?demo=1` (the Live demo still needs a
+  session; `?demo=0` is the intro). Every number on the intro comes from `landing_view(settings)`. The hero and the
+  numbered steps are Jinja macros (`_hero.html`, `_steps.html`) shared with the Live demo's landing, whose rendered
+  markup is unchanged; the intro reuses `demo.css` for them and adds `auth.css`. Signed-out pages (intro, sign-in)
+  get a signed-out top bar: brand, the mode badge (CLAUDE.md: the top bar shows the mode), Demo shops, Sign in and
+  the theme toggle. No Presenter menu, avatar, chat or dashboard scripts (they call `/api/*`, which is 401 signed
+  out), and no `data-user` on `<body>`. The sign-in page extends `base.html`: labelled fields (16 px, 44 px tall),
+  the error line, "Demo account: Priya" (never the password, no sign-up link) and a Back link to `/`.
 
 ## v3 Phase 7 Step V: video tooling v2 (2026-11-12, docs/PHASE7_PLAN.md)
 

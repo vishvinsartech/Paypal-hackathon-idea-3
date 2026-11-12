@@ -1,0 +1,9 @@
+{# The numbered "how it works" steps, shared by the Live demo's landing (_landing.html) and the intro (intro.html,
+   D-181). `items` is a list of (heading, text) pairs. #}
+{% macro steps(items, label="How it works") %}
+  <ol class="how" aria-label="{{ label }}" data-testid="how-it-works">
+    {% for heading, text in items %}<li><span class="how-n">{{ loop.index }}</span><div><h3>{{ heading }}</h3>
+      <p>{{ text }}</p></div></li>
+    {% endfor %}
+  </ol>
+{% endmacro %}

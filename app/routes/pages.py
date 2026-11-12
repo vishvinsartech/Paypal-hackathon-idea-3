@@ -34,6 +34,12 @@ def _base(request: Request, user: str, settings: Settings, store: JsonStore) -> 
             "ag_grid_url": AG_GRID_URL, "ag_charts_url": AG_CHARTS_URL, "llm": request.app.state.llm}
 
 
+def signed_out_base(settings: Settings, store: JsonStore) -> dict[str, Any]:
+    """base.html for a signed-out visitor (D-181): no user, so the top bar is brand, Demo shops and Sign in."""
+    return {"settings": settings, "current_user": None, "signed_out": True, "sim_day": store.load("state").sim_day,
+            "ag_grid_url": AG_GRID_URL}
+
+
 def ai_vs_basic_view(sub: Subscription, data: ReviewData) -> dict[str, Any] | None:
     """A2: the side-by-side panel. Dates relative to the sign-up, like everywhere else (B2)."""
     cmp = data.ai_vs_basic()

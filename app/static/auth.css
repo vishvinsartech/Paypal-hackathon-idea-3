@@ -1,0 +1,49 @@
+/* Signed-out pages (D-181): the intro at `/` and the sign-in page. Same tokens as app.css. The intro reuses the
+   Live demo's hero and step styles from demo.css; this file adds the rest. */
+
+/* ---- signed-out top bar: "Sign in" reads as the main action ---- */
+.topnav a.topnav-signin { color: var(--teal); border: 1px solid var(--teal); }
+.topnav a.topnav-signin:hover { color: var(--navy-900); background: var(--teal); }
+
+/* ---- intro ---- */
+.intro-page { max-width: 1040px; margin: 0 auto; padding: 12px 0 8px; }
+.intro-hero { margin: 8px 0 32px; }
+.intro-page .hero-h { margin-bottom: 22px; }
+.intro-page .hero-cta .btn { display: inline-flex; align-items: center; min-height: 44px; border-radius: 999px;
+  padding: 10px 24px; font-size: 1rem; }
+.intro-page .hero-cta .btn-start { border: 0; color: #fff; background: var(--teal-dark); }
+.intro-page .hero-cta .btn-start:hover { background: var(--teal); }
+.intro-page .hero-cta .btn-ghost { border: 1px solid var(--line); color: var(--text); background: transparent; }
+.intro-page .hero-cta .btn-ghost:hover { border-color: var(--teal); color: var(--teal); }
+.intro-sec { margin: 0 0 28px; }
+.intro-h { margin: 0 0 4px; font-size: 1.25rem; letter-spacing: -.01em; }
+.intro-sec .how { margin-top: 12px; }
+.intro-ai { padding: 18px 22px; border-radius: 14px; }
+.intro-list { margin: 10px 0 12px; padding-left: 1.2em; display: grid; gap: 8px; line-height: 1.5; }
+.intro-rule { margin: 0; padding: 10px 14px; border-radius: 10px; background: var(--tint); color: var(--teal);
+  font-weight: 700; }
+.intro-note { margin: 0; text-align: center; }
+
+/* ---- sign-in ---- */
+.auth-page { display: grid; place-items: start center; padding: 32px 0 16px; }
+.auth-card { width: 100%; max-width: 400px; margin: 0; padding: 26px 28px; border-radius: 14px; }
+.auth-h { margin: 0 0 4px; font-size: 1.45rem; letter-spacing: -.01em; }
+.auth-hint { margin: 0 0 16px; font-size: .92rem; }
+.auth-error { margin: 0 0 14px; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--red); color: var(--red);
+  font-size: .92rem; }
+.auth-form { display: grid; gap: 6px; }
+.auth-form label { font-weight: 600; font-size: .92rem; margin-top: 6px; }
+.auth-form input { width: 100%; box-sizing: border-box; min-height: 44px; padding: 10px 12px; font: 16px var(--font);
+  color: var(--text); background: var(--navy-900); border: 1px solid var(--line); border-radius: 8px; }
+.auth-form input:focus-visible { outline: 3px solid var(--teal); outline-offset: 1px; border-color: var(--teal); }
+.auth-form input:disabled { opacity: .55; }
+.auth-submit { margin-top: 14px; min-height: 44px; font-size: 1rem; border-radius: 8px; }
+.auth-back { margin: 16px 0 0; font-size: .92rem; }
+.auth-back a { display: inline-block; padding: 6px 0; }
+
+@media (max-width: 640px) {
+  .intro-page { padding-top: 4px; }
+  .intro-page .hero-cta .btn { flex: 1 1 100%; justify-content: center; }
+  .auth-page { padding-top: 12px; }
+  .auth-card { padding: 20px 18px; }
+}

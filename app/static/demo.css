@@ -1,4 +1,4 @@
-/* Live demo page polish (D-171), with the landing section (D-173). Loaded only by demo.html, scoped under .demo-page, same tokens as app.css.
+/* Live demo page polish (D-171), with the landing section (D-173). Loaded by demo.html (and intro.html for the hero and steps, D-181), scoped under .demo-page, same tokens as app.css.
    Softer cards, one accent per section, a segmented day picker, a timeline for "What SubGuard did". */
 .demo-page { --soft: 0 1px 2px var(--shadow), 0 8px 24px -12px var(--shadow); --r: 14px; }
 .demo-page .card { border-radius: var(--r); border-color: var(--navy-700); box-shadow: var(--soft); }

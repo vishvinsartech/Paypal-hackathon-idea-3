@@ -1,21 +1,11 @@
 {# D-173: the product landing section at the top of the Live demo page (the hosted link). Plain language; the same
    hero sentence and Priya's card open the README and the video. Numbers come from settings.pricing (landing.py). #}
+{% from "_hero.html" import hero %}{% from "_steps.html" import steps %}
 {% set L = landing %}
 <section class="landing" id="about" aria-labelledby="hero-h" data-testid="landing">
   <div class="landing-top">
-    <div class="hero" data-testid="hero">
-      <p class="hero-brand" data-testid="hero-brand"><img src="/static/shield.svg" alt="" width="52" height="52">
-        <span class="hero-brand-name">SubGuard</span></p>
-      <p class="hero-tag">AI reads the fine print. PayPal enforces the outcome.</p>
-      <h1 id="hero-h" class="hero-h">SubGuard reads the fine print on free trials, and uses PayPal to stop the charge
-        you didn't agree to.</h1>
-      <p class="hero-sub">Before you pay, it tells you the real last day to cancel. Before that day, it asks if you
-        want to keep the trial. If you say no, it cancels the subscription in PayPal before the first charge.</p>
-      <div class="hero-cta">
-        <a class="btn btn-ghost" href="/shop/penwright?user={{ uid }}" target="_blank" rel="noopener"
-           data-testid="hero-try">Try it yourself: open the checkout ↗</a>
-      </div>
-    </div>
+    {% call hero() %}<a class="btn btn-ghost" href="/shop/penwright?user={{ uid }}" target="_blank" rel="noopener"
+           data-testid="hero-try">Try it yourself: open the checkout ↗</a>{% endcall %}
 
     <article class="card priya-card" data-testid="priya-card" aria-labelledby="priya-card-h">
       <h2 id="priya-card-h">Meet Priya</h2>
@@ -35,14 +25,11 @@
     </article>
   </div>
 
-  <ol class="how" aria-label="How it works" data-testid="how-it-works">
-    <li><span class="how-n">1</span><div><h3>Before you pay</h3>
-      <p>It reads the terms, checks them against the PayPal plan, and gives you the real last day to cancel.</p></div></li>
-    <li><span class="how-n">2</span><div><h3>Before the deadline</h3>
-      <p>It asks you once: keep the trial or cancel it? You decide.</p></div></li>
-    <li><span class="how-n">3</span><div><h3>At the deadline</h3>
-      <p>If you said cancel, it cancels in PayPal before the first charge, and drafts the email the terms ask for.</p></div></li>
-  </ol>
+  {{ steps([
+    ("Before you pay", "It reads the terms, checks them against the PayPal plan, and gives you the real last day to cancel."),
+    ("Before the deadline", "It asks you once: keep the trial or cancel it? You decide."),
+    ("At the deadline", "If you said cancel, it cancels in PayPal before the first charge, and drafts the email the terms ask for."),
+  ]) }}
 
   <div class="landing-foot">
     <ul class="built" aria-label="Built with" data-testid="built-with">

@@ -122,6 +122,9 @@ Priya's email from `users.json` and the password in `DEMO_PASSWORD`.
   the PayPal webhook and the simulated autopay page. Everything else needs a session: signed-out HTML is redirected
   to `/login?next=...` (local paths only), signed-out `/api/*` gets 401. A `?user=` other than the session user
   gets 403.
+- **`/` has two faces (D-181).** Signed out it is the intro page (`intro.html`, numbers from `landing_view`) with a
+  signed-out top bar (brand, mode, Demo shops, Sign in); signed in it is the dashboard. `/?demo=1` always needs a
+  session. The hero and the steps are shared macros (`_hero.html`, `_steps.html`) with the Live demo's landing.
 - **R5 is still the data guard.** Routes keep their `user` parameter; the middleware only makes sure it can't name
   someone else. Ownership checks in `policy.py` and the `owner_id == user` filters are unchanged.
 - **Audit.** `signed_in`, `sign_in_failed` (including the 5-per-minute-per-IP rate limit) and `signed_out` go to the

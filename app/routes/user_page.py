@@ -1,5 +1,6 @@
 """Priya's SubGuard at `/`: the product view (FIX_PLAN U5, D-148). `/user` and `/me` redirect here.
 
+Signed out, `/` is the intro page instead (D-181: what SubGuard is, how it works with PayPal, Sign in).
 Server-rendered: one story-state card per subscription (D-169: trial / check-in / cancelled / proof, plus kept and the
 Layer 2 handoff), the right column (What SubGuard did), the Activity and Emails sections. `?demo=1` renders the Live
 demo page instead (D-167: controls, the 7-step story, Priya's check-in, results), from the same context.
@@ -24,7 +25,7 @@ from app.routes.dashboard_view import dashboard_context
 from app.routes.deps import get_settings, get_store
 from app.routes.home_view import card, check_in, delivery_text, did_rows, handoffs, history_row, proof
 from app.routes.landing import landing_view
-from app.routes.pages import _base, templates
+from app.routes.pages import _base, signed_out_base, templates
 from app.routes.story_card import story
 from app.store import JsonStore
 
@@ -42,6 +43,9 @@ def home(
     request: Request, user: str = "priya", demo: int = 0,
     settings: Settings = Depends(get_settings), store: JsonStore = Depends(get_store),
 ) -> HTMLResponse:
+    if getattr(request.state, "user_id", None) is None:  # D-181: signed out (the middleware keeps ?demo=1 out)
+        return templates.TemplateResponse(request, "intro.html",
+                                          {**signed_out_base(settings, store), "landing": landing_view(settings)})
     svc = get_services(request)
     ctx = _base(request, user, settings, store)
     subs = sorted(_subs(store, user), key=lambda s: s.signup_day, reverse=True)

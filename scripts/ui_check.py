@@ -459,6 +459,39 @@ def mobile(base: str, headed: bool) -> None:
         step("390x844: top bar + nav row, bottom tab bar, no sideways scroll (dashboard and Live demo), bottom sheet")
 
 
+def signed_out(base: str, headed: bool, password: str) -> None:
+    """D-181: signed out, `/` is the intro (no Presenter menu); Sign in goes to the styled form, which lands on the
+    dashboard. At 390 px neither page scrolls sideways, inputs are >= 16 px and the button >= 44 px tall."""
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=not headed)
+        for width, height in ((1440, 900), (390, 844)):
+            ctx = browser.new_context(viewport={"width": width, "height": height})  # no session cookie
+            page = watch(ctx.new_page())
+            page.goto(f"{base}/")
+            expect(page.get_by_test_id("intro")).to_be_visible()
+            expect(page.get_by_test_id("topnav-presenter")).to_have_count(0)
+            expect(page.get_by_test_id("intro-shops")).to_have_attribute("href", "/shop")
+            assert page.evaluate("document.documentElement.scrollWidth") <= width, f"intro scrolls sideways at {width}"
+            shot(page, f"intro-{width}")
+            page.get_by_test_id("intro-signin").click()
+            expect(page.get_by_test_id("login-form")).to_be_visible()
+            assert page.evaluate("document.documentElement.scrollWidth") <= width, f"login scrolls sideways at {width}"
+            for t in ("login-email", "login-password"):
+                size = page.get_by_test_id(t).evaluate("e => parseFloat(getComputedStyle(e).fontSize)")
+                assert size >= 16, (t, size)
+            btn = page.get_by_test_id("login-submit").bounding_box()
+            assert btn and btn["height"] >= 44, btn
+            shot(page, f"login-{width}")
+            page.get_by_test_id("login-email").fill("priya@subguard-demo.example")
+            page.get_by_test_id("login-password").fill(password)
+            page.get_by_test_id("login-submit").click()
+            expect(page.get_by_test_id("side-nav")).to_be_visible()  # her dashboard at /
+            assert page.url.rstrip("/") == base, page.url
+            ctx.close()
+        browser.close()
+        step("signed out: intro at / (no Presenter menu), Sign in form (16 px inputs, 44 px button), lands on /")
+
+
 def companion_in_view(base: str, headed: bool) -> None:
     """B1: when the companion opens, its risk badge is inside the viewport (it used to open scrolled down)."""
     with sync_playwright() as p:
@@ -641,6 +674,7 @@ def main() -> int:
         raise
     HTTP = http_client(base, SESSION, timeout=30)
     try:
+        signed_out(base, args.headed, password)
         companion_in_view(base, args.headed)
         story(base, args.headed)
         mobile(base, args.headed)

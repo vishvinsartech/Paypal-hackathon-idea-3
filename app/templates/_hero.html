@@ -1,0 +1,16 @@
+{# The SubGuard hero, shared by the Live demo's landing (_landing.html) and the signed-out intro (intro.html, D-181).
+   The caller fills the buttons; `sub=False` drops the second paragraph (the intro's steps say it). #}
+{% macro hero(sub=True) %}
+    <div class="hero" data-testid="hero">
+      <p class="hero-brand" data-testid="hero-brand"><img src="/static/shield.svg" alt="" width="52" height="52">
+        <span class="hero-brand-name">SubGuard</span></p>
+      <p class="hero-tag">AI reads the fine print. PayPal enforces the outcome.</p>
+      <h1 id="hero-h" class="hero-h">SubGuard reads the fine print on free trials, and uses PayPal to stop the charge
+        you didn't agree to.</h1>
+      {% if sub %}<p class="hero-sub">Before you pay, it tells you the real last day to cancel. Before that day, it asks if you
+        want to keep the trial. If you say no, it cancels the subscription in PayPal before the first charge.</p>{% endif %}
+      <div class="hero-cta">
+        {{ caller() }}
+      </div>
+    </div>
+{% endmacro %}

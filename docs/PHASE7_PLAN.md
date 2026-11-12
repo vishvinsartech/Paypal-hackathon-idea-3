@@ -116,6 +116,8 @@ New `app/auth.py`, kept under 300 lines.
 
 ## Step 2: Intro page at / when signed out
 
+**Done** (D-181).
+
 `user_page.py` `home()`: with no session, render a new `intro.html` instead of the dashboard. Signed in, `/` stays her dashboard, so the URLs in the tests, the video and CLAUDE.md still hold.
 
 ### Intro content

@@ -29,7 +29,8 @@ RULE = "AUTH"  # rule id on the sign-in and access audit entries
 FAIL_LIMIT = 5  # failed sign-ins per IP ...
 FAIL_WINDOW = 60.0  # ... per this many seconds
 
-# D-179: everything else needs a session. Step 2 adds "/" (the intro when signed out); for now it redirects.
+# D-179: everything else needs a session. "/" is public too (D-181: the intro when signed out), but not the Live
+# demo `/?demo=1` (see is_public).
 PUBLIC_EXACT = frozenset({
     "/login", "/logout", "/healthz",
     "/api/review/preflight",  # the shop companion's read-only check
@@ -144,7 +145,9 @@ def safe_after_login(target: str | None) -> str:
     return nxt if path == "/shop" or path.startswith("/shop/") else "/"
 
 
-def is_public(path: str) -> bool:
+def is_public(path: str, query: str = "") -> bool:
+    if path == "/":  # D-181: the intro (signed out) / dashboard (signed in); the Live demo needs a session
+        return parse_qs(query).get("demo", ["0"])[-1] == "0"
     return path in PUBLIC_EXACT or path.startswith(PUBLIC_PREFIXES)
 
 
@@ -177,7 +180,7 @@ class AuthMiddleware:
         path = request.url.path
         is_api = path.startswith("/api/")
         if user_id is None:
-            if is_public(path):
+            if is_public(path, request.url.query):
                 return None
             if is_api:
                 return JSONResponse({"detail": "Sign in first.", "rule_id": RULE}, status_code=401)

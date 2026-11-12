@@ -1,6 +1,8 @@
 """Validate scenes.json v2 (D-184). Returns (errors, warnings); check_scenes.py prints them, the tests assert them.
 
-A "pending": true scene (e.g. 05_signin until the sign-in pages exist) only warns: its actions may be placeholders.
+A "pending": true scene only warns: its actions may be placeholders.
+The password is never written in scenes.json: a `type` into login-password must use "{demo_password}" (the recorder
+fills it in from DEMO_PASSWORD), and that placeholder goes nowhere else.
 """
 
 from __future__ import annotations
@@ -25,7 +27,9 @@ from videolib import (
 )
 
 ACTIONS = {"goto", "click", "hover", "type", "press", "wait_for", "wait", "scroll_to", "highlight"}
-SETUPS = {"reset", "day", "subscribe"}
+SETUPS = {"reset", "day", "subscribe", "signed_out"}
+PASSWORD = "{demo_password}"  # filled in by record_demo.py; the password field is masked
+PASSWORD_FIELD = "login-password"
 CHAPTERS = ("Title", "Problem", "How it works", "Live product", "Close")
 ID_RE = re.compile(r"\d\d[a-z]?_[a-z0-9_]+")
 TOP = ("title", "base_url", "app_viewport", "stage", "voice", "words_per_minute", "max_total_seconds", "links",
@@ -59,6 +63,10 @@ def _actions(sid: str, s: dict[str, Any]) -> list[str]:
     for a in s.get("actions", []):
         if a.get("action") not in ACTIONS:
             errors.append(f"{sid}: unknown action {a.get('action')!r}")
+        if a.get("action") == "type" and a.get("target") == PASSWORD_FIELD and a.get("text") != PASSWORD:
+            errors.append(f"{sid}: type into {PASSWORD_FIELD} must use \"{PASSWORD}\" (never the password itself)")
+        if PASSWORD in str(a) and not (a.get("action") == "type" and a.get("target") == PASSWORD_FIELD):
+            errors.append(f"{sid}: {PASSWORD} only goes in a type into {PASSWORD_FIELD} (a masked field)")
         for key in SUB_RE.findall(a.get("url", "")):
             if key not in made:
                 errors.append(f"{sid}: {{sub:{key}}} needs \"setup\": {{\"subscribe\": \"{key}\"}}")
@@ -116,6 +124,8 @@ def validate(d: dict[str, Any], root: Path = ROOT, stage_html: str | None = None
             errors.append(f"{sid}: {words(spoken)} words don't fit {duration} s at {wpm} wpm")
         for b in sorted(set(brands(s["narration"]) + brands(s["kicker"]))):
             errors.append(f"{sid}: real brand {b!r} in the narration or kicker (CLAUDE.md: no real brands)")
+        if PASSWORD in s["narration"] or PASSWORD in s["kicker"]:
+            errors.append(f"{sid}: no password in the narration or kicker")
         if s["narration"].count("*") % 2:
             errors.append(f"{sid}: unbalanced *accent* markup")
         rows = [{"w": w, "start": float(i)} for i, (w, _) in enumerate(tokens(resolve(s["narration"])))]

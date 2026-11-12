@@ -1014,6 +1014,17 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   1440 px screenshots match the old CSS byte for byte, except three pages whose bytes also change between two runs
   of the same CSS (caret blink and animation). `ui_check.py` now checks the top-bar Sign in size, the Presenter
   menu on screen, 16 px inputs on the dashboard and Live demo, and saves `dashboard-390`.
+- **D-190 The video's sign-in scene types a placeholder, never the password.** `05_signin` (intro -> Sign in ->
+  email -> password -> dashboard) types `"{demo_password}"` into `login-password`. `record_demo.py` fills it in
+  from DEMO_PASSWORD at record time, and the field is `type=password`, so it shows as dots. `schema.py` rejects any
+  other text in that field and the placeholder anywhere else (narration, kicker, other actions). `check_scenes.py`
+  fails if the real password appears in scenes.json, VIDEO_SCRIPT.md, out/words.json or out/captions.srt.
+  The recorder's browser starts signed in (so the other scenes don't depend on this one); a new setup key,
+  `signed_out`, drops only the `sg_session` cookie (PayPal sandbox cookies stay), so the scene opens on the intro.
+  If a scene leaves the browser signed out, the recorder puts the session back and reports it. `type` takes an
+  optional `delay` (ms per key, default 90), so the scene's actions take about 5 s of its 10 s. `record_stage.py`
+  only reads the public `/healthz`, but it now also checks DEMO_PASSWORD and signs in when the app is running, so
+  a stage is never made for an app the recorder can't get into.
 
 ## v3 Phase 7 Step V: video tooling v2 (2026-11-12, docs/PHASE7_PLAN.md)
 

@@ -11,7 +11,7 @@
   "_kinds": "kind: card (title/end card) | slide (motion-graphic slide) | app (the app, recorded, shown in the browser frame) | paypal (real PayPal sandbox pages in the frame; sandbox takes only, in mock mode its time goes to mock_fallback). card/slide name their <section id=\"slide-<slide>\"> in stage/stage.html.",
   "_narration": "The narration IS the headline, revealed word by word with the voice. *word* or *several words* = accent colour. {on:N} = the calendar date N days after a sign-up made today (spoken 'November 18'); {fact:key} = the app's own number from landing_view (prices are never typed here). {sub:<plan>} in a goto = the subscription a scene's setup made.",
   "_cues": "cues: [{word, show}] = element #show in the slide appears when that word is spoken (cues match in order).",
-  "_actions": "app/paypal actions: {action: goto|click|hover|type|press|wait_for|wait|scroll_to|highlight, target: data-testid, ...}. highlight = a thick yellow glow for about 2.5 s. mock_only skips an action in sandbox. setup (off screen, before the scene): reset | day: N | subscribe: <plan>. sandbox_subscribe: after the scene, register the pre-approved sandbox subscription. zoom: {at, rect: [x, y, w, h] in app_viewport pixels, dur} = a slow zoom in and back out inside the frame.",
+  "_actions": "app/paypal actions: {action: goto|click|hover|type|press|wait_for|wait|scroll_to|highlight, target: data-testid, ...}. highlight = a thick yellow glow for about 2.5 s. mock_only skips an action in sandbox. type: {text, delay (ms per key, default 90)}; text \"{demo_password}\" = DEMO_PASSWORD from .env, filled in by the recorder (only into login-password, a masked field; the password is never written here). setup (off screen, before the scene): reset | day: N | subscribe: <plan> | signed_out (drop the browser's sg_session cookie, so the scene starts at the intro). sandbox_subscribe: after the scene, register the pre-approved sandbox subscription. zoom: {at, rect: [x, y, w, h] in app_viewport pixels, dur} = a slow zoom in and back out inside the frame.",
   "scenes": [
     {
       "id": "01_title", "kind": "card", "slide": "title", "chapter": "Title", "duration": 6,
@@ -57,12 +57,16 @@
       ]
     },
     {
-      "id": "05_signin", "kind": "app", "chapter": "Live product", "duration": 10, "pending": true,
-      "kicker": "// live · sign in",
-      "narration": "Priya opens SubGuard. Her dashboard is empty: no trials yet.",
+      "id": "05_signin", "kind": "app", "chapter": "Live product", "duration": 10,
+      "kicker": "// live · sign in", "setup": {"signed_out": true},
+      "narration": "Priya opens SubGuard and signs in. Her dashboard is empty: no trials yet.",
       "actions": [
         {"action": "goto", "url": "/"},
-        {"action": "highlight", "target": "hi-name"}
+        {"action": "click", "target": "intro-signin"},
+        {"action": "type", "target": "login-email", "text": "priya@subguard-demo.example", "delay": 40},
+        {"action": "type", "target": "login-password", "text": "{demo_password}", "delay": 50},
+        {"action": "click", "target": "login-submit"},
+        {"action": "wait_for", "target": "hi-name"}
       ]
     },
     {

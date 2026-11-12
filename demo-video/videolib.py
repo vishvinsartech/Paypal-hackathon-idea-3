@@ -199,7 +199,8 @@ def video_script_md(d: dict[str, Any]) -> str:
         start, t = t, t + s["duration"]
         if s["kind"] in RECORDED:
             shows = "; ".join(a["action"] + (f" `{a.get('target') or a.get('url')}`" if a.get("target") or a.get("url")
-                                             else "") for a in s.get("actions", []))
+                                             else "") + (" (masked)" if a.get("text") == "{demo_password}" else "")
+                              for a in s.get("actions", []))
         else:
             shows = f"{s['kind']} `{s.get('slide') or s['id']}`" + (
                 " · cues " + ", ".join(f"{c['word']}→{c['show']}" for c in s.get("cues", [])) if s.get("cues") else "")

@@ -109,8 +109,19 @@ Prices and terms are `.env` variables (`app/pricing.py`, DECISIONS D-015). Code 
 - `dev` -> http://127.0.0.1:8000/ (mock), `dev-sandbox`
 - `test`, `lint`, `ui-check`, `shots`, `seed`, `sandbox-check`, `sandbox-ui-check`, `reset`, `demo-video-check`, `demo-video`
 - Live demo: `http://127.0.0.1:8000/?demo=1`; Priya's dashboard `/`; dummy shop at `/shop`.
-- Sign-in (D-178..D-180): `/login` as `priya@subguard-demo.example` with `DEMO_PASSWORD` from `.env`; the shops stay
-  public. ui-check and the video tools sign in with it (`scripts/signin.py`).
+- Sign-in (D-178..D-181): signed out, `/` is the intro; click Sign in, then `/login` as `priya@subguard-demo.example`
+  with `DEMO_PASSWORD`. Sign-in always lands on `/` (a `/shop` page in `next` is returned to); open the Live demo from
+  the Presenter menu. The shops, `/healthz` and `/api/review/preflight` stay public; other `/api/*` return 401 signed out.
+- Sign-in env vars (`.env.example`): `DEMO_PASSWORD` (secret, no default; mock without it starts and says
+  "Sign-in is off"), `SESSION_SECRET` (cookie HMAC key; empty in mock = random per process, so restarts sign you out),
+  `SESSION_HOURS` (default 8). Sandbox mode fails at startup if either secret is missing.
+- ui-check, `check_scenes.py`, `record_demo.py` (httpx + Playwright) and `record_stage.py` sign in first with
+  `DEMO_PASSWORD` from the environment or `.env` (`scripts/signin.py`) and exit with a clear message if it is missing.
+  Tests use `client`/`demo_client` (signed in) and `anon_client` (signed out) from `tests/conftest.py`.
+- Video: `demo-video-check` (validate scenes.json, write `demo-video/VIDEO_SCRIPT.md`), `demo-video-preview`
+  (voice-over + low-res stage, no app recording), `demo-video` (check -> voice -> record app -> stage -> build).
+  Scene `05_signin` types the password from the `"{demo_password}"` placeholder into the masked field; never write
+  the password into scenes.json, narration, captions or words.json (check_scenes fails if it appears there).
 
 ## MCP notes
 - `.mcp.json` registers the PayPal MCP server via `node scripts/mcp_paypal.mjs` (reads `.env`, gets a fresh sandbox

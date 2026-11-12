@@ -74,7 +74,7 @@ def fake_timing(d: dict[str, Any], mode: str, extra: float = 0.0) -> dict[str, A
 def test_scenes_json_is_valid_v2_and_follows_the_storyboard() -> None:
     errors, warnings = sc.validate(SCENES)
     assert errors == []
-    assert any("05_signin: pending" in w for w in warnings) and any("links.hosted" in w for w in warnings)
+    assert not any("pending" in w for w in warnings) and any("links.hosted" in w for w in warnings)
     assert [(s["id"], s["kind"], s["duration"]) for s in SCENES["scenes"]] == BOARD
     assert vl.total_seconds(SCENES) == 175 == SCENES["max_total_seconds"] < vl.HARD_LIMIT_SECONDS
     assert all(s["kicker"].startswith("//") for s in SCENES["scenes"])
@@ -113,7 +113,8 @@ def test_validation_catches_problems(change: Any, problem: str) -> None:
 def test_pending_scenes_warn_but_do_not_fail() -> None:
     d = copy.deepcopy(SCENES)
     signin = scene(d, "05_signin")
-    signin["actions"] = [{"action": "click", "target": "login-submit"}]  # the sign-in page doesn't exist yet
+    signin["pending"] = True
+    signin["actions"] = [{"action": "click", "target": "login-submit"}]  # a placeholder target
     errors, warnings = sc.validate(d)
     assert errors == [] and any("05_signin: pending" in w for w in warnings)
     assert sc.missing_targets(d, "")[0] == "05_signin: target 'login-submit' not found in the UI (pending scene)"
@@ -121,6 +122,33 @@ def test_pending_scenes_warn_but_do_not_fail() -> None:
     assert sc.missing_targets(d, "")[0] == "05_signin: target 'login-submit' not found in the UI"
     signin["actions"] = []
     assert any("05_signin: needs at least one action" in e for e in sc.validate(d)[0])
+
+
+def test_signin_scene_types_a_placeholder_not_the_password() -> None:
+    s = scene(SCENES, "05_signin")
+    assert "pending" not in s and s["setup"] == {"signed_out": True}
+    assert [a.get("target") or a.get("url") for a in s["actions"]] == [
+        "/", "intro-signin", "login-email", "login-password", "login-submit", "hi-name"]
+    typed = {a["target"]: a["text"] for a in s["actions"] if a["action"] == "type"}
+    assert typed == {"login-email": "priya@subguard-demo.example", "login-password": "{demo_password}"}
+    d = copy.deepcopy(SCENES)
+    next(a for a in scene(d, "05_signin")["actions"] if a.get("target") == "login-password")["text"] = "hunter2"
+    assert any("must use \"{demo_password}\"" in e for e in sc.validate(d)[0])
+    d = copy.deepcopy(SCENES)
+    scene(d, "05_signin")["actions"][2]["text"] = "{demo_password}"  # into the (visible) email field
+    assert any("only goes in a type into login-password" in e for e in sc.validate(d)[0])
+    d = copy.deepcopy(SCENES)
+    scene(d, "05_signin")["narration"] += " {demo_password}"
+    assert any("no password in the narration" in e for e in sc.validate(d)[0])
+
+
+def test_check_scenes_finds_a_leaked_password(tmp_path: Path) -> None:
+    cs = _load("check_scenes")
+    (tmp_path / "demo-video").mkdir()
+    (tmp_path / "demo-video" / "VIDEO_SCRIPT.md").write_text("type `login-password`", encoding="utf-8")
+    assert cs.password_leaks("s3cret-pw", tmp_path) == []
+    (tmp_path / "demo-video" / "scenes.json").write_text('{"text": "s3cret-pw"}', encoding="utf-8")
+    assert cs.password_leaks("s3cret-pw", tmp_path) == ["the password appears in demo-video/scenes.json"]
 
 
 def test_accent_markup_is_parsed() -> None:
@@ -288,4 +316,8 @@ def test_highlight_is_a_yellow_glow_and_captions_follow_the_timeline() -> None:
 def test_video_script_lists_every_scene() -> None:
     md = vl.video_script_md(SCENES)
     assert md.count("\n| ") == len(SCENES["scenes"]) + 1 and "{on:" not in md
-    assert "**pending**" in md and "sandbox only" in md
+    assert "**pending**" not in md and "sandbox only" in md
+    assert "type `login-password` (masked)" in md and "{demo_password}" not in md
+    d = copy.deepcopy(SCENES)
+    scene(d, "05_signin")["pending"] = True
+    assert "**pending**" in vl.video_script_md(d)

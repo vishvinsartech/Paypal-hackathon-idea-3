@@ -6,7 +6,12 @@ app_viewport (1600x900: it is scaled to the stage's 1280x720 hole, so text stays
   so the recording follows the video. paypal scenes run only in sandbox mode (real PayPal sandbox pages, logged in
   as the sandbox buyer OFF camera before the take); in mock mode they're skipped and the stage gives their time to
   the scene's mock_fallback. A scene is never extended: an overrun is reported and the build trims it.
-- "setup" runs off screen before the scene: reset (a fresh demo), day: N (the sim clock), subscribe: <plan>.
+- "setup" runs off screen before the scene: reset (a fresh demo), day: N (the sim clock), subscribe: <plan>,
+  signed_out (drop the browser's sg_session cookie so the scene starts at the signed-out intro).
+- Sign-in (Phase 7): the httpx client and the browser both start signed in with DEMO_PASSWORD from .env (a clear
+  error if it is missing). 05_signin types the password into the masked field from the "{demo_password}"
+  placeholder; the password itself is never in scenes.json. If that scene leaves the browser signed out, the
+  session is put back so the later scenes still record (and the problem is reported).
   "sandbox_subscribe" registers the pre-approved sandbox subscription after the scene (`make seed ARGS=--demo-subs`).
 - highlight = a thick yellow glow on the target for about 2.5 s. `{on:N}`, `{sub:<plan>}`, `{paypal_autopay}` resolved.
 - Writes out/screen.webm + out/timing.json ({"mode", "base_url", "viewport", "scenes": [{"id", "start", "end"}],
@@ -33,7 +38,7 @@ from playwright.sync_api import Page, sync_playwright
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-from signin import add_session, demo_password, http_client, session_cookie  # noqa: E402
+from signin import COOKIE, add_session, demo_password, http_client, session_cookie  # noqa: E402
 from videolib import OUT, ROOT, SUB_RE, load_scenes, timeline  # noqa: E402
 
 HIGHLIGHT_S = 2.5
@@ -50,9 +55,11 @@ HIGHLIGHT_JS = """(el, ms) => {
 
 
 class Recorder:
-    def __init__(self, base: str, mode: str, sandbox_ids: dict[str, str], autopay: str, session: str) -> None:
+    def __init__(self, base: str, mode: str, sandbox_ids: dict[str, str], autopay: str, session: str,
+                 password: str) -> None:
         self.base, self.mode, self.sandbox_ids, self.autopay = base.rstrip("/"), mode, sandbox_ids, autopay
         self.session = session  # Priya's sg_session cookie (Phase 7): the httpx client and the browser both use it
+        self.password = password  # only typed into the masked login-password field ("{demo_password}")
         self.http = http_client(self.base, session, timeout=120)
         self.subs: dict[str, str] = {}  # plan key -> local subscription id
         self.problems: list[str] = []
@@ -123,7 +130,8 @@ class Recorder:
             loc.hover(timeout=ms)  # type: ignore[union-attr]
         elif kind == "type":
             loc.fill("", timeout=ms)  # type: ignore[union-attr]
-            loc.press_sequentially(a["text"], delay=90)  # type: ignore[union-attr]
+            text = self.password if a["text"] == "{demo_password}" else a["text"]
+            loc.press_sequentially(text, delay=int(a.get("delay", 90)))  # type: ignore[union-attr]
         elif kind == "press":
             page.keyboard.press(a["key"])
         elif kind == "wait_for":
@@ -150,6 +158,8 @@ class Recorder:
                 self.setup(s["setup"])
             except (httpx.HTTPError, RuntimeError, KeyError) as e:
                 report.append(f"{sid}: setup failed: {e}")
+        if s.get("setup", {}).get("signed_out"):
+            page.context.clear_cookies(name=COOKIE)  # only SubGuard's session; PayPal sandbox cookies stay
         start = self.now()
         for a in s.get("actions", []):
             if a.get("mock_only") and self.mode == "sandbox":
@@ -170,6 +180,9 @@ class Recorder:
         else:
             report.append(f"{sid}: ran {-left:.1f} s over its {duration:.0f} s; the build trims it")
         self.timing.append({"id": sid, "start": round(start, 3), "end": round(self.now(), 3)})
+        if not any(c["name"] == COOKIE for c in page.context.cookies(self.base)):
+            report.append(f"{sid}: the browser isn't signed in after this scene; restored the session")
+            add_session(page.context, self.base, self.session)
         print(f"  {sid:<18} {start:6.1f}s -> {self.now():6.1f}s  {s['kind']}")
         if s.get("sandbox_subscribe") and self.mode == "sandbox":  # off screen, after the scene
             plan_key = s["sandbox_subscribe"]
@@ -254,7 +267,8 @@ def main() -> int:
         print(f"The app isn't running at {args.base_url}. Start it first: `make dev` (mock) or `make dev-sandbox`.")
         return 1
     mode = health.get("mode", "mock")
-    session = session_cookie(args.base_url, demo_password())  # clear message if DEMO_PASSWORD is missing
+    password = demo_password()  # a clear message if DEMO_PASSWORD is missing
+    session = session_cookie(args.base_url, password)
     OUT.mkdir(parents=True, exist_ok=True)
     ids, state, autopay = {}, None, ""
     if mode == "sandbox":
@@ -265,7 +279,7 @@ def main() -> int:
         if any(s["kind"] == "paypal" for s in d["scenes"]):
             state = OUT / "paypal_state.json"  # gitignored (out/); deleted after the take
             buyer_login(state, settings.paypal_sandbox_buyer_email, settings.paypal_sandbox_buyer_password)
-    rec = Recorder(args.base_url, mode, ids, autopay, session)
+    rec = Recorder(args.base_url, mode, ids, autopay, session, password)
     print(f"recording in {mode} mode from {args.base_url} at {d['app_viewport']['width']}x"
           f"{d['app_viewport']['height']}")
     try:

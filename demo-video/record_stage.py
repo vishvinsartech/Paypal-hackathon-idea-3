@@ -10,6 +10,8 @@ ffmpeg (D-184): sharp text, exact sync, and identical frames are reused instead 
 - --preview: no app recording needed. Scene durations from scenes.json, a grey placeholder in the hole, the mode
   pill from the running app's /healthz (or "PREVIEW" if it isn't running), 10 fps, half size, with the voice-over
   mixed in -> out/preview.mp4, so you can check the timing with sound in about a minute.
+- Sign-in (Phase 7): it first checks DEMO_PASSWORD (environment or .env; a clear error if missing) and, when the
+  app is running, signs in as Priya with it, so a stage is never made for an app the recorder can't get into.
 Usage: python demo-video/record_stage.py [--preview] [--base-url URL]
 """
 
@@ -27,6 +29,8 @@ from typing import Any
 import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+from signin import demo_password, session_cookie  # noqa: E402
 from videolib import (  # noqa: E402
     OUT,
     ROOT,
@@ -151,6 +155,10 @@ def main() -> int:
     ap.add_argument("--preview", action="store_true", help="fast low-quality stage + voice, no app recording")
     ap.add_argument("--base-url", default=d["base_url"])
     args = ap.parse_args()
+    password = demo_password()  # exits with a clear message when DEMO_PASSWORD isn't set
+    if health(args.base_url) is not None:
+        session_cookie(args.base_url, password)  # exits clearly if the running app rejects it
+        print(f"signed in to {args.base_url} as Priya")
     words_path, timing_path = OUT / "words.json", OUT / "timing.json"
     words = json.loads(words_path.read_text(encoding="utf-8")) if words_path.exists() else {}
     if not words:

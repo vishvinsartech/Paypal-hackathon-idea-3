@@ -5,6 +5,9 @@
 - every app-scene action target is a data-testid the UI has (templates + scripts + rendered pages; with --base-url
   the running app's pages instead of an in-process render)
 - zoom rects inside the recording and in the frame's aspect ratio; paypal scenes only open PayPal sandbox pages
+- sign-in (Phase 7): needs DEMO_PASSWORD (environment or .env; a clear error if missing). With --base-url it signs in
+  to the running app with it; it also checks the password is in none of scenes.json, VIDEO_SCRIPT.md,
+  out/words.json, out/captions.srt (05_signin types it from the "{demo_password}" placeholder into a masked field)
 - "pending": true scenes and an empty hosted link only warn
 - writes demo-video/VIDEO_SCRIPT.md. Exit code 1 on any error.
 
@@ -27,15 +30,23 @@ from schema import missing_targets, validate  # noqa: E402
 from videolib import ROOT, load_scenes, timeline, total_seconds, video_script_md  # noqa: E402
 
 PAGES = ("/", "/?demo=1", "/shop", "/shop/penwright", "/shop/penwright/terms")
+LEAK_FILES = ("demo-video/scenes.json", "demo-video/VIDEO_SCRIPT.md", "demo-video/out/words.json",
+              "demo-video/out/captions.srt")
 
 
-def ui_source(base_url: str | None) -> str:
+def password_leaks(password: str, root: Path = ROOT) -> list[str]:
+    """The video files that contain the real password (never allowed)."""
+    return [f"the password appears in {name}" for name in LEAK_FILES
+            if (root / name).exists() and password in (root / name).read_text(encoding="utf-8")]
+
+
+def ui_source(base_url: str | None, password: str) -> str:
     files = [*(ROOT / "app" / "templates").glob("*.html"), *(ROOT / "app" / "static").glob("*.js"),
              *(ROOT / "shop" / "templates").glob("*.html"), *(ROOT / "shop" / "static").glob("*.js")]
     parts = [f.read_text(encoding="utf-8") for f in files]
     if base_url:
-        from signin import demo_password, http_client, session_cookie
-        with http_client(base_url, session_cookie(base_url, demo_password()), timeout=15) as http:
+        from signin import http_client, session_cookie
+        with http_client(base_url, session_cookie(base_url, password), timeout=15) as http:
             parts += [http.get(page).text for page in PAGES]
     else:
         parts += rendered_pages()
@@ -69,12 +80,15 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--base-url", help="check the running app's pages")
     args = ap.parse_args()
+    from signin import demo_password
+    password = demo_password()  # exits with a clear message when DEMO_PASSWORD isn't set
     d = load_scenes()
     errors, warnings = validate(d)
-    for m in missing_targets(d, ui_source(args.base_url)):
+    for m in missing_targets(d, ui_source(args.base_url, password)):
         (warnings if m.endswith("(pending scene)") else errors).append(m)
     out = ROOT / "demo-video" / "VIDEO_SCRIPT.md"
     out.write_text(video_script_md(d), encoding="utf-8")
+    errors += password_leaks(password)
     mock = sum(s.duration for s in timeline(d, "mock"))
     sandbox = sum(s.duration for s in timeline(d, "sandbox"))
     print(f"{len(d['scenes'])} scenes, {total_seconds(d)} s (mock {mock:.0f} s without the PayPal proof scene, "

@@ -46,4 +46,7 @@
   .intro-page .hero-cta .btn { flex: 1 1 100%; justify-content: center; }
   .auth-page { padding-top: 12px; }
   .auth-card { padding: 20px 18px; }
+  .topnav a.topnav-signin { display: inline-flex; align-items: center; min-height: 44px; box-sizing: border-box;
+    padding: 0 14px; } /* P7-5: a 44 px tap target on phones */
+  .topnav:has(.topnav-signin) { align-items: center; }
 }

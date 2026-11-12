@@ -219,5 +219,6 @@
   .pr-tools #demo-reset { margin-left: 0; }
   .evidence-wide { height: 520px; }
   .toasts { top: 60px; }
+  input, select, textarea { font-size: max(16px, 1em); } /* P7-5: 16 px or more stops iOS zooming on focus */
 }
 .demo-priya .email-ready { margin: 0; }

@@ -1004,6 +1004,16 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   session user. After checkout "Open SubGuard ↗" goes to `/`; the dashboard's 4-second refresh shows the new
   subscription (same browser, same cookie). The Presenter's `/shop/...?user=priya` links still work: the shop ignores
   the param and it matches the session user anyway.
+- **D-189 Mobile pass: CSS-only fixes, all inside `max-width: 640px`.** Checked at 390x844: intro, sign-in, every
+  dashboard section, the avatar, Presenter, Developer and chat panels, `/shop`, `/shop/penwright` (signed out and
+  signed in, with the companion) and `/?demo=1`. Nothing scrolled sideways at rest. Fixed: the top-bar Sign in was
+  59x34 and is now 44 px tall (the signed-out nav row centres its items); the Presenter menu opened from the left
+  edge of its button and ran to 471 px (sideways scroll), so on phones it opens from the right; the Live demo's
+  day scrubber was 13.3 px, so every input, select and textarea is now `max(16px, 1em)` on phones. Emails stays out
+  of the bottom tab bar (`side-desk`, a 4-tab bar fits 390 px); it is in the avatar menu with Settings. Desktop
+  1440 px screenshots match the old CSS byte for byte, except three pages whose bytes also change between two runs
+  of the same CSS (caret blink and animation). `ui_check.py` now checks the top-bar Sign in size, the Presenter
+  menu on screen, 16 px inputs on the dashboard and Live demo, and saves `dashboard-390`.
 
 ## v3 Phase 7 Step V: video tooling v2 (2026-11-12, docs/PHASE7_PLAN.md)
 

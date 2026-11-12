@@ -420,6 +420,18 @@ def story(base: str, headed: bool) -> None:
         browser.close()
 
 
+SMALL_INPUTS = """() => [...document.querySelectorAll(
+  'input:not([type=hidden]):not([type=checkbox]):not([type=radio]), select, textarea')]
+  .filter(e => e.getClientRects().length && parseFloat(getComputedStyle(e).fontSize) < 16)
+  .map(e => e.dataset.testid || e.id || e.tagName)"""
+
+
+def no_small_inputs(page: Page) -> None:
+    """P7-5: at 390 px every field is >= 16 px so iOS doesn't zoom in on focus."""
+    small = page.evaluate(SMALL_INPUTS)
+    assert not small, f"{page.url}: inputs under 16 px at 390 px: {small}"
+
+
 def mobile(base: str, headed: bool) -> None:
     """U27: at 390 px the top bar is one line, sections are a bottom tab bar, nothing scrolls sideways; the companion
     is a bottom sheet."""
@@ -440,6 +452,13 @@ def mobile(base: str, headed: bool) -> None:
         if cards.count():
             box = cards.first.bounding_box()
             assert box and box["x"] >= 0 and box["x"] + box["width"] <= 390, box
+        shot(page, "dashboard-390")  # P7-5: `/` signed in at 390 px
+        no_small_inputs(page)
+        page.get_by_test_id("topnav-presenter").locator("summary").click()  # P7-5: the menu opens inside the screen
+        menu = page.get_by_test_id("topnav-demo").bounding_box()
+        assert menu and menu["x"] >= 0 and menu["x"] + menu["width"] <= 390, f"Presenter menu off screen: {menu}"
+        assert page.evaluate("document.documentElement.scrollWidth") <= 390, "Presenter menu scrolls sideways"
+        page.keyboard.press("Escape")
         page.get_by_test_id("user-avatar").click()  # Phase 7 Step 3: Sign out lives in the avatar menu on phones
         out = page.get_by_test_id("avatar-signout")
         expect(out).to_be_visible()
@@ -453,6 +472,7 @@ def mobile(base: str, headed: bool) -> None:
         expect(page.get_by_test_id("demo-start")).to_be_visible()
         width = page.evaluate("document.documentElement.scrollWidth")
         assert width <= 390, f"horizontal scroll on the Live demo at 390 px: {width}"
+        no_small_inputs(page)
         for t in ("demo-bar", "pipeline", "demo-priya"):
             box = page.get_by_test_id(t).bounding_box()
             assert box and box["x"] >= 0 and box["x"] + box["width"] <= 390, (t, box)
@@ -465,8 +485,8 @@ def mobile(base: str, headed: bool) -> None:
         assert box and abs(box["y"] + box["height"] - 844) <= 2 and box["width"] >= 388, f"not a bottom sheet: {box}"
         page.keyboard.press("Escape")
         browser.close()
-        step("390x844: top bar + nav row, bottom tab bar, avatar menu Sign out (44 px), data-soon toast, no sideways "
-             "scroll (dashboard and Live demo), bottom sheet")
+        step("390x844: top bar + nav row, bottom tab bar, Presenter menu on screen, avatar menu Sign out (44 px), "
+             "data-soon toast, no sideways scroll and 16 px inputs (dashboard and Live demo), bottom sheet")
 
 
 def signed_out(base: str, headed: bool, password: str) -> None:
@@ -482,6 +502,9 @@ def signed_out(base: str, headed: bool, password: str) -> None:
             expect(page.get_by_test_id("topnav-presenter")).to_have_count(0)
             expect(page.get_by_test_id("intro-shops")).to_have_attribute("href", "/shop")
             assert page.evaluate("document.documentElement.scrollWidth") <= width, f"intro scrolls sideways at {width}"
+            if width == 390:  # P7-5: the top-bar Sign in is a 44 px tap target on phones
+                box = page.get_by_test_id("topnav-signin").bounding_box()
+                assert box and box["height"] >= 44 and box["width"] >= 44, f"top-bar Sign in: {box}"
             shot(page, f"intro-{width}")
             page.get_by_test_id("intro-signin").click()
             expect(page.get_by_test_id("login-form")).to_be_visible()

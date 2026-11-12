@@ -129,3 +129,10 @@ FIX_PLAN Coverage checklist): V video tooling v2, 1 auth core, 2 intro + login p
   signed-in shop markup; JS never reads `?user=`). `demo-video-check` passes, also live with `--base-url` (06_shop and
   07_approve selectors unchanged: the recorder is signed in). `test`: **406 passed** (was 397), 2 deselected.
   `lint`: clean. `ui-check`: passed.
+- [x] **Step 5. Mobile pass** (2026-11-12, commit see FIX_PLAN P7-5, DECISIONS D-189). Audited at 390x844 signed out
+  and signed in (intro, login, every dashboard section and menu, shop, companion, Live demo). Three issues, all fixed
+  in CSS under 640 px: top-bar Sign in 59x34 -> 44 px tall; Presenter menu ran off screen (471 px scroll width) ->
+  opens from the right; Live demo day scrubber 13.3 px -> 16 px (rule for all fields on phones). Desktop 1440 px
+  shots unchanged. `ui_check.py` checks all three and saves `dashboard-390`; shots in `docs/img/v3/p7/mobile/`
+  (intro signed out, login, dashboard signed in). `test`: **406 passed**, 2 deselected. `lint`: clean.
+  `ui-check`: passed.

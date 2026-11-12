@@ -204,6 +204,7 @@
   .sl-note { width: min(280px, calc(100vw - 48px)); }
   .set-row { align-items: flex-start; }
   .presenter-menu > summary { padding: 6px 8px; font-size: .82rem; }
+  .presenter-menu > .menu-body { left: auto; right: 0; } /* P7-5: it sits at the right edge; opened left it went off screen */
 }
 
 /* ---- colour (D-176): one accent per section, Priya's name highlighted. Extra hues only here, both themes. ---- */

@@ -239,14 +239,30 @@ Set `DEMO_PASSWORD` in the Render dashboard; Render generates `SESSION_SECRET` o
 - **Wake-up:** after about 15 minutes idle the service sleeps, and the first request takes about 50 seconds.
 - **Data resets on restart:** the disk is temporary, so every restart or deploy starts a fresh demo.
 - **Sessions survive restarts:** `SESSION_SECRET` stays the same, so a signed-in browser stays signed in.
-- The logged-in PayPal sandbox window (Live demo in sandbox mode) runs only on a local SubGuard; a hosted
-  sandbox shop uses PayPal's own approval page (D-183).
+- See **Hosted live demo** below for the one PayPal step you do by hand in sandbox mode.
 
 For a **sandbox-mode** hosted demo, set in the Render dashboard:
 `APP_MODE=sandbox`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `ANTHROPIC_API_KEY` (or `LLM_PROVIDER=openai` +
 `OPENAI_API_KEY`), `PAYPAL_SANDBOX_BUYER_EMAIL`, `PAYPAL_SANDBOX_BUYER_PASSWORD`; optional `ZAPIER_CATCH_HOOK_URL`
 and `PAYPAL_WEBHOOK_ID`. In sandbox mode the start command seeds the plans first (reusing matching ones). If a key is
 missing the app won't start and names it; set `APP_MODE=mock` to fall back.
+
+#### Hosted live demo: one manual PayPal approval
+
+PayPal requires the **buyer** to approve every subscription; no API can approve it for them. On a local SubGuard
+the Live demo opens a browser on your machine, already logged in as the sandbox buyer, so you only confirm. A
+hosted server has no screen, so there (`RENDER` is set, or the page is reached on a public URL) the Penwright
+window shows PayPal's own **Subscribe with PayPal** button instead (D-192):
+
+1. Live demo -> **Start**. The Penwright window opens and SubGuard reviews the page.
+2. Above the PayPal button, a card shows the sandbox test buyer's email and password with Copy buttons
+   (`SHOW_SANDBOX_BUYER=true`, sandbox mode only; play money only).
+3. Click **Subscribe with PayPal**, log in with that buyer and approve.
+4. SubGuard reads the subscription back from PayPal (right plan, `ACTIVE`), records it, and the window closes;
+   the Live demo carries on by itself.
+
+`AUTO_APPROVE_MODE=auto|manual|off` overrides the detection (`.env.example`). The buyer's login is rendered only
+into that one page, never into an API response, log, `/healthz` or the audit log.
 
 ## Tests
 

@@ -9,7 +9,7 @@ from fastapi.templating import Jinja2Templates
 from app.auth import session_user
 from app.config import ROOT_DIR, Settings
 from app.core.durations import number_words
-from app.hosts import is_local
+from app.hosts import can_auto_approve, show_sandbox_buyer
 from app.models import Merchant, UsageEvent
 from app.routes.deps import get_settings, get_store
 from app.store import JsonStore, utcnow
@@ -33,7 +33,8 @@ def _render(request: Request, name: str, settings: Settings, **ctx: object) -> H
     store: JsonStore = request.app.state.store
     me = next((u for u in store.load("users").items if u.id == user_id), None) if user_id else None
     return templates.TemplateResponse(request, name, {
-        "settings": settings, "p": settings.pricing, "number_words": number_words, "local_host": is_local(request),
+        "settings": settings, "p": settings.pricing, "number_words": number_words,
+        "auto_approve": can_auto_approve(settings, request),
         "signed_in": user_id is not None, "user_id": user_id or "", "user_name": me.name if me else (user_id or ""),
         **ctx})
 
@@ -93,4 +94,11 @@ def merchant_page(request: Request, merchant_id: str, settings: Settings = Depen
     if merchant_id not in PAGES:
         raise HTTPException(status_code=404, detail="Unknown merchant")
     plan_ids = store.load("sandbox_ids").plans if settings.is_sandbox else {}
-    return _render(request, PAGES[merchant_id], settings, merchant=_merchant(store, merchant_id), plan_ids=plan_ids)
+    # D-192: the live demo's window on a server that can't approve for her: Priya approves in PayPal by hand. The
+    # sandbox buyer's login is rendered into this page only (never an API, log or the audit log).
+    manual_demo = (settings.is_sandbox and request.query_params.get("autodemo") == "1"
+                   and not can_auto_approve(settings, request))
+    buyer = ({"email": settings.paypal_sandbox_buyer_email, "password": settings.paypal_sandbox_buyer_password}
+             if manual_demo and show_sandbox_buyer(settings) else None)
+    return _render(request, PAGES[merchant_id], settings, merchant=_merchant(store, merchant_id), plan_ids=plan_ids,
+                   manual_demo=manual_demo, sandbox_buyer=buyer)

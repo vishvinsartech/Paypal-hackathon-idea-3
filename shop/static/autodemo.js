@@ -2,6 +2,8 @@
 // (?autodemo=1). It plays Priya's part: opens the Terms, clicks PayPal, lets the SubGuard companion's review
 // stay on screen and clicks "Continue to PayPal", which opens PayPal straight away (D-168/D-170: the only step left
 // to the presenter is confirming the order in PayPal's window), shows the welcome, tells the control room, closes.
+// Hosted (D-192, data-manual-approve): PayPal's own button instead; the person logs in as the sandbox buyer shown
+// above it and approves, then the same welcome, message and close follow.
 (function () {
   "use strict";
   if (new URLSearchParams(location.search).get("autodemo") !== "1" || !window.opener) return;
@@ -15,7 +17,13 @@
   const banner = document.createElement("p");
   banner.className = "autodemo-banner";
   banner.setAttribute("role", "status");
-  banner.textContent = "Live demo: this window plays Priya. Confirm the order in PayPal; this window then closes by itself.";
+  const checkout = document.querySelector("[data-testid=shop-checkout]");
+  const manual = !!checkout && checkout.dataset.manualApprove === "1";
+  banner.textContent = !manual
+    ? "Live demo: this window plays Priya. Confirm the order in PayPal; this window then closes by itself."
+    : checkout.dataset.buyerCard === "1"
+      ? "Click Subscribe with PayPal and log in with the sandbox buyer above. This window closes after you approve."
+      : "Click Subscribe with PayPal and log in with your PayPal sandbox buyer account. This window closes after you approve.";
   banner.style.cssText = "position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:10000;margin:0;" +
     "padding:8px 14px;border-radius:999px;background:#0f1f3a;color:#e8eef8;font:600 13px system-ui,sans-serif;" +
     "box-shadow:0 6px 20px rgba(0,0,0,.35)";
@@ -32,9 +40,10 @@
     message: "SubGuard couldn't check the Penwright page: " + ev.detail}));
   window.addEventListener("subguard:demo-ready", () => {
     window.focus();
-    const b = document.querySelector("[data-testid=demo-subscribe]");
+    const b = document.querySelector("[data-testid=sandbox-buyer-card]") ||
+      document.querySelector("[data-testid=demo-subscribe]");
     if (b) b.scrollIntoView({behavior: "smooth", block: "center"});
-    tell({stage: "ready"});  // checkout_sandbox.js opens PayPal right away (D-170); a person confirms the order
+    tell(manual ? {stage: "ready", manual: true} : {stage: "ready"});  // checkout_sandbox.js opens PayPal right away (D-170); a person confirms the order
   });
   window.addEventListener("subguard:demo-approving", () => tell({stage: "approving"}));
   window.addEventListener("subguard:demo-retry", (ev) => tell({stage: "retry", message: ev.detail}));
@@ -45,6 +54,7 @@
     await sleep(CARD_MS);
     try { window.opener.focus(); } catch (e) { /* the browser may not allow it */ }
     window.close();
+    setTimeout(() => { if (!window.closed) window.dispatchEvent(new CustomEvent("subguard:close-blocked")); }, 600);
   });
 
   window.addEventListener("load", async () => {

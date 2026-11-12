@@ -34,6 +34,13 @@ services:
         value: "true"
       - key: LLM_PROVIDER
         value: anthropic
+      # D-192: Render has no screen, so the Live demo's Penwright window shows PayPal's own button and a person
+      # approves (auto detects that via the RENDER env var). SHOW_SANDBOX_BUYER prints the sandbox buyer's login
+      # (sandbox mode only, play money) above it; the email and password themselves are set in the dashboard.
+      - key: AUTO_APPROVE_MODE
+        value: auto
+      - key: SHOW_SANDBOX_BUYER
+        value: "true"
       # Sign-in (D-178..D-180). Render generates the cookie key once and keeps it, so sessions survive restarts.
       - key: SESSION_SECRET
         generateValue: true

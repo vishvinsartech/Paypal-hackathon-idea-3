@@ -320,7 +320,7 @@ merged into `main` and Render deploys `main`. Each step is detailed in `docs/PHA
 | U27–U30 mobile/a11y/vendor | [x] | 7b39592 | 390 px checks, ARIA tabs, data-ready, vendored AG Grid 36.2.0 / Charts 14.2.0 (D-157) |
 | S1–S6 docs | [x] | 268d9e5 | README restructured + TROUBLESHOOTING; SUBMISSION (148-word description); ARCHITECTURE (flow, code map, trust boundaries); spec + v1-v2 history in `docs/archive/`, CLAUDE.md story; render.yaml branch + sandbox secrets + seed at start; LICENSE is standard MIT, unchanged (D-158, D-159) |
 | V1–V3 video tooling | [x] | 83e3e19 | 10 beats, 170 s with clip (155 s without); recorder (mock + sandbox pre-approved subs), voice-over, ffprobe < 180 s; check passes, clip is a human task (D-160..D-164) |
-| P7-V video tooling v2 | [ ] | | |
+| P7-V video tooling v2 | [x] | 33ca54f | scenes.json v2 (13 scenes, 175 s), frame-stepped stage, word timings, overlay build, preview ~45 s; 05_signin pending until Step 6 (D-184..D-187) |
 | P7-1 auth core | [ ] | | |
 | P7-2 intro + login pages | [ ] | | |
 | P7-3 dashboard additions | [ ] | | |

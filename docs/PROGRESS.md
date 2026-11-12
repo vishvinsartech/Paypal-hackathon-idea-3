@@ -76,3 +76,11 @@ FIX_PLAN Coverage checklist): V video tooling v2, 1 auth core, 2 intro + login p
 4 shop + session, 5 mobile pass, 6 auth tests + tooling, 7 Render deploy, 8 demo video.
 
 - [x] **Plan** (2026-11-12): Phase 7 section and checklist rows added to FIX_PLAN. No step started.
+- [x] **Step V. Video tooling v2** (2026-11-12, commit `33ca54f`, DECISIONS D-184..D-187). scenes.json v2 with the
+  13-scene storyboard (175 s; mock gives the sandbox-only PayPal proof scene's 10 s to 09_proof_app). New
+  `demo-video/stage/` (rendered frame by frame by `record_stage.py`), per-word voice timings (edge-tts 7.3.1
+  WordBoundary), recorder at 1600x900 with the real URL log and a yellow glow, overlay build with zoompan.
+  `demo-video-check`: passes (warnings: 05_signin pending, hosted URL empty). `demo-video-preview`: about 45 s.
+  A mock test take through the whole pipeline (not the final video) ran with no recorder problems and gave a
+  175.00 s `demo.mp4` (ffprobe). `test`: **356 passed** (was 328), 2 deselected. `lint`: clean. The sandbox take
+  (PayPal proof scene) is not run yet.

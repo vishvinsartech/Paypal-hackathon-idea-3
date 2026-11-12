@@ -104,3 +104,17 @@ FIX_PLAN Coverage checklist): V video tooling v2, 1 auth core, 2 intro + login p
   toggle. New `tests/test_intro.py`; `ui_check.py` walks intro -> Sign in -> dashboard at 1440 and 390 px. No
   selector changes for signed-in pages, so `scenes.json` is unchanged. `test`: **391 passed** (was 374),
   2 deselected. `lint`: clean. `ui-check`: passed.
+- [x] **Step 3. Dashboard additions** (2026-11-12, commit `85c488c`, DECISIONS D-182). Avatar menu: "Signed in as
+  Priya · priya@…" (local part only), Dashboard, Profile, Emails, Settings, Help (opens Ask SubGuard), Sign out as a
+  POST form to `/logout`; rows are 44 px and the menu is where Sign out lives at 390 px. The Presenter menu was
+  already signed-in only (D-181). Settings moved to `_settings.html`: Profile (Edit name or photo), the existing
+  alert preferences, Connected accounts (PayPal Connected + "Demo data" / "PayPal Sandbox"; email and SMS alerts
+  Connected / Mocked, both from `integration_states`, the `/healthz` source; no secrets), Security (Change password,
+  Turn on two-step sign-in), Your data (Download my activity -> `/api/audit-log.csv?user=`, Delete account disabled
+  "Demo account"). Sidebar chip: "Last signed in <date>, <time> UTC" from the latest `signed_in` entry, hidden if
+  none (`app/routes/account_view.py`). "+ Add a subscription" with the hint on Subscriptions; Help center and Privacy
+  in the footer. Every demo-only control has `data-soon`; one handler in `user-nav.js` (now loaded by `base.html` on
+  every page) toasts "Not part of this demo" and nothing else (R7). New `tests/test_account.py` (every `[data-soon]`
+  is a button or link, no success wording, the handler makes no request); `ui_check.py` checks Sign out at 390 px and
+  the toast. `scenes.json` uses none of the changed selectors. `test`: **397 passed** (was 391), 2 deselected.
+  `lint`: clean. `ui-check`: passed.

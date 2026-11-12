@@ -44,6 +44,7 @@ from videolib import (  # noqa: E402
     facts,
     load_scenes,
     mode_pill,
+    scene_time,
     timeline,
 )
 
@@ -62,8 +63,10 @@ def scene_urls(slot: Slot, scene: dict[str, Any], timing: dict[str, Any] | None,
         before = [u["url"] for u in log if u["t"] <= rec["start"]]
         first = before[-1] if before else carry
         out = [{"t": slot.start, "url": first}] if first else []
-        out += [{"t": round(slot.start + u["t"] - rec["start"], 3), "url": u["url"]}
-                for u in log if rec["start"] < u["t"] < rec["start"] + slot.duration]
+        cuts = rec.get("cuts", [])  # jumped-over live waits: later navigations move earlier by the same amount
+        out += [{"t": round(slot.start + scene_time(u["t"], rec["start"], cuts), 3), "url": u["url"]}
+                for u in log if rec["start"] < u["t"] < rec["end"]
+                and scene_time(u["t"], rec["start"], cuts) < slot.duration]
         return out
     goto = next((a["url"] for a in scene.get("actions", []) if a["action"] == "goto"), None)
     if goto is None:

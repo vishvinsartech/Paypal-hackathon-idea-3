@@ -139,6 +139,42 @@ def timeline(d: dict[str, Any], mode: str) -> list[Slot]:
     return out
 
 
+CUT_KEEP = 1.2  # seconds of a "cut" wait left on screen, so the viewer sees it start (e.g. the review spinner)
+CUT_TAIL = 0.3  # and its last moment, just before the result appears
+
+
+def cut_span(t0: float, t1: float) -> tuple[float, float] | None:
+    """The stretch of a "cut": true action (recording seconds t0..t1) the build jumps over, or None if it's short."""
+    a, b = t0 + CUT_KEEP, t1 - CUT_TAIL
+    return (round(a, 3), round(b, 3)) if b - a >= 0.5 else None
+
+
+def segments(start: float, end: float, cuts: list[list[float]], duration: float) -> list[tuple[float, float, float]]:
+    """(source start, offset in the scene, length) of a recorded scene with its cuts jumped over, trimmed to the
+    scene's duration (never extended)."""
+    out, src, off = [], start, 0.0
+    for a, b in [*sorted((float(x), float(y)) for x, y in cuts), (end, end)]:
+        length = min(a - src, duration - off)
+        if length > 0:
+            out.append((round(src, 3), round(off, 3), round(length, 3)))
+            off += length
+        src = max(src, b)
+        if off >= duration:
+            break
+    return out
+
+
+def scene_time(t: float, start: float, cuts: list[list[float]]) -> float:
+    """A recording time as seconds into the edited scene (a time inside a cut maps to where the cut is)."""
+    removed = 0.0
+    for a, b in sorted((float(x), float(y)) for x, y in cuts):
+        if t >= b:
+            removed += b - a
+        elif t > a:
+            return round(a - start - removed, 3)
+    return round(t - start - removed, 3)
+
+
 def total_seconds(d: dict[str, Any]) -> int:
     return sum(s["duration"] for s in d["scenes"])
 

@@ -67,6 +67,8 @@ def _actions(sid: str, s: dict[str, Any]) -> list[str]:
             errors.append(f"{sid}: type into {PASSWORD_FIELD} must use \"{PASSWORD}\" (never the password itself)")
         if PASSWORD in str(a) and not (a.get("action") == "type" and a.get("target") == PASSWORD_FIELD):
             errors.append(f"{sid}: {PASSWORD} only goes in a type into {PASSWORD_FIELD} (a masked field)")
+        if "cut" in a and (a["cut"] is not True or a.get("action") not in ("goto", "wait_for")):
+            errors.append(f"{sid}: \"cut\": true only goes on a goto or wait_for (a live wait the build jumps over)")
         for key in SUB_RE.findall(a.get("url", "")):
             if key not in made:
                 errors.append(f"{sid}: {{sub:{key}}} needs \"setup\": {{\"subscribe\": \"{key}\"}}")

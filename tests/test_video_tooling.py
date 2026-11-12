@@ -283,6 +283,26 @@ def test_build_overlays_each_recorded_scene_trimmed_into_the_hole() -> None:
         bv.plan(SCENES, {"mode": "mock", "scenes": []})
 
 
+def test_jump_cuts_skip_live_waits_and_keep_the_scene_length() -> None:
+    assert vl.cut_span(10.0, 27.0) == (11.2, 26.7) and vl.cut_span(10.0, 11.5) is None  # a short wait stays
+    assert vl.segments(100.0, 140.0, [[105.0, 120.0]], 22) == [(100.0, 0.0, 5.0), (120.0, 5.0, 17.0)]
+    assert vl.segments(100.0, 110.0, [], 22) == [(100.0, 0.0, 10.0)]  # never extended
+    assert vl.scene_time(125.0, 100.0, [[105.0, 120.0]]) == 10.0 and vl.scene_time(110.0, 100.0, [[105, 120]]) == 5.0
+    timing = fake_timing(SCENES, "sandbox")
+    shop = next(r for r in timing["scenes"] if r["id"] == "06_shop")
+    shop["end"] += 15.0
+    shop["cuts"] = [[shop["start"] + 6.0, shop["start"] + 21.0]]
+    slots, overlays = bv.plan(SCENES, timing)
+    pieces = [o for o in overlays if o.scene_id == "06_shop"]
+    slot = next(s for s in slots if s.id == "06_shop")
+    assert len(pieces) == 2 and sum(o.duration for o in pieces) == slot.duration
+    assert pieces[1].at == slot.start + 6.0 and pieces[1].src_start == shop["start"] + 21.0
+    assert "(in/30+6.000)" in bv.zoom_filter(SCENES["scenes"][5]["zoom"], SCENES["app_viewport"], pieces[1].offset)
+    bad = copy.deepcopy(SCENES)
+    bad["scenes"][5]["actions"][0]["cut"] = "yes"
+    assert any("cut" in e for e in sc.validate(bad)[0])
+
+
 def test_zoom_eases_in_and_out_of_the_rect() -> None:
     z = bv.zoom_filter({"at": 1.0, "rect": [740, 40, 640, 360], "dur": 4.5}, SCENES["app_viewport"])
     assert z.startswith("zoompan=z='1/(1-0.6*") and "s=1600x900" in z and "(in/30)-1.0)/0.8" in z

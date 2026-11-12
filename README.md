@@ -230,7 +230,7 @@ No suspend/pause anywhere. The audit log (`data/runtime/audit_log.jsonl`) is app
 
 ### Hosted demo
 
-**URL:** _to be added after the Render deploy_ (`https://<service>.onrender.com/`). Sign-in details are in the
+**URL:**  ((https://subguard-demo.onrender.com)`). Sign-in details are in the
 submission text.
 
 [`render.yaml`](render.yaml) deploys branch `main` on Render's **free plan** in **mock mode** (no keys, one worker).

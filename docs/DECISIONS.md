@@ -959,6 +959,7 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   `access_blocked`). This is the smallest change: routes keep their `user` parameter and signatures, and the R5
   `owner_id == user` filters still guard the data (a `user_id` in a JSON body is still checked by R5). Tests reach
   R5 behind the wall by signing in as the test-only second user (`as_user` in `tests/story_helpers.py`).
+  After sign-in, always go to the dashboard; only /shop pages are returned to.
 - **D-180 The password comes from env only.** `DEMO_PASSWORD` has no default and is never in the repo, the seed or
   a log; `.env.example` has a placeholder. The email is Priya's from `users.json` (case-insensitive); the password
   is compared with `hmac.compare_digest`; a wrong email and a wrong password give the same "Email or password is

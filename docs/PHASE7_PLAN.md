@@ -89,6 +89,9 @@ New `app/auth.py`, kept under 300 lines.
 - `POST /login` (form). Wrong details re-render with the generic "Email or password is wrong".
 - `POST /logout` clears the cookie and redirects to `/`.
 - `next` must be a local path; anything else falls back to `/`.
+- **After sign-in, always land on the dashboard `/`** (`safe_after_login` in `app/auth.py`). The only exception is a
+  `/shop` page (e.g. `/shop/penwright`, for Step 4's "Sign in to subscribe"), which is returned to. Any other `next`,
+  including `/?demo=1`, goes to `/`; the Live demo is opened from the Presenter menu after sign-in.
 - **Rate limit:** 5 failed sign-ins per minute per IP, using a simple in-memory counter.
 - **Audit:** log `signed_in`, `sign_in_failed` and `signed_out` (actor user, decision allowed or blocked). Mask the email as the rules require, and never log the password.
 

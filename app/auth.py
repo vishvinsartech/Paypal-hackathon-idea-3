@@ -137,6 +137,13 @@ def safe_next(target: str | None) -> str:
     return target if not parts.scheme and not parts.netloc else "/"
 
 
+def safe_after_login(target: str | None) -> str:
+    """Where sign-in lands: always the dashboard "/", except a local /shop page is returned to (D-179)."""
+    nxt = safe_next(target)
+    path = urlsplit(nxt).path
+    return nxt if path == "/shop" or path.startswith("/shop/") else "/"
+
+
 def is_public(path: str) -> bool:
     return path in PUBLIC_EXACT or path.startswith(PUBLIC_PREFIXES)
 

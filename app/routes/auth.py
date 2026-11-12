@@ -11,7 +11,7 @@ from app.auth import (
     RULE,
     check_credentials,
     clear_session_cookie,
-    safe_next,
+    safe_after_login,
     session_user,
     set_session_cookie,
 )
@@ -41,7 +41,7 @@ def _ip(request: Request) -> str:
 
 @router.get("/login", response_class=HTMLResponse, response_model=None)
 def login_page(request: Request, next: str = "/", settings: Settings = Depends(get_settings)) -> Response:
-    nxt = safe_next(next)
+    nxt = safe_after_login(next)
     if session_user(request, settings):
         return RedirectResponse(nxt, status_code=303)
     return _page(request, settings, nxt)
@@ -53,7 +53,7 @@ async def login(request: Request, settings: Settings = Depends(get_settings),
     form = parse_qs((await request.body()).decode("utf-8", "replace"))  # stdlib: no python-multipart needed
     email = form.get("email", [""])[0].strip()
     password = form.get("password", [""])[0]
-    nxt = safe_next(form.get("next", ["/"])[0])
+    nxt = safe_after_login(form.get("next", ["/"])[0])
     if not settings.demo_password:
         return _page(request, settings, nxt, email=email, status_code=503)
     limiter = request.app.state.login_limiter

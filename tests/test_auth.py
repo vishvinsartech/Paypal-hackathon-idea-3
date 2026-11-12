@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from app.auth import COOKIE, safe_next, sign_session, verify_session
+from app.auth import COOKIE, safe_after_login, safe_next, sign_session, verify_session
 from app.config import Settings
 from app.main import create_app
 from tests.story_helpers import PRIYA_EMAIL, TEST_PASSWORD, audit
@@ -20,7 +20,7 @@ def login(c: TestClient, password: str = TEST_PASSWORD, email: str = PRIYA_EMAIL
 def test_sign_in_sets_a_signed_cookie_and_is_audited(anon_client: TestClient, settings: Settings) -> None:
     c = anon_client
     res = login(c, email=PRIYA_EMAIL.upper(), nxt="/?demo=1")  # email compared case-insensitively
-    assert res.status_code == 303 and res.headers["location"] == "/?demo=1"
+    assert res.status_code == 303 and res.headers["location"] == "/"  # always the dashboard, not the demo
     cookie = res.headers["set-cookie"]
     assert cookie.startswith(f"{COOKIE}=") and "HttpOnly" in cookie and "SameSite=lax" in cookie
     assert "Secure" not in cookie  # http here; Secure only over https
@@ -83,6 +83,22 @@ def test_logout_clears_the_cookie(client: TestClient) -> None:
 ])
 def test_next_must_be_a_local_path(target: str, expected: str) -> None:
     assert safe_next(target) == expected
+
+
+@pytest.mark.parametrize("nxt,expected", [
+    ("/?demo=1", "/"), ("/shop/penwright", "/shop/penwright"), ("https://evil.example", "/"),
+])
+def test_sign_in_lands_on_the_dashboard_or_a_shop(anon_client: TestClient, nxt: str, expected: str) -> None:
+    res = login(anon_client, nxt=nxt)
+    assert res.status_code == 303 and res.headers["location"] == expected
+
+
+@pytest.mark.parametrize("target,expected", [
+    ("/?demo=1", "/"), ("/subscriptions/a", "/"), ("/shop", "/shop"), ("/shop/penwright", "/shop/penwright"),
+    ("/shopping", "/"), ("//evil.example/shop/x", "/"), ("https://evil.example/shop/x", "/"), (None, "/"),
+])
+def test_safe_after_login(target: str | None, expected: str) -> None:
+    assert safe_after_login(target) == expected
 
 
 def test_tampered_or_expired_cookie_is_rejected() -> None:

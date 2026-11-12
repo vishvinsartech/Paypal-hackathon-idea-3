@@ -1,8 +1,9 @@
-"""Shared demo-video logic (no ffmpeg, no browser): validate scenes.json, plan the final cut, write VIDEO_SCRIPT.md.
+"""Shared demo-video logic (no ffmpeg, no browser): scenes.json v2, the timeline, narration words, VIDEO_SCRIPT.md.
 
-Used by check_scenes.py, build_video.py and tests/test_video_tooling.py. A scene with "type": "clip" is a manually
-recorded clip (demo-video/clips/, gitignored): it has no actions, is at most `max_clip_seconds` long, and the
-build inserts it at its position, trimmed to its duration (D-114).
+Used by check_scenes.py, make_voiceover.py, record_demo.py, record_stage.py, build_video.py and the tests.
+Scene kinds (D-184): "card" (title / end card), "slide" (motion-graphic slide on the stage), "app" (the app,
+recorded with Playwright, shown in the stage's browser frame) and "paypal" (real PayPal sandbox pages in the same
+frame; sandbox takes only; in mock mode its time goes to its "mock_fallback" scene).
 """
 
 from __future__ import annotations
@@ -12,192 +13,202 @@ import re
 import shutil
 import subprocess
 from datetime import UTC, datetime, timedelta
+from functools import cache
 from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel
 
 ROOT = Path(__file__).resolve().parent.parent
-SCENES_PATH = ROOT / "demo-video" / "scenes.json"
-HARD_LIMIT_SECONDS = 180  # the hackathon's "under 3 minutes"; scenes.json keeps a 5 s margin below it
-ACTIONS = {"goto", "click", "hover", "type", "press", "wait_for", "wait", "scroll_to", "highlight"}
-ID_RE = re.compile(r"\d\d[a-z]?_[a-z0-9_]+")
+DV = ROOT / "demo-video"
+SCENES_PATH = DV / "scenes.json"
+STAGE_HTML = DV / "stage" / "stage.html"
+OUT = DV / "out"
+HARD_LIMIT_SECONDS = 180  # the hackathon's "under 3 minutes"; scenes.json keeps a margin below it
+KINDS = ("card", "slide", "app", "paypal")
+RECORDED = ("app", "paypal")  # kinds that show a recording in the stage's browser frame
 ON_RE = re.compile(r"\{on:(\d+)\}")
+FACT_RE = re.compile(r"\{fact:([a-z_]+)\}")
 SUB_RE = re.compile(r"\{sub:([a-z0-9-]+)\}")
-SETUPS = {"subscribe"}
-# CLAUDE.md "No real brands": captions and narration never name one (PayPal is the platform we build on). URLs are
-# stripped first, so the repo link may stay on screen. Email: say "Open in my email app", not the provider.
+ACCENT_RE = re.compile(r"(\*?)(.*?)(\*?)([.,;:!?)]*)")  # *word*, *start ... end*, punctuation after the star
+# CLAUDE.md "No real brands": narration never names one (PayPal is the platform we build on). URLs are stripped
+# first. The end card's chips (stage.html) are not narration.
 BRANDS = ("Gmail", "Google", "Outlook", "Yahoo", "Apple", "iCloud", "Microsoft", "Amazon", "Netflix", "Spotify",
           "Adobe", "Notion", "Grammarly", "Evernote", "Slack", "Zapier", "GitHub", "Anthropic", "Claude", "OpenAI",
           "ChatGPT", "GPT", "Render", "YouTube")
 BRAND_RE = re.compile(r"\b(" + "|".join(BRANDS) + r")\b")
 URL_RE = re.compile(r"\S+\.(com|org|io|dev)\S*")
+MODE_PILLS = {"mock": "LIVE · Demo data", "sandbox": "LIVE · PayPal Sandbox"}
 
 
 def load_scenes(path: Path = SCENES_PATH) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def is_clip(scene: dict[str, Any]) -> bool:
-    return scene.get("type") == "clip"
+@cache
+def facts() -> dict[str, str]:
+    """Prices and terms for narration ({fact:key}) and the slides: the same numbers as the app's intro (D-015)."""
+    try:
+        from app.config import load_settings
+        from app.routes.landing import landing_view
+    except ImportError:  # run from demo-video/ without the repo root on sys.path
+        import sys
+        sys.path.insert(0, str(ROOT))
+        from app.config import load_settings
+        from app.routes.landing import landing_view
+    return {k: str(v) for k, v in landing_view(load_settings()).items() if isinstance(v, (str, int))}
 
 
-def total_seconds(d: dict[str, Any], *, with_clips: bool = True) -> int:
-    return sum(s["duration"] for s in d["scenes"] if with_clips or not is_clip(s))
+def resolve(text: str, *, spoken: bool = False, today: datetime | None = None,
+            fact_values: dict[str, str] | None = None) -> str:
+    """{on:N} -> the calendar date N days after a sign-up made today ("Nov 18"; spoken "November 18"), same rule as
+    scripts/ui_check.on(). {fact:key} -> the app's own number (landing_view), e.g. {fact:intro} -> "$24.99"."""
+    now = today or datetime.now(UTC)
+
+    def on(m: re.Match[str]) -> str:
+        d = now + timedelta(days=int(m.group(1)))
+        return f"{d:%B} {d.day}" if spoken else f"{d:%b} {d.day}"
+    text = ON_RE.sub(on, text)
+    if FACT_RE.search(text):
+        values = fact_values if fact_values is not None else facts()
+        text = FACT_RE.sub(lambda m: values.get(m.group(1), m.group(0)), text)
+    return text
+
+
+def plain(text: str) -> str:
+    """Narration without the *accent* markup."""
+    return text.replace("*", "")
+
+
+def tokens(text: str) -> list[tuple[str, bool]]:
+    """Words of a (resolved) narration with their accent flag. *word* or *several words* is accented (D-184)."""
+    out, accent = [], False
+    for raw in text.split():
+        m = ACCENT_RE.fullmatch(raw)
+        start, word, end = (bool(m[1]), m[2] + m[4], bool(m[3])) if m else (False, raw, False)
+        if start:
+            accent = True
+        out.append((word, accent))
+        if end:
+            accent = False
+    return [(w, a) for w, a in out if w]
+
+
+def norm(word: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", word.lower())
 
 
 def words(text: str) -> int:
-    return len(re.findall(r"\S+", text))
-
-
-def resolve(text: str, *, spoken: bool = False, today: datetime | None = None) -> str:
-    """{on:N} -> the calendar date N days after a sign-up made today, as SubGuard writes it ("Nov 18"), or the
-    spoken form ("November 18") for the voice-over. Same rule as scripts/ui_check.on()."""
-    now = today or datetime.now(UTC)
-
-    def sub(m: re.Match[str]) -> str:
-        d = now + timedelta(days=int(m.group(1)))
-        return f"{d:%B} {d.day}" if spoken else f"{d:%b} {d.day}"
-    return ON_RE.sub(sub, text)
+    return len(re.findall(r"\S+", plain(text)))
 
 
 def brands(text: str) -> list[str]:
-    return BRAND_RE.findall(URL_RE.sub("", text))
+    return BRAND_RE.findall(URL_RE.sub("", plain(text)))
 
 
-def validate(d: dict[str, Any], root: Path = ROOT) -> tuple[list[str], list[str]]:
-    """(errors, warnings). A missing clip file is only a warning: the mock build skips that scene."""
-    errors: list[str] = []
-    warnings: list[str] = []
-    for key in ("title", "viewport", "voice", "words_per_minute", "max_total_seconds", "scenes"):
-        if key not in d:
-            errors.append(f"scenes.json: missing '{key}'")
-    if errors:
-        return errors, warnings
-    cap = d["max_total_seconds"]
-    if cap >= HARD_LIMIT_SECONDS:
-        errors.append(f"max_total_seconds {cap} must stay under {HARD_LIMIT_SECONDS} (3 minutes)")
-    total = total_seconds(d)
-    if total > cap:
-        errors.append(f"total {total} s is over max_total_seconds {cap} (clips included)")
-    wpm, max_clip = d["words_per_minute"], d.get("max_clip_seconds", 15)
-    seen: set[str] = set()
+def mode_pill(health: dict[str, Any]) -> str:
+    """The frame's pill, read from the running app's /healthz (never typed by hand)."""
+    mode = health.get("mode")
+    if mode not in MODE_PILLS:
+        raise ValueError(f"/healthz reported mode {mode!r}; expected mock or sandbox")
+    return MODE_PILLS[mode]
+
+
+class Slot(BaseModel):
+    """One scene on the final timeline."""
+    id: str
+    kind: str
+    start: float
+    duration: float
+
+
+def timeline(d: dict[str, Any], mode: str) -> list[Slot]:
+    """Scenes in order with their start in the final video. Outside sandbox mode a "paypal" scene is dropped and
+    its seconds go to its "mock_fallback" scene, so the total stays the same and nothing is faked."""
+    extra: dict[str, float] = {}
     for s in d["scenes"]:
-        sid = s.get("id", "?")
-        if not ID_RE.fullmatch(sid):
-            errors.append(f"{sid}: id must look like 01_name or 03b_name")
-        if sid in seen:
-            errors.append(f"{sid}: duplicate id")
-        seen.add(sid)
-        for key in ("duration", "on_screen", "narration", "actions"):
-            if key not in s:
-                errors.append(f"{sid}: missing '{key}'")
-        if not isinstance(s.get("duration"), int) or s.get("duration", 0) <= 0:
-            errors.append(f"{sid}: duration must be a positive whole number of seconds")
+        if s["kind"] == "paypal" and mode != "sandbox":
+            extra[s["mock_fallback"]] = extra.get(s["mock_fallback"], 0) + s["duration"]
+    out, t = [], 0.0
+    for s in d["scenes"]:
+        if s["kind"] == "paypal" and mode != "sandbox":
             continue
-        spoken = resolve(s.get("narration", ""), spoken=True)
-        if words(spoken) > s["duration"] * wpm / 60:
-            errors.append(f"{sid}: {words(spoken)} words don't fit {s['duration']} s at {wpm} wpm")
-        for b in sorted(set(brands(s.get("on_screen", "")) + brands(s.get("narration", "")))):
-            errors.append(f"{sid}: real brand {b!r} in the caption or narration (CLAUDE.md: no real brands)")
-        if s.get("setup") and (set(s["setup"]) - SETUPS or not s.get("separate")):
-            errors.append(f"{sid}: setup must be one of {sorted(SETUPS)} on a \"separate\": true scene")
-        if is_clip(s):
-            clip = s.get("clip", "")
-            if not clip.startswith("demo-video/clips/"):
-                errors.append(f"{sid}: clip must live in demo-video/clips/ (gitignored), got {clip!r}")
-            if s["duration"] > max_clip:
-                errors.append(f"{sid}: clip scene is {s['duration']} s; the limit is {max_clip} s")
-            if s.get("actions"):
-                errors.append(f"{sid}: a clip scene has no actions")
-            if clip and not (root / clip).exists():
-                warnings.append(f"{sid}: {clip} is missing; record it (demo-video/README.md). A mock build "
-                                "skips this scene.")
-        else:
-            if not s.get("actions"):
-                errors.append(f"{sid}: needs at least one action")
-            made = {s["setup"]["subscribe"]} if s.get("setup", {}).get("subscribe") else set()
-            for a in s.get("actions", []):
-                if a.get("action") not in ACTIONS:
-                    errors.append(f"{sid}: unknown action {a.get('action')!r}")
-                for key in SUB_RE.findall(a.get("url", "")):
-                    if key not in made:
-                        errors.append(f"{sid}: {{sub:{key}}} needs \"setup\": {{\"subscribe\": \"{key}\"}}")
-    return errors, warnings
-
-
-def missing_targets(d: dict[str, Any], ui_source: str) -> list[str]:
-    """Action targets with no data-testid in the UI source (templates, scripts, rendered pages)."""
-    out = []
-    for s in d["scenes"]:
-        for a in s.get("actions", []):
-            t = a.get("target")
-            if not t or t.startswith(("finding-", "status-")):
-                continue
-            if not re.search(rf"""data-testid="{re.escape(t)}"|["'`]{re.escape(t)}["'`]""", ui_source):
-                out.append(f"{s['id']}: target {t!r} not found in the UI")
+        dur = float(s["duration"] + extra.get(s["id"], 0))
+        out.append(Slot(id=s["id"], kind=s["kind"], start=round(t, 3), duration=dur))
+        t += dur
     return out
 
 
-class Segment(BaseModel):
-    scene_id: str
-    kind: str  # screen | clip
-    source: str  # path of the screen recording or the clip
-    start: float = 0.0  # where the scene starts in `source`
-    duration: float  # trimmed to the scene's duration, never extended
+def total_seconds(d: dict[str, Any]) -> int:
+    return sum(s["duration"] for s in d["scenes"])
 
 
-def plan(d: dict[str, Any], timing: dict[str, Any], *, root: Path = ROOT, screen: str = "demo-video/out/screen.webm",
-         require_clips: bool = False) -> tuple[list[Segment], list[str]]:
-    """The final cut, in scene order: recorded screen segments (from timing.json) with each clip inserted at its
-    scene's position and trimmed to its duration. Returns (segments, warnings); raises ValueError on a problem."""
-    recorded = {t["id"]: t for t in timing.get("scenes", [])}
-    segments: list[Segment] = []
-    warnings: list[str] = []
-    for s in d["scenes"]:
-        if is_clip(s):
-            if not (root / s["clip"]).exists():
-                if require_clips:
-                    raise ValueError(f"{s['id']}: {s['clip']} is missing (--require-clips)")
-                warnings.append(f"{s['id']}: {s['clip']} missing; scene skipped")
-                continue
-            segments.append(Segment(scene_id=s["id"], kind="clip", source=s["clip"], duration=s["duration"]))
-            continue
-        t = recorded.get(s["id"])
-        if t is None:
-            raise ValueError(f"{s['id']}: not in timing.json; record the demo again")
-        length = min(float(t["end"]) - float(t["start"]), float(s["duration"]))
-        segments.append(Segment(scene_id=s["id"], kind="screen", source=screen, start=float(t["start"]),
-                                duration=round(length, 3)))
-    total = sum(x.duration for x in segments)
-    if total > d["max_total_seconds"] or total >= HARD_LIMIT_SECONDS:
-        raise ValueError(f"the cut is {total:.1f} s; it must be at most {d['max_total_seconds']} s (under 3 minutes)")
-    return segments, warnings
+def chapters(d: dict[str, Any], slots: list[Slot]) -> list[dict[str, Any]]:
+    """[{name, start, end}] in order of first appearance; the stage's progress bar draws one segment each."""
+    by_id = {s["id"]: s for s in d["scenes"]}
+    out: list[dict[str, Any]] = []
+    for slot in slots:
+        name = by_id[slot.id]["chapter"]
+        if out and out[-1]["name"] == name:
+            out[-1]["end"] = slot.start + slot.duration
+        else:
+            out.append({"name": name, "start": slot.start, "end": slot.start + slot.duration})
+    return out
+
+
+def chunks(n_words: int, texts: list[str], max_words: int = 14) -> list[list[int]]:
+    """Split a scene's words into headline chunks of at most `max_words`: whole phrases (ending in punctuation)
+    are packed together, and a sentence end starts a new chunk once it has 5 words. Old chunks scroll away."""
+    phrases: list[list[int]] = [[]]
+    for i in range(n_words):
+        phrases[-1].append(i)
+        if texts[i][-1:] in ".,;:?!" or len(phrases[-1]) == max_words:
+            phrases.append([])
+    out: list[list[int]] = [[]]
+    for ph in (p for p in phrases if p):
+        if out[-1] and len(out[-1]) + len(ph) > max_words:
+            out.append([])
+        out[-1] += ph
+        if texts[ph[-1]][-1:] in ".?!" and len(out[-1]) >= 5:
+            out.append([])
+    return [c for c in out if c]
+
+
+def cue_times(cues: list[dict[str, str]], word_rows: list[dict[str, Any]]) -> list[tuple[str, float | None]]:
+    """(element id, seconds into the scene) for each cue: the first word matching the cue word after the previous
+    cue's word, so a repeated word cues in order. None if the word isn't found (check_scenes reports it)."""
+    out, after = [], 0
+    for cue in cues:
+        want, hit = norm(cue["word"]), None
+        for i in range(after, len(word_rows)):
+            if norm(word_rows[i]["w"]) == want:
+                hit, after = i, i + 1
+                break
+        out.append((cue["show"], None if hit is None else float(word_rows[hit]["start"])))
+    return out
 
 
 def video_script_md(d: dict[str, Any]) -> str:
-    rows = ["# SubGuard demo video script", "", f"Generated from `demo-video/scenes.json` by `check_scenes.py`. "
-            f"Total {total_seconds(d)} s (cap {d['max_total_seconds']} s; clips included), "
-            f"{d['words_per_minute']} wpm voice-over.", "",
-            "| Time | Scene | Caption | Actions | Voice-over |", "|---|---|---|---|---|"]
+    rows = ["# SubGuard demo video script", "",
+            f"Generated from `demo-video/scenes.json` by `check_scenes.py`. Total {total_seconds(d)} s "
+            f"(cap {d['max_total_seconds']} s), {d['words_per_minute']} wpm voice-over. *Accent* words show in the "
+            "accent colour in the word-by-word headline.", "",
+            "| Time | Scene | Kind | Kicker | Shows | Voice-over (= headline) |", "|---|---|---|---|---|---|"]
     t = 0
     for s in d["scenes"]:
         start, t = t, t + s["duration"]
-        acts = (f"**clip** `{s['clip']}` (recorded by hand)" if is_clip(s) else
-                "; ".join(a["action"] + (f" `{a.get('target') or a.get('url')}`" if a.get("target") or a.get("url")
-                                         else "") for a in s["actions"]))
-        rows.append(f"| {start // 60}:{start % 60:02d}-{t // 60}:{t % 60:02d} | {s['id']} | "
-                    f"{resolve(s['on_screen'])} | {acts} | {resolve(s['narration'])} |")
+        if s["kind"] in RECORDED:
+            shows = "; ".join(a["action"] + (f" `{a.get('target') or a.get('url')}`" if a.get("target") or a.get("url")
+                                             else "") for a in s.get("actions", []))
+        else:
+            shows = f"{s['kind']} `{s.get('slide') or s['id']}`" + (
+                " · cues " + ", ".join(f"{c['word']}→{c['show']}" for c in s.get("cues", [])) if s.get("cues") else "")
+        notes = [n for n, on in (("**pending**", s.get("pending")), ("sandbox only; in mock mode its time goes to "
+                 f"{s.get('mock_fallback')}", s["kind"] == "paypal")) if on]
+        rows.append(f"| {start // 60}:{start % 60:02d}-{t // 60}:{t % 60:02d} | {s['id']} | {s['kind']} | "
+                    f"`{s['kicker']}` | {shows}{' (' + '; '.join(notes) + ')' if notes else ''} | "
+                    f"{resolve(s['narration'])} |")
     return "\n".join(rows) + "\n"
-
-
-def offsets(segments: list[Segment]) -> dict[str, float]:
-    """Where each scene starts in the final cut (a skipped clip shifts everything after it)."""
-    out, t = {}, 0.0
-    for seg in segments:
-        out[seg.scene_id] = round(t, 3)
-        t += seg.duration
-    return out
 
 
 def srt(entries: list[tuple[float, float, str]]) -> str:
@@ -205,6 +216,13 @@ def srt(entries: list[tuple[float, float, str]]) -> str:
         ms = round(x * 1000)
         return f"{ms // 3600000:02d}:{ms // 60000 % 60:02d}:{ms // 1000 % 60:02d},{ms % 1000:03d}"
     return "".join(f"{i}\n{ts(a)} --> {ts(b)}\n{text}\n\n" for i, (a, b, text) in enumerate(entries, 1))
+
+
+def captions(d: dict[str, Any], slots: list[Slot], voice_seconds: dict[str, float]) -> str:
+    """Narration subtitles (out/captions.srt, for the upload) on the real timeline, each while its voice plays."""
+    by_id = {s["id"]: s for s in d["scenes"]}
+    return srt([(x.start, x.start + min(voice_seconds.get(x.id, x.duration), x.duration),
+                 plain(resolve(by_id[x.id]["narration"]))) for x in slots if by_id[x.id]["narration"].strip()])
 
 
 def probe_seconds(path: Path) -> float:

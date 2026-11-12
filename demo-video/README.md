@@ -1,109 +1,88 @@
-# Demo video tooling
+# Demo video tooling (v2)
 
-`scenes.json` is the single source of truth for the video: captions, voice-over, actions (by `data-testid`), and
-durations. The cut is **170 s** with the hand-recorded PayPal clip (155 s without), capped at **175 s**, and the
-final file is checked with ffprobe to be **under 180 s**. A scene is never extended: anything that runs long is
-trimmed to its duration.
+A presented product video, not a raw screen recording (DECISIONS D-184..D-187). `scenes.json` is the single source
+of truth: 13 scenes, **175 s**, in five chapters (Title → Problem → How it works → Live product → Close). Every
+frame has the same chrome: a mono kicker top left, the SubGuard logo top right, a large headline that **is the
+narration, revealed word by word with the voice**, and a chapter progress bar at the bottom. Problem, How it works
+and the pillars are motion-graphic slides that build on cue. App scenes show the real app inside a browser frame,
+with the real URL and the real mode pill. A scene is never extended: anything that runs long is trimmed. ffprobe
+checks the final file is **under 180 s**.
 
 ## Prerequisites
 
 - `make setup` (Playwright + Chromium come with the app).
-- **ffmpeg and ffprobe** on PATH (https://ffmpeg.org/download.html; on Windows e.g. `winget install ffmpeg`).
-- For the generated voice: `pip install -r demo-video/requirements.txt` (edge-tts, voice `en-US-JennyNeural`).
-  Not needed if you record every scene yourself (see Voice-over).
-- The app running: `make dev` (mock, shows "Demo data") or, for "PayPal Sandbox" on screen, see Sandbox take below.
+- **ffmpeg and ffprobe** (e.g. `winget install ffmpeg`). If a terminal was open before the install, `scripts/tasks.py`
+  still finds the winget copy on Windows.
+- The voice: `pip install -r demo-video/requirements.txt` (edge-tts 7, voice `en-US-JennyNeural`), unless you
+  record every scene yourself (see Voice-over).
+- For a take, the app running: `make dev` (mock: the pill says `LIVE · Demo data`) or a sandbox take (below).
 
-## Commands
+## Commands (Windows: `python scripts/tasks.py <task>`; Mac/Linux: `make <task>`)
 
-| Command | What it does |
+| Task | What it does |
 |---|---|
-| `make demo-video-check` | Validates `scenes.json`: durations, the cap, 125 wpm narration per scene (dates resolved), every target is a real `data-testid`, clip rules, **no real brand names** in captions or narration. Warns if the clip is missing. Writes `VIDEO_SCRIPT.md`. `ARGS="--base-url http://127.0.0.1:8000"` also checks the running app; `ARGS=--require-clips` makes a missing clip an error. |
-| `make demo-video-record` | `record_demo.py`: resets the demo, records every screen scene at 1920x1080 with Playwright (teal outline for each `highlight`, about 2.5 s), writes `out/screen.webm` + `out/timing.json`. Lists every problem (a failed action, a scene that ran over) and exits 1 if there were any. `ARGS=--headed` to watch it. |
-| `make demo-video-voice` | `make_voiceover.py`: one audio file per scene, measured with ffprobe; **fails if one is longer than its scene**. Writes `out/voiceover.json` and `out/captions.srt` (narration subtitles for the YouTube upload). `ARGS=--force` re-speaks after a narration change. |
-| `make demo-video-build` | `build_video.py`: cuts the scenes and the clip in order, mixes the voice-over, encodes `out/demo.mp4`, and verifies it with ffprobe. `ARGS="--require-clips --burn-captions --music licensed.mp3"`; `--dry-run` prints the cut and the ffmpeg command. |
-| `make demo-video` | All four, in order, stopping at the first failure (same as `demo-video/make_video.sh`). `ARGS` go to the build. |
+| `demo-video-check` | Validates `scenes.json` v2: kinds, chapters in order, kickers, durations and the cap, 125 wpm per scene, every cue word in its narration, every slide/cue element in `stage/stage.html`, every app target a real `data-testid`, zoom rects, no real brands in narration. Pending scenes and an empty hosted link only warn. Writes `VIDEO_SCRIPT.md`. `--base-url URL` checks the running app's pages. |
+| `demo-video-preview` | Voice-over + stage only, **no app recording**: `out/preview.mp4` (10 fps, half size, grey placeholder in the frame, voice mixed in) in about a minute. Use it to check timing with sound. |
+| `demo-video` | The whole video: check → voice-over → record the app → render the stage → build → `out/demo.mp4`. Extra args go to the build (`--music licensed.mp3`). `demo-video/make_video.sh` is the same thing for Mac/Linux. |
+| `demo-video-voice` | `make_voiceover.py`: one audio file per scene + `out/words.json` (each headline word's time). Fails if a voice is longer than its scene. `--force` re-speaks everything (it re-speaks a changed narration by itself). |
+| `demo-video-record` | `record_demo.py`: resets the demo and records the app at 1600x900 → `out/screen.webm` + `out/timing.json` (mode from `/healthz`, every scene's start/end, every URL visited). Slide/card scenes hold their time. Lists every failed action at the end and exits 1 (pending scenes only warn). `--headed` to watch. |
+| `demo-video-stage` | `record_stage.py`: renders the stage frame by frame from `timing.json` + `words.json` → `out/stage.mp4` (1920x1080, 30 fps). `--preview` is the preview's step. |
+| `demo-video-build` | `build_video.py`: overlays each recorded scene into the frame's hole at its time (with its zoom), mixes the voice-over (+ `--music`), H.264 `-preset veryfast`, verifies with ffprobe, writes `out/demo.mp4` + `out/captions.srt`. `--dry-run` prints the ffmpeg command. |
 
-Windows without make: `python scripts/tasks.py demo-video [--require-clips --burn-captions]`, and likewise
-`demo-video-check`, `demo-video-record`, `demo-video-voice`, `demo-video-build`.
+## The storyboard
 
-## The beats
+| # | kind | s | kicker | beat |
+|---|---|---|---|---|
+| 01_title | card | 6 | `// PayPal AI Hackathon 2026` | Logo + "AI reads the fine print. PayPal enforces the outcome." |
+| 02_problem | slide | 16 | `// the problem` | Free trials are built to be forgotten. Priya, her PayPal checkout, three fine-print cards that each get a red ✗ |
+| 03_problem_cost | slide | 14 | `// the problem` | Her statement: the first charge already taken. No reminder, no warning (no statistic: none verified) |
+| 04_how | slide | 22 | `// how it works` | Priya → PayPal checkout → SubGuard (AI reads, quotes word for word) → code decides → PayPal cancels, only with her OK or a timer she saw |
+| 05_signin | app | 10 | `// live · sign in` | **pending** until Phase 7 Step 6 (sign-in pages); for now her empty dashboard |
+| 06_shop | app | 22 | `// live · the shop` | Penwright, fine print (glow + slow zoom), PayPal → companion: risk, act-by date, PayPal plan check |
+| 07_approve | app | 12 | `// live · PayPal` | Continue to PayPal (mock: simulated approval) → her dashboard card |
+| 08_checkin | app | 20 | `// live · day 5` | "Keep your Penwright trial?" → Cancel → confirm → email with the clause highlighted |
+| 09_proof_app | app | 14 (24 in mock) | `// proof` | Day 11: "$24.99 never charged", audit log "chain verified ✓" |
+| 10_ai_vs_basic | app | 15 | `// why AI` | Quillnote at Day 0: AI finds "seventy-two hours", act by Nov 16; the basic check says Nov 19 |
+| 11_paypal_proof | paypal | 10 | `// proof in PayPal` | Sandbox only: PayPal's own Automatic payments page |
+| 12_pillars | slide | 8 | `// what it means` | AI reads · Code decides · PayPal enforces |
+| 13_end | card | 6 | `// SubGuard` | Logo, tagline, chips, repo URL, hosted URL |
 
-| # | s | Beat |
-|---|---|---|
-| 01_hook | 10 | The hero sentence (same as the Live demo page and the README) over Priya's Penwright checkout |
-| 02_shop | 15 | Penwright checkout, fine print, Terms |
-| 03_companion | 25 | Verdict, act by Nov 18 (the terms allow Nov 19), PayPal check, injection ignored, consent box |
-| 03b_paypal_approval | 15 | **Clip** recorded by hand: the real PayPal sandbox approval |
-| 04_ai_vs_basic | 15 | Quillnote evidence page: the AI found the notice period, the basic check missed it |
-| 05_checkin | 15 | Day 5 check-in band |
-| 06_cancel | 30 | Cancel, PayPal first, AI email quoting the clause, Send, PayPal CANCELLED read live |
-| 07_audit | 15 | Activity with R1/R2 chips, "Show raw log" filtered to R1 |
-| 08_proof_scale | 20 | Day 11 proof; scale: Fair Trial partners, one tap in PayPal, the PayPal wallet |
-| 09_close | 10 | Charges avoided, MIT, repo URL |
+## Editing `scenes.json`
 
-Notes for editing `scenes.json`:
-
-- `{on:N}` in a caption or narration is the calendar date N days after a sign-up made today ("Nov 18"; spoken as
-  "November 18"), so the video matches the app on whatever day you record it.
-- `04_ai_vs_basic` is `"separate": true`: it's recorded after the main take (a Quillnote trial made at Day 0 would
-  fire before the Day 5 check-in), with an off-screen `"setup"` that subscribes Priya to Quillnote. The build still
-  puts it in its scenes.json slot.
-- `"mock_only": true` skips an action in sandbox mode; `"sandbox_subscribe"` registers a pre-approved subscription
-  after the scene (sandbox only).
-- Never name a real brand in a caption or narration (the check fails). Say "your email app", not a provider.
+- `narration` is spoken and shown. `*word*` or `*several words*` = accent colour. `{on:N}` = the calendar date N days
+  after a sign-up made today ("Nov 18", spoken "November 18"), so the video matches the app on any recording day.
+  `{fact:key}` = a number from the app (`landing_view`: `intro`, `step_up`, `notice_days`…). Never type a price.
+- `cues: [{"word", "show"}]` on slides/cards: element `#show` in `stage/stage.html` appears when that word is
+  spoken. Cues match in order, so a repeated word cues its next occurrence.
+- App scenes: `actions` by `data-testid` (`goto`, `click`, `hover`, `type`, `press`, `wait_for`, `wait`,
+  `scroll_to`, `highlight` = a thick yellow glow for 2.5 s). `setup` runs off screen first (`reset`, `day: N`,
+  `subscribe: <plan>`). `mock_only` skips an action in sandbox. `zoom: {"at", "rect": [x, y, w, h], "dur"}` in
+  1600x900 recording pixels, 16:9, eased in and out over 0.8 s.
+- `links.hosted`: the Render URL for the end card (empty until the deploy; the check warns).
+- Never name a real brand in narration or a kicker (the check fails). Say "your email app", not a provider.
 
 ## Voice-over
 
-Your own recording wins: put `demo-video/audio/<scene_id>.wav` (or `.mp3`) there (gitignored), at most the scene's
-length. Any scene without one is spoken by edge-tts. The narration of the clip scene is voiced too; the clip's own
-audio is dropped.
+Your own recording wins: put `demo-video/audio/<scene_id>.wav` (or `.mp3`, gitignored) there, at most the scene's
+length; its words are spread over the clip by word length. Any other scene is spoken by edge-tts with per-word
+timings (`boundary="WordBoundary"`).
 
-## Sandbox take ("PayPal Sandbox" on screen)
+## Sandbox take (`LIVE · PayPal Sandbox`, plus the PayPal proof scene)
 
-1. `make seed ARGS=--demo-subs`: products, plans, and pre-approved **Penwright and Quillnote** subscriptions for the
-   sandbox buyer (a browser opens to approve them). Run it again before every take: each take cancels Penwright.
-2. `make dev-sandbox` (needs the LLM key; the companion's review is the real model, so allow a few seconds).
-3. `make demo-video`. The recorder skips "Continue to PayPal" (the clip shows PayPal's window) and registers the
-   pre-approved subscriptions instead.
-4. Afterwards cancel anything still ACTIVE in the sandbox (Quillnote is Layer 2: use the buyer's PayPal Automatic
-   payments page).
+1. `python scripts/tasks.py seed --demo-subs`: products, plans and pre-approved **Penwright and Quillnote**
+   subscriptions for the sandbox buyer. Run it again before every take: each take cancels Penwright.
+2. `python scripts/tasks.py dev-sandbox` (needs the LLM key; the companion's review is the real model).
+3. `python scripts/tasks.py demo-video`. The recorder logs in to PayPal sandbox as `PAYPAL_SANDBOX_BUYER_EMAIL` in a
+   separate, **unrecorded** browser and reuses only its cookies, so no email or password is typed on camera. It
+   skips "Continue to PayPal" (PayPal's window isn't automated on camera) and registers the pre-approved
+   subscriptions instead.
+4. Afterwards cancel anything still ACTIVE in the sandbox (Quillnote is Layer 2: the buyer's Automatic payments page).
 
-## The PayPal approval clip (`03b_paypal_approval`)
-
-The automated recorder can't show PayPal's real approval window (PayPal's own site, behind the sandbox buyer's
-login). That 15-second moment is recorded by hand and inserted by `build_video.py` right after `03_companion`:
-
-- file: `demo-video/clips/paypal_approval.mp4` (the folder is gitignored; never commit recordings)
-- at most **15 s**. `build_video.py` trims it to the scene's `duration` and never stretches it. Its own audio is
-  dropped; the scene's narration is the voice-over.
-- if the file is missing, `check_scenes.py` prints a warning and the build skips the scene (the cut is then 155 s).
-  `--require-clips` turns that into an error for the final build.
-
-### How to record it
-
-1. Run the app in **sandbox mode** with a seeded plan: `make seed`, then `make dev-sandbox`. Sandbox mode needs an
-   LLM key in `.env` (`ANTHROPIC_API_KEY` or `OPENAI_API_KEY`).
-2. **Log in to the sandbox buyer first.** In the browser you'll record with, open https://www.sandbox.paypal.com
-   and sign in as `PAYPAL_SANDBOX_BUYER_EMAIL`, so the pop-up opens already logged in. **Never show a password, an
-   email field being typed, or `.env` on screen.**
-3. Set the browser window to 1920x1080 (or 16:9), close other tabs and notifications, and use a clean profile
-   with no bookmarks bar, extensions or personal data.
-4. Open http://127.0.0.1:8000/shop/penwright, click PayPal, then **Continue to PayPal** in the SubGuard companion
-   (that part is already in the automated video; start recording just before you click the PayPal button).
-5. Record **one clean take**: the PayPal window opens, shows Penwright Pro (10-day trial $0, then $24.99/month),
-   you click **Agree & Subscribe**, the window closes, and the shop shows "You're subscribed. Welcome to Penwright."
-6. **Trim the waiting time** (PayPal loading, the server confirming ACTIVE) so the clip is 15 s or less. Any
-   editor works; with ffmpeg: `ffmpeg -ss 00:00:03 -to 00:00:18 -i raw.mp4 -an -c:v libx264 paypal_approval.mp4`.
-7. Save it as `demo-video/clips/paypal_approval.mp4` and run `make demo-video-check`: the warning should be gone.
-8. Afterwards, cancel the subscription (SubGuard's Cancel, or the buyer's PayPal Automatic payments page) so no
-   test subscription stays ACTIVE in the sandbox.
-
-To rehearse the same path automatically (no recording), run `make sandbox-ui-check`.
+In mock mode the PayPal proof scene is skipped and 09_proof_app holds 10 s longer, so the video is 175 s either way.
 
 ## YouTube checklist
 
-- `make demo-video ARGS="--require-clips --burn-captions"`; the build prints the ffprobe length (must be < 3:00).
-- Watch it once end to end: no password, no `.env`, no personal data, no real brand in a caption.
-- Upload as **Public**; title mentions SubGuard and "PayPal Sandbox"; upload `out/captions.srt` as subtitles.
-- No unlicensed music (only `--music` with a track you have the rights to).
+- `python scripts/tasks.py demo-video`; the build prints the ffprobe length (must be < 3:00).
+- Watch it once end to end: no password, no `.env`, no personal data, no real brand in the narration.
+- Upload as **Public**; upload `out/captions.srt` as subtitles. Only `--music` with a track you have the rights to.
 - Paste the link into `README.md` and `docs/SUBMISSION.md`.

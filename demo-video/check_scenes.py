@@ -1,13 +1,14 @@
-"""Check demo-video/scenes.json without making a video (`make demo-video-check`).
+"""Check demo-video/scenes.json v2 without making a video (`python scripts/tasks.py demo-video-check`).
 
-- schema, unique ids, durations, the under-3-minutes cap (clips included), narration at 125 wpm per scene
-- every action target is a data-testid the UI has (templates + scripts; with --base-url also the running app)
-- clip scenes: the file is in demo-video/clips/ and at most max_clip_seconds; a MISSING clip is only a warning
-  (the mock build skips it) unless --require-clips
-- writes demo-video/VIDEO_SCRIPT.md
-Exit code 1 on any error.
+- schema (kinds, chapters in order, kickers, durations, the cap), narration at 125 wpm per scene, no real brands
+- cues: every cue word is in its scene's narration (in order) and every cue / slide element exists in stage.html
+- every app-scene action target is a data-testid the UI has (templates + scripts + rendered pages; with --base-url
+  the running app's pages instead of an in-process render)
+- zoom rects inside the recording and in the frame's aspect ratio; paypal scenes only open PayPal sandbox pages
+- "pending": true scenes and an empty hosted link only warn
+- writes demo-video/VIDEO_SCRIPT.md. Exit code 1 on any error.
 
-Usage: python demo-video/check_scenes.py [--base-url http://127.0.0.1:8000] [--require-clips]
+Usage: python demo-video/check_scenes.py [--base-url http://127.0.0.1:8000]
 """
 
 from __future__ import annotations
@@ -22,9 +23,10 @@ from pathlib import Path
 import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from videolib import ROOT, load_scenes, missing_targets, total_seconds, validate, video_script_md  # noqa: E402
+from schema import missing_targets, validate  # noqa: E402
+from videolib import ROOT, load_scenes, timeline, total_seconds, video_script_md  # noqa: E402
 
-PAGES = ("/?demo=1", "/user", "/shop", "/shop/penwright", "/shop/penwright/terms")
+PAGES = ("/", "/?demo=1", "/shop", "/shop/penwright", "/shop/penwright/terms")
 
 
 def ui_source(base_url: str | None) -> str:
@@ -59,19 +61,18 @@ def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser()
-    ap.add_argument("--base-url", help="also check the running app's pages")
-    ap.add_argument("--require-clips", action="store_true", help="a missing clip is an error, not a warning")
+    ap.add_argument("--base-url", help="check the running app's pages")
     args = ap.parse_args()
     d = load_scenes()
     errors, warnings = validate(d)
-    errors += missing_targets(d, ui_source(args.base_url))
-    if args.require_clips:
-        errors += [w for w in warnings if "missing" in w]
-        warnings = [w for w in warnings if "missing" not in w]
+    for m in missing_targets(d, ui_source(args.base_url)):
+        (warnings if m.endswith("(pending scene)") else errors).append(m)
     out = ROOT / "demo-video" / "VIDEO_SCRIPT.md"
     out.write_text(video_script_md(d), encoding="utf-8")
-    print(f"{len(d['scenes'])} scenes, {total_seconds(d)} s with clips / {total_seconds(d, with_clips=False)} s "
-          f"without (cap {d['max_total_seconds']} s). Wrote {out.relative_to(ROOT)}.")
+    mock = sum(s.duration for s in timeline(d, "mock"))
+    sandbox = sum(s.duration for s in timeline(d, "sandbox"))
+    print(f"{len(d['scenes'])} scenes, {total_seconds(d)} s (mock {mock:.0f} s without the PayPal proof scene, "
+          f"sandbox {sandbox:.0f} s; cap {d['max_total_seconds']} s). Wrote {out.relative_to(ROOT)}.")
     for w in warnings:
         print(f"WARNING {w}")
     for e in errors:

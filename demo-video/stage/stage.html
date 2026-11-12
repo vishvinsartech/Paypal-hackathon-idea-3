@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SubGuard video stage</title>
+<meta name="viewport" content="width=1920, height=1080">
+<link rel="stylesheet" href="stage.css">
+</head>
+<!-- The video's stage (D-184): 1920x1080, driven only by SG.seek(t) in stage.js, so every frame is reproducible.
+     record_stage.py injects the timeline (words, cues, URLs, mode pill, numbers from the app) and screenshots
+     each frame. App scenes leave a solid hole in the browser frame; build_video.py overlays the recording there. -->
+<body>
+<div id="canvas">
+  <header class="chrome">
+    <p id="kicker" class="kicker"></p>
+    <p class="logo"><img src="../../app/static/shield.svg" alt="" width="40" height="40"><span>SubGuard</span></p>
+    <h1 id="headline" class="headline"><span id="hl-prev" class="hl hl-prev"></span><span id="hl-cur" class="hl"></span></h1>
+  </header>
+
+  <div id="frame" class="frame" aria-hidden="true">
+    <div class="bar"><span class="dots"><i></i><i></i><i></i></span>
+      <span class="url"><span class="lock" id="lock"></span><span id="url"></span></span>
+      <span id="pill" class="pill"><i class="live-dot"></i><span id="pill-text"></span></span></div>
+    <div id="hole" class="hole"><span id="hole-label"></span></div>
+  </div>
+
+  <section id="slide-title" class="slide card-title">
+    <img class="big-logo" src="../../app/static/shield.svg" alt="">
+    <p class="wordmark">SubGuard</p>
+    <p class="tagline">AI reads the fine print. <em>PayPal enforces the outcome.</em></p>
+  </section>
+
+  <section id="slide-problem" class="slide">
+    <div class="pb-left">
+      <div id="pb-priya" class="cue person"><span class="avatar">P</span><div><strong>Priya</strong>
+        <span class="muted">freelance writer · pays with PayPal</span></div></div>
+      <div id="pb-checkout" class="cue checkout"><p class="muted small">Penwright Studio · Penwright Pro</p>
+        <p class="offer"><span data-fact="trial_days"></span>-day free trial, <strong>$0 today</strong></p>
+        <p class="pp-btn">PayPal</p></div>
+    </div>
+    <div id="pb-cards" class="cue pb-cards">
+      <div class="fp"><span id="pb-x-notice" class="cue x">✗</span><h3>Short notice</h3>
+        <p>Cancel at least <span data-fact="notice_days"></span> days before billing, by email.</p></div>
+      <div class="fp"><span id="pb-x-stepup" class="cue x">✗</span><h3>Step-up price</h3>
+        <p><span data-fact="intro"></span>/month, then <span data-fact="step_up"></span> after
+          <span data-fact="intro_months"></span> months.</p></div>
+      <div class="fp"><span id="pb-x-renew" class="cue x">✗</span><h3>Auto-renew</h3>
+        <p>The trial turns into a paid plan unless she cancels in time.</p></div>
+    </div>
+  </section>
+
+  <section id="slide-cost" class="slide">
+    <div id="st-card" class="cue statement">
+      <p class="st-head"><span>Statement</span><span class="muted">Priya</span></p>
+      <p class="st-line muted"><span>Previous balance</span><span>$0.00</span></p>
+      <p id="st-row" class="cue st-line st-charge"><span>Penwright Studio · first charge</span>
+        <span>−<span data-fact="intro"></span></span></p>
+    </div>
+    <div class="st-nos"><p id="st-no1" class="cue no">✗ No reminder</p><p id="st-no2" class="cue no">✗ No warning</p></div>
+  </section>
+
+  <section id="slide-how" class="slide">
+    <ol class="flow">
+      <li id="hw-priya" class="cue node"><span class="n-ico">P</span><strong>Priya</strong><span>starts a free trial</span></li>
+      <li id="hw-paypal" class="cue node arrow"><span class="n-ico pp">PP</span><strong>PayPal checkout</strong><span>the real plan</span></li>
+      <li id="hw-subguard" class="cue node arrow hero"><span class="n-ico sg"><img src="../../app/static/shield.svg" alt=""></span>
+        <strong>SubGuard</strong><span>AI reads the terms</span></li>
+      <li id="hw-code" class="cue node arrow"><span class="n-ico">{ }</span><strong>Code decides</strong><span>safety rules R1–R7</span></li>
+      <li id="hw-cancel" class="cue node arrow"><span class="n-ico pp">PP</span><strong>PayPal cancels</strong><span>before the deadline</span></li>
+    </ol>
+    <p id="hw-quote" class="cue quote">“Cancellation requires written notice … at least <span data-fact="notice_days"></span> days
+      before the next billing date.” <span class="muted">quoted word for word</span></p>
+    <p id="hw-consent" class="cue consent">Only with her OK, or a safety timer she saw.</p>
+  </section>
+
+  <section id="slide-pillars" class="slide pillars">
+    <div id="pl-ai" class="cue pillar"><span class="p-num">1</span><h3>AI reads</h3><p>the fine print, and quotes it word for word</p></div>
+    <div id="pl-code" class="cue pillar"><span class="p-num">2</span><h3>Code decides</h3><p>every action, under rules R1–R7</p></div>
+    <div id="pl-paypal" class="cue pillar"><span class="p-num">3</span><h3>PayPal enforces</h3><p>the cancel, before the deadline</p></div>
+  </section>
+
+  <section id="slide-end" class="slide card-end">
+    <img class="big-logo small" src="../../app/static/shield.svg" alt="">
+    <p class="wordmark">SubGuard</p>
+    <p class="tagline">AI reads the fine print. <em>PayPal enforces the outcome.</em></p>
+    <p class="chips"><span>AI reads the fine print</span><span>Code decides</span><span>PayPal enforces</span><span>Live on Render</span></p>
+    <div id="end-links" class="cue links"><p data-link="github"></p><p data-link="hosted"></p></div>
+  </section>
+
+  <footer class="progress" id="progress"></footer>
+</div>
+<script src="stage.js"></script>
+</body>
+</html>

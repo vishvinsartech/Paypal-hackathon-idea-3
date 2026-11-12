@@ -935,6 +935,45 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   (too close to Priya's "P" avatar), kept in purple, unlike her teal avatar. **Compact:** smaller paddings, tile and
   dots; the sub-line and buttons share one row; smaller timeline and footer.
 
+## v3 Phase 7 Step V: video tooling v2 (2026-11-12, docs/PHASE7_PLAN.md)
+
+D-178..D-183 are reserved for the Phase 7 auth, intro and deploy decisions named in `docs/PHASE7_PLAN.md`, so the
+video decisions start at D-184.
+
+- **D-184 A presented video: scenes.json v2 (overrides D-160..D-162 where they differ).** 13 scenes, 175 s, in
+  five chapters (Title, Problem, How it works, Live product, Close). Each scene has a `kind` (card, slide, app,
+  paypal), a `chapter`, a mono `kicker` and a `narration` that is also the word-by-word headline (`*accent*` words
+  in the accent colour). Slides and cards are drawn by `demo-video/stage/`, and their `cues` show an element when its
+  word is spoken. App scenes are recorded at 1600x900 and shown in a browser frame. The hand-recorded PayPal clip
+  is gone: the `paypal` scene opens real PayPal sandbox pages in a sandbox take (the buyer logs in off camera, in a
+  separate unrecorded browser, and only the cookies are reused), and in mock mode its 10 s go to its
+  `mock_fallback` (09_proof_app), so the length never changes. `"separate"` is gone too: `10_ai_vs_basic` resets the
+  demo off screen and subscribes to Quillnote at Day 0, so the screen says "act by Nov 16" (basic check: Nov 19),
+  matching the narration. The old separate scene ran after Day 11, where the panel says Nov 27, while its narration
+  said `{on:4}`. A `"pending": true` scene (05_signin, until Step 6) only warns.
+- **D-185 The stage is rendered frame by frame, not screen-recorded.** Everything on the stage is a pure function
+  of time (`SG.seek(t)` in `stage.js`), so `record_stage.py` steps through the real timeline in Playwright and pipes
+  JPEG screenshots to ffmpeg. This gives exact sync and sharp text, and identical frames are reused, so a 175 s
+  stage needs about 900 screenshots. The output is `out/stage.mp4` (H.264, crf 16), not `stage.webm`, because
+  VP8/VP9 encoding is slower for the same quality. `build_video.py` overlays each recorded scene into the hole at
+  its timeline position (no chromakey), with an optional zoompan zoom (0.8 s in, hold, 0.8 s out). The preview
+  renders the stage at 10 fps and half size with a grey placeholder in the hole, with the voice-over mixed in
+  (about 45 s here).
+- **D-186 Word timings from the voice.** edge-tts 7 sends sentence boundaries unless `boundary="WordBoundary"` is
+  passed. One boundary can cover several words ("November 18"), so its time is split over them, and anything after
+  a mismatch is spread over the rest of the clip. Your own recording (`audio/<id>.wav`) gets its words spread by
+  length. The TTS audio and its word events are cached per scene and re-spoken when the text changes. The build and
+  the preview write `captions.srt` on the mode's real timeline. `--burn-captions` and `--require-clips` are gone
+  (the headline is the narration, and there's no clip).
+- **D-187 Nothing on the frame is typed by hand.** The URL bar shows the recorder's own navigation log
+  (`framenavigated`, stored in `timing.json`). The pill is `LIVE · Demo data` or `LIVE · PayPal Sandbox` from
+  `/healthz` during the take (the preview says `PREVIEW · app not running` if no app answers). Slide prices come
+  from `landing_view` (D-015). The narration says "high risk", not "87", because a sandbox take's model may score a
+  few points differently, and the screen shows the real number. The cost slide has no statistic because none was
+  verified. The highlight is a thick glow in the brand amber `#f5b942`, injected by the recorder (no app change).
+  The end card's chips ("Live on Render") and the repo URL aren't narration, so the brand check (narration and
+  kickers) doesn't apply to them. The hosted URL stays empty until the deploy, and the check warns about it.
+
 ## Not used in v1 (sponsor tools)
 
 - **Bryntum:** a CSS timeline is enough for a prototype.

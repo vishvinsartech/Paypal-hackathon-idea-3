@@ -35,7 +35,7 @@
 .auth-form label { font-weight: 600; font-size: var(--t-sm); margin-top: 6px; }
 .auth-form input { width: 100%; box-sizing: border-box; min-height: 44px; padding: 10px 12px; font: 16px var(--font);
   color: var(--text); background: var(--navy-900); border: 1px solid var(--line); border-radius: var(--r-ctl); }
-.auth-form input:focus-visible { outline: 3px solid var(--teal); outline-offset: 1px; border-color: var(--teal); }
+.auth-form input:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; border-color: var(--teal); }
 .auth-form input:disabled { opacity: .55; }
 .auth-submit { margin-top: 14px; min-height: 44px; font-size: var(--t-md); border-radius: var(--r-ctl); }
 .auth-back { margin: 16px 0 0; font-size: var(--t-sm); }

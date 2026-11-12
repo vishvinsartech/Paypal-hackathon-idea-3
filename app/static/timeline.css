@@ -2,7 +2,7 @@
    Colour only for status: green tick = done, amber dot = needs your answer. Everything else is text / muted. */
 .ac-wrap { max-width: 760px; margin: 4px 0 24px; }
 .ac-title { font-size: var(--t-lg); margin: 8px 0 0; }
-.ac-day-h { margin: 22px 0 2px; font-size: var(--t-xs); font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+.ac-day-h { margin: 22px 0 2px; font-size: var(--t-xs); font-weight: 600;
   color: var(--muted); }
 .ac { list-style: none; margin: 0; padding: 0; }
 .ac-entry + .ac-entry { border-top: 1px solid var(--navy-700); }
@@ -26,7 +26,7 @@
 .ac-proof > summary { list-style: none; cursor: pointer; }
 .ac-proof > summary::-webkit-details-marker { display: none; }
 .ac-proof > summary:hover .ac-proof-toggle, .ac-proof[open] .ac-proof-toggle { color: var(--text); }
-.ac-proof > summary:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; border-radius: var(--r-xs); }
+.ac-proof > summary:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: var(--r-xs); }
 .ac-caret { display: inline-block; transition: transform .15s; }
 .ac-proof[open] .ac-caret { transform: rotate(90deg); }
 .ac-proof-body { margin: 0 0 12px calc(104px + 14px); padding: 10px 14px; border-radius: var(--r-ctl); background: var(--navy-800);

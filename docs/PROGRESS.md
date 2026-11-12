@@ -165,3 +165,7 @@ FIX_PLAN Coverage checklist): V video tooling v2, 1 auth core, 2 intro + login p
   seven SubGuard stylesheets replaced by tokens; D-176's colour decoration removed. Shots: `docs/img/v5/1-tokens/`
   (`scripts/shots_v5.py`, 1440x900 + 390x844, dark + light). `test`: **418 passed**, 2 deselected. `lint`: clean.
   `ui-check`: passed.
+- [x] **Step 2. Type, buttons, pills** (2026-11-12). Vendored Atkinson Hyperlegible Next (one variable woff2, OFL);
+  links and focus in ink; main / secondary / danger buttons; borderless cards and pills; no all-caps; generic entrance
+  and hover motion removed; dark surface raised one step. Shots: `docs/img/v5/2-type-buttons-pills/`.
+  `test`: **418 passed**, 2 deselected. `lint`: clean. `ui-check`: passed.

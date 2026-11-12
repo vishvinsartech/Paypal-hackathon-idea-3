@@ -11,7 +11,7 @@
 .hero-brand-name { font-size: clamp(2.6rem, 5vw, 3.8rem); font-weight: 800; line-height: 1; letter-spacing: -.035em;
   background: linear-gradient(120deg, var(--teal) 10%, var(--paypal) 90%); -webkit-background-clip: text; background-clip: text;
   color: transparent; }
-.hero-tag { margin: 0 0 14px; font-size: var(--t-sm); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.hero-tag { margin: 0 0 14px; font-size: var(--t-sm); font-weight: 700; color: var(--muted); }
 .hero-h { margin: 0 0 12px; font-size: clamp(1.6rem, 2.6vw, 2.35rem); line-height: 1.18; letter-spacing: -.02em; text-wrap: balance; }
 .hero-sub { margin: 0 0 18px; font-size: var(--t-md); line-height: 1.55; color: var(--muted); max-width: 60ch; }
 .hero-cta { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -42,7 +42,7 @@
 .landing-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 20px; margin-top: 16px; }
 .built { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .built li { padding: 3px 10px; border-radius: var(--r-pill); border: 1px solid var(--line); font-size: var(--t-xs); }
-.built .built-h { border: 0; padding-left: 0; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-size: var(--t-xs); }
+.built .built-h { border: 0; padding-left: 0; font-weight: 700; color: var(--muted); font-size: var(--t-xs); }
 .built .built-rule { border-color: var(--teal); color: var(--teal); font-weight: 600; }
 .honest { margin: 0; }
 
@@ -58,7 +58,7 @@
 
 /* ---- controls ---- */
 .demo-page .presenter { border: 1px solid var(--navy-700); padding: 20px 24px; }
-.demo-page .pr-h { font-size: var(--t-xs); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.demo-page .pr-h { font-size: var(--t-xs); font-weight: 700; color: var(--muted); }
 .demo-page .presenter .btn-start { border-radius: var(--r-pill); padding: 12px 30px; border: 0; color: var(--on-accent);
   background: linear-gradient(135deg, var(--teal), var(--teal-dark)); box-shadow: 0 6px 18px -6px var(--teal);
   transition: transform .15s, box-shadow .15s, opacity .2s; }
@@ -118,7 +118,7 @@
 .demo-page .demo-priya .band { border-radius: var(--r-card); padding: 18px 20px; border: 1px solid transparent; border-left-width: 4px; }
 .demo-page .band-checkin { background: color-mix(in srgb, var(--ask) 10%, transparent); border-color: color-mix(in srgb, var(--ask) 35%, transparent); border-left-color: var(--amber); }
 .demo-page .band-action { background: color-mix(in srgb, var(--risk) 8%, transparent); border-color: color-mix(in srgb, var(--risk) 30%, transparent); border-left-color: var(--red); }
-.demo-page .band .eyebrow { font-size: var(--t-xs); letter-spacing: .06em; }
+.demo-page .band .eyebrow { font-size: var(--t-xs); }
 .demo-page .band .delivery { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: var(--r-pill);
   background: var(--navy-800); color: var(--text); font-weight: 600; }
 .demo-page .demo-priya .band h3 { font-size: var(--t-xl); letter-spacing: -.01em; margin: 6px 0 8px; }

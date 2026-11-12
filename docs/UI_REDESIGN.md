@@ -51,6 +51,14 @@ classes. The evidence page uses `app.css`, so it gets the new tokens for free an
   uses `--on-accent` / `--on-fill` / `--on-risk`; "ok" / done ticks and finished pipeline steps are green, not teal.
   Shots: `docs/img/v5/1-tokens/`. Not yet: borders, webfont, teal links (steps 2-6). Noticed for step 6: the
   "SubGuard" actor chips in "What SubGuard did" on `/?demo=1` overlap their text.
+- **Step 2 type, buttons, pills** (2026-11-12): Atkinson Hyperlegible Next vendored (`vendor/fonts/`, OFL, 34 KB,
+  `font-display: swap`, has `tnum`). Links are ink with an underline; focus ring is ink. `.btn` = teal fill (40 px),
+  `.btn-ghost` = quiet `--surface-2` fill, `.btn-danger` looks like the main button (red = at risk only), `.btn-start`
+  lost its pulsing glow. `.card` has no border. Pills/chips (pill, chip, src-chip, rule-chip, sev, chip-btn, badge,
+  theme toggle) are borderless fills; status colours only for done / needs answer / at risk. No `text-transform:
+  uppercase` anywhere; the entrance stagger and card hover-lift are gone. Dark `--surface` raised #1D2D30 -> #203236
+  (review item 7: cards separate from the paper without borders); every pair still >= 4.5:1.
+  Noticed: the font's zero is slashed (0 vs O), visible in dates and money; there is no alternate zero glyph.
 
 ## 1. The idea: the deadline ruler
 

@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import secrets
 from pathlib import Path
 from typing import Literal
 
-from pydantic import ValidationError, field_validator
+from pydantic import ValidationError, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.pricing import Pricing, PricingFields
@@ -59,6 +60,17 @@ class Settings(BaseSettings, PricingFields):
     one_sub_per_merchant: bool = True  # D-172: one subscription per merchant per demo run (Reset starts a new run)
     render_api_key: str = ""
 
+    # Sign-in (Phase 7, D-178..D-180). The password lives only in env; no default.
+    demo_password: str = ""
+    session_secret: str = ""  # mock mode: random per process if empty (sessions end on restart)
+    session_hours: int = 8
+
+    @model_validator(mode="after")
+    def _mock_session_secret(self) -> Settings:
+        if not self.session_secret and self.app_mode == "mock":
+            self.session_secret = secrets.token_urlsafe(32)
+        return self
+
     @field_validator("llm_provider")
     @classmethod
     def _provider_lower(cls, v: str) -> str:
@@ -109,11 +121,14 @@ def validate_settings(s: Settings) -> None:
             )
         if s.paypal_environment.upper() != "SANDBOX":
             problems.append("PAYPAL_ENVIRONMENT must be SANDBOX.")
-        required = {"PAYPAL_CLIENT_ID": s.paypal_client_id, "PAYPAL_CLIENT_SECRET": s.paypal_client_secret}
+        required = {"PAYPAL_CLIENT_ID": s.paypal_client_id, "PAYPAL_CLIENT_SECRET": s.paypal_client_secret,
+                    "DEMO_PASSWORD": s.demo_password, "SESSION_SECRET": s.session_secret}
         if s.llm_provider == "anthropic":
             required |= {"ANTHROPIC_API_KEY": s.anthropic_api_key, "ANTHROPIC_MODEL": s.anthropic_model}
         elif s.llm_provider == "openai":
             required |= {"OPENAI_API_KEY": s.openai_api_key, "OPENAI_MODEL": s.openai_model}
+        if s.session_hours < 1:
+            problems.append("SESSION_HOURS must be at least 1.")
         for name, value in required.items():
             if not value:
                 problems.append(f"{name} is required in sandbox mode.")

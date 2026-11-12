@@ -93,8 +93,8 @@ def test_saved_so_far_and_analytics(demo_client: TestClient) -> None:
 
 
 def test_intruder_sees_no_samples(client: TestClient) -> None:
-    from tests.story_helpers import add_user
-    add_user(client)
+    from tests.story_helpers import add_user, as_user
+    as_user(client, add_user(client))
     a = client.get("/api/dashboard/analytics?user=intruder").json()
     assert a["saved"]["total"] == "$0" and a["monthly"]["series"] == []
 

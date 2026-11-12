@@ -16,6 +16,7 @@ from starlette.responses import Response
 from starlette.types import Scope
 
 from app.access_log import quiet_access_log
+from app.auth import AuthMiddleware, LoginLimiter
 from app.config import ROOT_DIR, ConfigError, Settings, load_settings
 from app.core.audit_log import mask_secrets
 from app.core.auditor import Auditor
@@ -34,6 +35,7 @@ from app.routes import (
     actions,
     analytics,
     api,
+    auth,
     chat,
     dashboard_api,
     demo,
@@ -120,6 +122,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.store = store
     app.state.gateway = gateway
+    app.state.login_limiter = LoginLimiter()
+    app.add_middleware(AuthMiddleware)  # D-179: who may reach which route (R5 still guards the data)
     app.state.llm = build_llm(settings)
     app.state.capture = build_capture(settings, app)
     if isinstance(gateway.sdk, SdkPayPal):
@@ -140,6 +144,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.mount("/static", FreshStatic(directory=ROOT_DIR / "app" / "static"), name="static")
     app.mount("/shop/static", FreshStatic(directory=ROOT_DIR / "shop" / "static"), name="shop_static")
+    app.include_router(auth.router)
     app.include_router(pages.router)
     app.include_router(user_page.router)
     app.include_router(dashboard_api.router)

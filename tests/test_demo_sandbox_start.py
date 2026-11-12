@@ -17,7 +17,7 @@ import app.integrations.sandbox_buyer as buyer
 from app.config import Settings
 from app.integrations.paypal_gateway import Ctx
 from app.main import create_app
-from tests.story_helpers import audit
+from tests.story_helpers import TEST_PASSWORD, audit, sign_in
 
 BUYER = {"paypal_sandbox_buyer_email": "buyer@personal.example", "paypal_sandbox_buyer_password": "pw"}
 
@@ -25,6 +25,7 @@ BUYER = {"paypal_sandbox_buyer_email": "buyer@personal.example", "paypal_sandbox
 @pytest.fixture
 def sandbox_client(settings: Settings) -> Iterator[TestClient]:
     with TestClient(create_app(settings)) as c:
+        sign_in(c)
         c.app.state.services.settings.app_mode = "sandbox"  # type: ignore[attr-defined]
         yield c
 
@@ -135,8 +136,10 @@ def test_scripted_usage_is_seeded_in_sandbox_too(data_dir: Any) -> None:
 
     from app.core.demo_seed import seed_demo
 
-    s = Settings(_env_file=None, app_mode="mock", data_dir=data_dir, demo_seed=True)  # type: ignore[call-arg]
+    s = Settings(_env_file=None, app_mode="mock", data_dir=data_dir, demo_seed=True,  # type: ignore[call-arg]
+                 demo_password=TEST_PASSWORD)
     with TestClient(create_app(s)) as c:
+        sign_in(c)
         svc = c.app.state.services  # type: ignore[attr-defined]
         c.post("/api/demo/reset")
         svc.settings.app_mode = "sandbox"

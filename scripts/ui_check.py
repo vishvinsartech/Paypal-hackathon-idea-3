@@ -27,11 +27,14 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import httpx
-from playwright.sync_api import Page, expect, sync_playwright
+from playwright.sync_api import Browser, BrowserContext, Page, expect, sync_playwright
+from signin import add_session, demo_password, http_client, session_cookie
 
 ROOT = Path(__file__).resolve().parent.parent
 errors: list[str] = []
 SHOTS: Path | None = None
+SESSION = ""  # Priya's sg_session cookie (Phase 7: pages need sign-in), set in main()
+HTTP: httpx.Client | None = None  # API calls with that cookie
 
 
 def on(days: int) -> str:
@@ -59,13 +62,25 @@ def watch(page: Page) -> Page:
     return page
 
 
-def start_server() -> tuple[subprocess.Popen[bytes], str, Path]:
+def api() -> httpx.Client:
+    assert HTTP is not None, "main() signs in first"
+    return HTTP
+
+
+def context(browser: Browser, base: str, **kw: object) -> BrowserContext:
+    """A browser context already signed in as Priya."""
+    ctx = browser.new_context(**kw)  # type: ignore[arg-type]
+    add_session(ctx, base, SESSION)
+    return ctx
+
+
+def start_server(password: str) -> tuple[subprocess.Popen[bytes], str, Path]:
     data = Path(tempfile.mkdtemp(prefix="subguard-ui-"))
     shutil.copytree(ROOT / "data" / "seed", data / "seed")
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
         port = s.getsockname()[1]
-    env = {**os.environ, "APP_MODE": "mock", "DATA_DIR": str(data), "DEMO_SEED": "true"}
+    env = {**os.environ, "APP_MODE": "mock", "DATA_DIR": str(data), "DEMO_SEED": "true", "DEMO_PASSWORD": password}
     proc = subprocess.Popen([sys.executable, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port",
                              str(port), "--workers", "1"], cwd=ROOT, env=env,
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -114,10 +129,10 @@ def one_pair(page: Page) -> None:
 
 
 def story(base: str, headed: bool) -> None:
-    httpx.post(f"{base}/api/demo/reset", timeout=30).raise_for_status()
+    api().post("/api/demo/reset", timeout=30).raise_for_status()
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=not headed)
-        ctx = browser.new_context(viewport={"width": 1440, "height": 1000}, accept_downloads=True)
+        ctx = context(browser, base, viewport={"width": 1440, "height": 1000}, accept_downloads=True)
         no_cdn(ctx)
         me = watch(ctx.new_page())
         me.goto(f"{base}/")
@@ -376,7 +391,7 @@ def story(base: str, headed: bool) -> None:
         me.get_by_test_id("theme-toggle").click()
         expect(me.locator("html")).to_have_attribute("data-theme", "dark")
 
-        sub_id = next(s["id"] for s in httpx.get(f"{base}/api/subscriptions?user=priya").json()
+        sub_id = next(s["id"] for s in api().get("/api/subscriptions?user=priya").json()
                       if s["plan_key"] == "penwright-pro")
         page = watch(ctx.new_page())
         page.goto(f"{base}/subscriptions/{sub_id}?user=priya")
@@ -410,7 +425,7 @@ def mobile(base: str, headed: bool) -> None:
     is a bottom sheet."""
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=not headed)
-        page = watch(browser.new_page(viewport={"width": 390, "height": 844}))
+        page = watch(context(browser, base, viewport={"width": 390, "height": 844}).new_page())
         page.goto(f"{base}/")
         bar = page.locator(".topbar").bounding_box()
         assert bar and bar["height"] <= 100, f"top bar taller than logo row + nav row at 390 px: {bar}"  # D-166
@@ -449,7 +464,7 @@ def companion_in_view(base: str, headed: bool) -> None:
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=not headed)
         for w, h in ((1440, 900), (390, 844)):
-            page = watch(browser.new_page(viewport={"width": w, "height": h}))
+            page = watch(context(browser, base, viewport={"width": w, "height": h}).new_page())
             page.goto(f"{base}/shop/penwright")
             page.get_by_test_id("shop-paypal-btn").click()
             risk = page.get_by_test_id("companion-risk")
@@ -472,7 +487,7 @@ def autoplay(base: str, headed: bool) -> None:
     under Priya's side (U8); after a Cancel the confirmation card and the email Send happen by themselves."""
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=not headed)
-        dash = watch(browser.new_page(viewport={"width": 1440, "height": 1000}))
+        dash = watch(context(browser, base, viewport={"width": 1440, "height": 1000}).new_page())
         dash.goto(f"{base}/?demo=1")
         start = dash.get_by_test_id("demo-start")
         for answer, expected, outcome in (("cancel", "$24.99 charge never taken", f"Cancelled {on(5)}"),
@@ -525,10 +540,10 @@ def autoplay(base: str, headed: bool) -> None:
 def layer2(base: str, headed: bool) -> None:
     """A1/A2/A5: Quillnote (not a Fair Trial member). The AI finds the prose traps the basic check misses; Cancel
     gives the email draft + ACTION NEEDED on the card with the one-tap PayPal link; SubGuard polls until CANCELLED."""
-    httpx.post(f"{base}/api/demo/reset", timeout=30).raise_for_status()
+    api().post("/api/demo/reset", timeout=30).raise_for_status()
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=not headed)
-        ctx = browser.new_context(viewport={"width": 1440, "height": 1000})
+        ctx = context(browser, base, viewport={"width": 1440, "height": 1000})
         shop = watch(ctx.new_page())
         shop.goto(f"{base}/shop/quillnote")
         expect(shop.get_by_test_id("demo-approval-note")).to_have_text("Demo: simulated PayPal approval")  # A6
@@ -544,7 +559,7 @@ def layer2(base: str, headed: bool) -> None:
         expect(shop.get_by_test_id("shop-open-subguard")).to_be_visible(timeout=15000)
         step(f"Quillnote: companion risk {score}, notice in words read by the AI -> act by {on(4)}")
 
-        sub_id = next(s["id"] for s in httpx.get(f"{base}/api/subscriptions?user=priya").json()
+        sub_id = next(s["id"] for s in api().get("/api/subscriptions?user=priya").json()
                       if s["plan_key"] == "quillnote-plus")
         ev = watch(ctx.new_page())
         ev.goto(f"{base}/subscriptions/{sub_id}?user=priya")
@@ -611,11 +626,20 @@ def main() -> int:
     if args.shots:
         SHOTS = Path(args.shots)
         SHOTS.mkdir(parents=True, exist_ok=True)
+    global SESSION, HTTP
+    password = demo_password()  # fails with a clear message when DEMO_PASSWORD isn't in .env
     proc = data = None
     base = args.base_url
     if not base:
-        proc, base, data = start_server()
+        proc, base, data = start_server(password)
     print(f"UI check against {base}")
+    try:
+        SESSION = session_cookie(base, password)
+    except SystemExit:
+        if proc is not None:
+            proc.terminate()
+        raise
+    HTTP = http_client(base, SESSION, timeout=30)
     try:
         companion_in_view(base, args.headed)
         story(base, args.headed)

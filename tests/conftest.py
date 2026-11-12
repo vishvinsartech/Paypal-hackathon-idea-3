@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from app.config import ROOT_DIR, Settings  # noqa: E402
 from app.main import create_app  # noqa: E402
 from app.store import JsonStore  # noqa: E402
+from tests.story_helpers import TEST_PASSWORD, sign_in  # noqa: E402
 
 SEED_DIR = ROOT_DIR / "data" / "seed"
 
@@ -36,18 +37,28 @@ def store(data_dir: Path) -> JsonStore:
 
 @pytest.fixture
 def settings(data_dir: Path) -> Settings:
-    return Settings(_env_file=None, app_mode="mock", data_dir=data_dir, demo_seed=False)  # type: ignore[call-arg]
+    return Settings(_env_file=None, app_mode="mock", data_dir=data_dir, demo_seed=False,  # type: ignore[call-arg]
+                    demo_password=TEST_PASSWORD)
 
 
 @pytest.fixture
 def client(settings: Settings) -> Iterator[TestClient]:
+    """Signed in as Priya (Phase 7: every non-public route needs a session)."""
+    with TestClient(create_app(settings)) as c:
+        yield sign_in(c)
+
+
+@pytest.fixture
+def anon_client(settings: Settings) -> Iterator[TestClient]:
+    """Signed out: the same app as `client`, no session cookie."""
     with TestClient(create_app(settings)) as c:
         yield c
 
 
 @pytest.fixture
 def demo_client(data_dir: Path) -> Iterator[TestClient]:
-    """Mock mode with the demo seed: Priya's scripted Penwright usage (no subscriptions yet)."""
-    settings = Settings(_env_file=None, app_mode="mock", data_dir=data_dir, demo_seed=True)  # type: ignore[call-arg]
+    """Mock mode with the demo seed: Priya's scripted Penwright usage (no subscriptions yet). Signed in as Priya."""
+    settings = Settings(_env_file=None, app_mode="mock", data_dir=data_dir, demo_seed=True,  # type: ignore[call-arg]
+                        demo_password=TEST_PASSWORD)
     with TestClient(create_app(settings)) as c:
-        yield c
+        yield sign_in(c)

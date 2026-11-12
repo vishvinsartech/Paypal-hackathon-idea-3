@@ -23,7 +23,7 @@ from app.pricing import Pricing
 from app.review_types import Clause
 from app.store import JsonStore
 from tests.review_helpers import FIXTURES, ScriptedProvider, auditor, capture_page, merchant, mock_text, run_review
-from tests.story_helpers import add_user, alerts, audit, subscribe
+from tests.story_helpers import add_user, alerts, as_user, audit, subscribe
 
 RISKY_MISSED_BY_BASIC = {"NOTICE_PERIOD", "INTRO_PRICE_STEP_UP", "HARD_CANCEL"}
 
@@ -178,7 +178,7 @@ def test_layer2_cancel_hands_off_then_watches_paypal(client: TestClient) -> None
 def test_layer2_check_and_autopay_are_owner_only(client: TestClient) -> None:
     q = subscribe(client, "quillnote", "quillnote-plus")
     other = add_user(client)
-    res = client.post(f"/api/subscriptions/{q['id']}/check-paypal?user={other}")
+    res = as_user(client, other).post(f"/api/subscriptions/{q['id']}/check-paypal?user={other}")  # R5 below the wall
     assert res.status_code == 403 and res.json()["rule_id"] == "R5"
     res = client.post("/api/demo/paypal-autopay/cancel", json={"user_id": other, "subscription_id": q["id"]})
     assert res.status_code == 403

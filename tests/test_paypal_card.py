@@ -9,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.integrations.paypal_types import debug_header
-from tests.story_helpers import add_user, advance_to, alerts, audit, cancel_via_alert, subscribe
+from tests.story_helpers import add_user, advance_to, alerts, as_user, audit, cancel_via_alert, subscribe
 
 CYCLES = ["10-day trial $0", "3 × $24.99/month", "then $49.99/month"]
 
@@ -64,7 +64,7 @@ def test_after_cancel_same_id_shows_cancelled_with_the_cancel_ids(demo_client: T
 def test_card_is_owner_only(demo_client: TestClient) -> None:
     c = demo_client
     main = subscribe(c)
-    add_user(c)
+    as_user(c, add_user(c))
     res = c.get(f"/api/subscriptions/{main['id']}/paypal?user=intruder")
     assert res.status_code == 403 and res.json()["rule_id"] == "R5"
 

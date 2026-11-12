@@ -109,6 +109,26 @@ flowchart TB
 6. **Webhooks.** In sandbox mode each event is checked with PayPal's verify-webhook-signature API
    (`PAYPAL_WEBHOOK_ID`) and rejected (and audited) if it fails. Without a public URL the app polls PayPal instead.
 
+## Auth
+
+Phase 7 puts a sign-in wall in front of Priya's SubGuard (D-178..D-180). There is no sign-up: the one account is
+Priya's email from `users.json` and the password in `DEMO_PASSWORD`.
+
+- **Cookie, no server sessions.** `POST /login` checks the email (any case) and the password
+  (`hmac.compare_digest`), then sets `sg_session` = `base64url(user_id|expiry).base64url(HMAC-SHA256)` keyed with
+  `SESSION_SECRET`. HttpOnly, SameSite=Lax, Secure over https, `SESSION_HOURS` long. `POST /logout` clears it.
+- **Access middleware** (`app/auth.py`, `AuthMiddleware`). Runs before every route and sets
+  `request.state.user_id`. Public: sign-in pages, `/healthz`, static files, the shops, the companion's preflight,
+  the PayPal webhook and the simulated autopay page. Everything else needs a session: signed-out HTML is redirected
+  to `/login?next=...` (local paths only), signed-out `/api/*` gets 401. A `?user=` other than the session user
+  gets 403.
+- **R5 is still the data guard.** Routes keep their `user` parameter; the middleware only makes sure it can't name
+  someone else. Ownership checks in `policy.py` and the `owner_id == user` filters are unchanged.
+- **Audit.** `signed_in`, `sign_in_failed` (including the 5-per-minute-per-IP rate limit) and `signed_out` go to the
+  audit log with rule id `AUTH`, the email masked, never the password.
+- **Missing values.** Sandbox mode refuses to start without `DEMO_PASSWORD` and `SESSION_SECRET`. Mock mode starts
+  anyway: a random per-process session secret, and "Sign-in is off" on the sign-in page if there is no password.
+
 ## Modes
 
 | Integration | `mock` | `sandbox` |

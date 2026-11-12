@@ -109,6 +109,8 @@ Prices and terms are `.env` variables (`app/pricing.py`, DECISIONS D-015). Code 
 - `dev` -> http://127.0.0.1:8000/ (mock), `dev-sandbox`
 - `test`, `lint`, `ui-check`, `shots`, `seed`, `sandbox-check`, `sandbox-ui-check`, `reset`, `demo-video-check`, `demo-video`
 - Live demo: `http://127.0.0.1:8000/?demo=1`; Priya's dashboard `/`; dummy shop at `/shop`.
+- Sign-in (D-178..D-180): `/login` as `priya@subguard-demo.example` with `DEMO_PASSWORD` from `.env`; the shops stay
+  public. ui-check and the video tools sign in with it (`scripts/signin.py`).
 
 ## MCP notes
 - `.mcp.json` registers the PayPal MCP server via `node scripts/mcp_paypal.mjs` (reads `.env`, gets a fresh sandbox

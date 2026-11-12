@@ -7,6 +7,7 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
+from app.auth import COOKIE, sign_session
 from app.core.sub_dates import cal
 from app.models import User
 from app.store import utcnow
@@ -18,6 +19,23 @@ def on(days: int) -> str:
 
 
 ACT_BY = f"Act by {on(7)} (the terms allow {on(8)})"  # D6 wording for a Day 0 Penwright sign-up
+TEST_PASSWORD = "test-only-password"  # the fixtures' DEMO_PASSWORD (never a real one)
+PRIYA_EMAIL = "priya@subguard-demo.example"
+
+
+def sign_in(client: TestClient, email: str = PRIYA_EMAIL, password: str = TEST_PASSWORD) -> TestClient:
+    """POST /login like the form does; the client keeps the sg_session cookie."""
+    res = client.post("/login", data={"email": email, "password": password, "next": "/"}, follow_redirects=False)
+    assert res.status_code == 303 and "sg_session" in res.cookies, res.text
+    return client
+
+
+def as_user(client: TestClient, user_id: str) -> TestClient:
+    """Swap the client's session to another (test-only) user, for R5 checks behind the sign-in wall."""
+    settings = client.app.state.settings  # type: ignore[attr-defined]
+    client.cookies.clear()  # one sg_session only (the login cookie is scoped to the test host)
+    client.cookies.set(COOKIE, sign_session(user_id, settings.session_secret, settings.session_hours))
+    return client
 
 
 def allow_many(client: TestClient) -> TestClient:

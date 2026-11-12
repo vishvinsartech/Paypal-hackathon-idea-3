@@ -935,6 +935,39 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   (too close to Priya's "P" avatar), kept in purple, unlike her teal avatar. **Compact:** smaller paddings, tile and
   dots; the sub-line and buttons share one row; smaller timeline and footer.
 
+## v3 Phase 7 Step 1: auth core (2026-11-12, docs/PHASE7_PLAN.md)
+
+- **D-178 Cookie auth, no server sessions.** Signing in sets one cookie, `sg_session` =
+  `base64url(user_id|expiry).base64url(HMAC-SHA256)` keyed with `SESSION_SECRET` (`app/auth.py`, stdlib only: no
+  `itsdangerous`, so no Starlette `SessionMiddleware`). Nothing is stored on the server, so a session survives a
+  restart or Render's disk wipe as long as the secret stays the same; a tampered, expired or wrongly signed cookie
+  counts as signed out. Flags: HttpOnly, SameSite=Lax, Secure only when the request scheme is https. It lasts
+  `SESSION_HOURS` (default 8). In mock mode an empty `SESSION_SECRET` becomes a random per-process value (sessions
+  end on restart); sandbox mode refuses to start without it. Sign-out clears the cookie (there is nothing to revoke
+  server-side; the expiry bounds a copied cookie). The login form is parsed with `urllib.parse` (no
+  `python-multipart`). Failed sign-ins: 5 per minute per IP, an in-memory counter (one worker, D-020), then 429.
+  `signed_in`, `sign_in_failed` and `signed_out` are audited (actor user, rule id `AUTH`, allowed / blocked) with the
+  email masked and never the password; they don't appear in Activity.
+- **D-179 Public vs protected routes; `?user=` must match the session; R5 stays the data guard.** One ASGI middleware
+  (`AuthMiddleware`, registered in `create_app`) sets `request.state.user_id` and decides access. Public: `/login`,
+  `/logout`, `/healthz`, `/static/*`, `/shop` and `/shop/*` (pages and `/shop/static/*`), `/api/review/preflight`
+  (the companion's read-only check), `/webhooks/paypal`, `/demo/paypal-autopay`. `/` joins the public list in Step 2
+  (the intro when signed out); until then a signed-out `/` redirects to sign-in. Everything else needs a session,
+  including `/?demo=1`, `/subscriptions/*` and every other `/api/*` (checkout and register too). Signed out: HTML
+  gets 303 to `/login?next=<path+query>`, `/api/*` gets 401 JSON. `next` must be a local path (`/...`, not `//...`
+  or `/\...`, no scheme or host), else `/`. Signed in, a `?user=` that isn't the session user gets 403 (audited as
+  `access_blocked`). This is the smallest change: routes keep their `user` parameter and signatures, and the R5
+  `owner_id == user` filters still guard the data (a `user_id` in a JSON body is still checked by R5). Tests reach
+  R5 behind the wall by signing in as the test-only second user (`as_user` in `tests/story_helpers.py`).
+- **D-180 The password comes from env only.** `DEMO_PASSWORD` has no default and is never in the repo, the seed or
+  a log; `.env.example` has a placeholder. The email is Priya's from `users.json` (case-insensitive); the password
+  is compared with `hmac.compare_digest`; a wrong email and a wrong password give the same "Email or password is
+  wrong". Mock mode without it still starts and the sign-in page says "Sign-in is off: set DEMO_PASSWORD in .env";
+  sandbox mode fails at startup naming the variable. `scripts/ui_check.py`, `demo-video/record_demo.py` and
+  `check_scenes.py --base-url` read it from the environment or `.env` (`scripts/signin.py`) and stop with a clear
+  message when it is missing; `check_scenes.py` without `--base-url` signs in to its own throwaway app.
+  `record_stage.py` only reads `/healthz` (public) and needs no sign-in.
+
 ## v3 Phase 7 Step V: video tooling v2 (2026-11-12, docs/PHASE7_PLAN.md)
 
 D-178..D-183 are reserved for the Phase 7 auth, intro and deploy decisions named in `docs/PHASE7_PLAN.md`, so the

@@ -15,14 +15,14 @@ from __future__ import annotations
 
 import argparse
 import os
+import secrets
 import shutil
 import sys
 import tempfile
 from pathlib import Path
 
-import httpx
-
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 from schema import missing_targets, validate  # noqa: E402
 from videolib import ROOT, load_scenes, timeline, total_seconds, video_script_md  # noqa: E402
 
@@ -34,7 +34,9 @@ def ui_source(base_url: str | None) -> str:
              *(ROOT / "shop" / "templates").glob("*.html"), *(ROOT / "shop" / "static").glob("*.js")]
     parts = [f.read_text(encoding="utf-8") for f in files]
     if base_url:
-        parts += [httpx.get(base_url.rstrip("/") + page, timeout=15).text for page in PAGES]
+        from signin import demo_password, http_client, session_cookie
+        with http_client(base_url, session_cookie(base_url, demo_password()), timeout=15) as http:
+            parts += [http.get(page).text for page in PAGES]
     else:
         parts += rendered_pages()
     return "\n".join(parts)
@@ -52,8 +54,12 @@ def rendered_pages() -> list[str]:
     from app.config import Settings
     from app.main import create_app
 
-    settings = Settings(_env_file=None, app_mode="mock", data_dir=data, demo_seed=False)  # type: ignore[call-arg]
+    password = secrets.token_urlsafe(16)  # a throwaway app: any password works, signed in below (Phase 7)
+    settings = Settings(_env_file=None, app_mode="mock", data_dir=data, demo_seed=False,  # type: ignore[call-arg]
+                        demo_password=password)
     with TestClient(create_app(settings)) as client:
+        email = next(u.email for u in client.app.state.store.load("users").items if u.id == "priya")  # type: ignore[attr-defined]
+        client.post("/login", data={"email": email, "password": password, "next": "/"}).raise_for_status()
         return [client.get(page).text for page in PAGES]
 
 

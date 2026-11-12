@@ -32,6 +32,8 @@ from playwright.sync_api import Error as PWError
 from playwright.sync_api import Page, sync_playwright
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+from signin import add_session, demo_password, http_client, session_cookie  # noqa: E402
 from videolib import OUT, ROOT, SUB_RE, load_scenes, timeline  # noqa: E402
 
 HIGHLIGHT_S = 2.5
@@ -48,9 +50,10 @@ HIGHLIGHT_JS = """(el, ms) => {
 
 
 class Recorder:
-    def __init__(self, base: str, mode: str, sandbox_ids: dict[str, str], autopay: str) -> None:
+    def __init__(self, base: str, mode: str, sandbox_ids: dict[str, str], autopay: str, session: str) -> None:
         self.base, self.mode, self.sandbox_ids, self.autopay = base.rstrip("/"), mode, sandbox_ids, autopay
-        self.http = httpx.Client(base_url=self.base, timeout=120)
+        self.session = session  # Priya's sg_session cookie (Phase 7): the httpx client and the browser both use it
+        self.http = http_client(self.base, session, timeout=120)
         self.subs: dict[str, str] = {}  # plan key -> local subscription id
         self.problems: list[str] = []
         self.notes: list[str] = []  # problems in pending scenes: reported, not failing
@@ -184,6 +187,7 @@ class Recorder:
             browser = p.chromium.launch(headless=not headed)
             ctx = browser.new_context(viewport=vp, record_video_dir=str(raw), record_video_size=vp,
                                       color_scheme="light", storage_state=str(state) if state else None)
+            add_session(ctx, self.base, self.session)
             page = ctx.new_page()
             self.t0 = time.monotonic()  # the video starts with the page
             page.on("framenavigated", lambda f: f == page.main_frame and self.urls.append(
@@ -250,6 +254,7 @@ def main() -> int:
         print(f"The app isn't running at {args.base_url}. Start it first: `make dev` (mock) or `make dev-sandbox`.")
         return 1
     mode = health.get("mode", "mock")
+    session = session_cookie(args.base_url, demo_password())  # clear message if DEMO_PASSWORD is missing
     OUT.mkdir(parents=True, exist_ok=True)
     ids, state, autopay = {}, None, ""
     if mode == "sandbox":
@@ -260,7 +265,7 @@ def main() -> int:
         if any(s["kind"] == "paypal" for s in d["scenes"]):
             state = OUT / "paypal_state.json"  # gitignored (out/); deleted after the take
             buyer_login(state, settings.paypal_sandbox_buyer_email, settings.paypal_sandbox_buyer_password)
-    rec = Recorder(args.base_url, mode, ids, autopay)
+    rec = Recorder(args.base_url, mode, ids, autopay, session)
     print(f"recording in {mode} mode from {args.base_url} at {d['app_viewport']['width']}x"
           f"{d['app_viewport']['height']}")
     try:

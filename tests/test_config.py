@@ -7,6 +7,7 @@ from app.config import ConfigError, Settings, validate_settings
 SANDBOX_OK = dict(
     app_mode="sandbox", paypal_client_id="id", paypal_client_secret="secret",
     llm_provider="anthropic", anthropic_api_key="k", anthropic_model="model-x",
+    demo_password="pw", session_secret="s" * 32,
 )
 
 
@@ -24,6 +25,19 @@ def test_sandbox_ok() -> None:
     s = make(**SANDBOX_OK)
     validate_settings(s)
     assert s.active_llm_provider == "anthropic" and s.llm_model == "model-x"
+
+
+@pytest.mark.parametrize("field,var", [("demo_password", "DEMO_PASSWORD"), ("session_secret", "SESSION_SECRET")])
+def test_sandbox_needs_the_sign_in_secrets(field: str, var: str) -> None:
+    with pytest.raises(ConfigError, match=f"{var} is required in sandbox mode"):
+        validate_settings(make(**{**SANDBOX_OK, field: ""}))
+
+
+def test_mock_mode_starts_without_a_password_and_makes_a_session_secret() -> None:
+    a, b = make(app_mode="mock"), make(app_mode="mock")
+    validate_settings(a)
+    assert a.demo_password == "" and a.session_hours == 8
+    assert len(a.session_secret) >= 32 and a.session_secret != b.session_secret  # random per process
 
 
 def test_sandbox_refuses_non_sandbox_base_url() -> None:

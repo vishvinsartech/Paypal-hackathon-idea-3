@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in · SubGuard</title>
+  {# Phase 7 Step 1: a plain working form. Step 2 styles this page. #}
+</head>
+<body>
+  <main data-testid="login-page">
+    <h1>Sign in to SubGuard</h1>
+    {% if error %}<p role="alert" data-testid="login-error">{{ error }}</p>{% endif %}
+    <form method="post" action="/login" data-testid="login-form">
+      <input type="hidden" name="next" value="{{ next }}">
+      <p><label for="email">Email</label><br>
+        <input id="email" name="email" type="email" autocomplete="username" required value="{{ email }}"
+               data-testid="login-email" {% if sign_in_off %}disabled{% endif %}></p>
+      <p><label for="password">Password</label><br>
+        <input id="password" name="password" type="password" autocomplete="current-password" required
+               data-testid="login-password" {% if sign_in_off %}disabled{% endif %}></p>
+      <p><button type="submit" data-testid="login-submit" {% if sign_in_off %}disabled{% endif %}>Sign in</button></p>
+    </form>
+  </main>
+</body>
+</html>

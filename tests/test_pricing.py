@@ -12,6 +12,7 @@ from app.config import ConfigError, Settings, load_settings
 from app.main import create_app
 from app.pricing import Pricing
 from app.store import JsonStore
+from tests.story_helpers import TEST_PASSWORD, sign_in
 
 
 def test_defaults_are_the_spec_numbers() -> None:
@@ -58,9 +59,9 @@ def test_invalid_values_fail_with_clear_message(monkeypatch: pytest.MonkeyPatch,
 def custom_client(data_dir: Path) -> TestClient:
     s = Settings(_env_file=None, app_mode="mock", data_dir=data_dir,  # type: ignore[call-arg]
                  penwright_trial_days=10, penwright_intro_price=Decimal("29.99"),
-                 penwright_step_up_price=Decimal("59"), penwright_notice_days=5)
+                 penwright_step_up_price=Decimal("59"), penwright_notice_days=5, demo_password=TEST_PASSWORD)
     with TestClient(create_app(s)) as c:
-        yield c  # type: ignore[misc]
+        yield sign_in(c)  # type: ignore[misc]
 
 
 def test_custom_prices_flow_to_plans_shop_and_checkout(custom_client: TestClient) -> None:

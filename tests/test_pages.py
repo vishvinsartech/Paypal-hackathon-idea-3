@@ -216,7 +216,7 @@ def test_view_penwright_timeline_fields(demo_client: TestClient) -> None:
 
 
 def test_subscription_page(demo_client: TestClient) -> None:
-    from tests.story_helpers import subscribe
+    from tests.story_helpers import add_user, as_user, subscribe
 
     main = subscribe(demo_client)
     text = demo_client.get(f"/subscriptions/{main['id']}?user=priya").text
@@ -230,8 +230,10 @@ def test_subscription_page(demo_client: TestClient) -> None:
     assert '"label": "Hidden instructions to AI"' in text and '"source_label": "AI"' in text  # U24
     rows = re.findall(r'<tr class="(row-bad|)"><td>', text)
     assert rows and rows[0] == "row-bad"  # U16: the failing row first
-    assert demo_client.get(f"/subscriptions/{main['id']}?user=intruder").status_code == 404  # R5
     assert demo_client.get("/subscriptions/nope?user=priya").status_code == 404
+    assert demo_client.get(f"/subscriptions/{main['id']}?user=intruder").status_code == 403  # not her session
+    add_user(demo_client)
+    assert as_user(demo_client, "intruder").get(f"/subscriptions/{main['id']}?user=intruder").status_code == 404  # R5
 
 
 def test_start_demo_pipeline_on_dashboard(client: TestClient) -> None:

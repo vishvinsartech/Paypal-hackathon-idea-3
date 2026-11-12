@@ -8,7 +8,7 @@ from html import unescape
 
 from fastapi.testclient import TestClient
 
-from tests.story_helpers import add_user, advance_to, alerts, cancel_via_alert, on, subscribe
+from tests.story_helpers import add_user, advance_to, alerts, as_user, cancel_via_alert, on, subscribe
 
 FOOTER = ("footer", "footer-license", "footer-github", "dev-menu", "dev-health", "dev-docs", "health-dots")
 
@@ -241,14 +241,14 @@ def test_subscription_history_rows(demo_client: TestClient) -> None:
     assert any("Cancelled your subscription" in e for e in row["event_log"])
     html = c.get("/").text
     assert 'data-testid="user-history"' not in html and 'id="history-grid"' not in html  # D-172: one timeline
-    add_user(c)
+    as_user(c, add_user(c))
     assert c.get("/api/subscription-history?user=intruder").json() == []  # R5
 
 
 def test_user_page_shows_only_her_data(demo_client: TestClient) -> None:
     c = demo_client
     subscribe(c)
-    add_user(c)
+    as_user(c, add_user(c))
     html = c.get("/?user=intruder").text
     assert greeting("Intruder") in html and 'data-testid="user-empty"' in html
     assert "Penwright Studio" not in html and "Framewise" not in html  # R5: her sample history isn't theirs either

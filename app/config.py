@@ -50,6 +50,10 @@ class Settings(BaseSettings, PricingFields):
     paypal_merchant_mode: Literal["single", "partner"] = "single"
     paypal_sandbox_buyer_email: str = ""
     paypal_sandbox_buyer_password: str = ""
+    # D-192: auto = detect (local, not Render, browser available); manual = the person approves in PayPal by hand;
+    # off = manual too, and the shop never shows the sandbox buyer's login.
+    auto_approve_mode: Literal["auto", "manual", "off"] = "auto"
+    show_sandbox_buyer: bool = False  # D-192: hosted sandbox demo shows the sandbox buyer's login on the shop page
     paypal_webhook_id: str = ""
     paypal_autopay_url: str = "https://www.sandbox.paypal.com/myaccount/autopay/"
     repo_url: str = "https://github.com/vishvinsartech/Paypal-hackathon-idea-3"  # footer "GitHub" + "MIT license" links

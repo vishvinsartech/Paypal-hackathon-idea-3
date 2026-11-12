@@ -31,6 +31,8 @@ def test_render_blueprint() -> None:
         {"key": "WEB_CONCURRENCY", "value": "1"},  # one worker: uvicorn reads this as its default (D-020, D-100)
         {"key": "DEMO_SEED", "value": "true"},
         {"key": "LLM_PROVIDER", "value": "anthropic"},
+        {"key": "AUTO_APPROVE_MODE", "value": "auto"},  # D-192: Render (RENDER env) -> PayPal's own button
+        {"key": "SHOW_SANDBOX_BUYER", "value": "true"},  # D-192: sandbox only; the login itself is a dashboard secret
         {"key": "SESSION_SECRET", "generateValue": True},  # generated once by Render, kept across restarts
         *({"key": k, "sync": False} for k in (  # secrets: never a value in git
             "DEMO_PASSWORD", "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "PAYPAL_CLIENT_ID", "PAYPAL_CLIENT_SECRET",

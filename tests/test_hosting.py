@@ -1,4 +1,5 @@
-"""Phase 7 Step 7: nothing the app serves assumes 127.0.0.1:8000; the sandbox buyer window is local-only (D-183)."""
+"""Phase 7 Step 7: nothing the app serves assumes 127.0.0.1:8000; the sandbox buyer window is local-only (D-183,
+D-192: on a hosted server the person approves in PayPal by hand)."""
 
 from __future__ import annotations
 
@@ -10,7 +11,7 @@ from fastapi.testclient import TestClient
 from app.config import ROOT_DIR, Settings
 from app.hosts import is_local, server_url
 from app.main import create_app
-from app.routes.subscriptions import HOSTED_NO_WINDOW
+from app.routes.subscriptions import NO_SERVER_WINDOW
 from tests.story_helpers import sign_in
 
 BUYER = {"paypal_sandbox_buyer_email": "buyer@personal.example", "paypal_sandbox_buyer_password": "pw"}
@@ -30,8 +31,8 @@ def hosted_sandbox(settings: Settings) -> Iterator[TestClient]:
 
 def test_hosted_refuses_the_buyer_window(hosted_sandbox: TestClient) -> None:
     res = hosted_sandbox.post("/api/checkout/demo-paypal-window", json={"user_id": "priya"})
-    assert res.status_code == 400 and res.json()["detail"] == HOSTED_NO_WINDOW
-    assert "local" in HOSTED_NO_WINDOW and "PayPal button" in HOSTED_NO_WINDOW
+    assert res.status_code == 400 and res.json()["detail"] == NO_SERVER_WINDOW
+    assert "Subscribe with PayPal" in NO_SERVER_WINDOW
 
 
 def test_hosted_shop_uses_paypal_own_page(hosted_sandbox: TestClient) -> None:

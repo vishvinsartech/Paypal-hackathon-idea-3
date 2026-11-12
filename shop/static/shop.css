@@ -91,3 +91,14 @@ a { color: #6b3fa0; }
   .shop-header .shop-nav { display: none; }
   .shop-header .shop-session { margin-left: auto; }
 }
+
+/* D-192: hosted live demo, the sandbox buyer's login above the PayPal button */
+.buyer-card { margin: 0 0 12px; padding: 10px 12px; border: 1px solid #c9d6e8; border-radius: 8px; background: #f4f8fd; font: 13px/1.45 system-ui, sans-serif; color: #10233f; max-width: 420px; }
+.buyer-card-title { margin: 0 0 6px; font-weight: 700; }
+.buyer-card-rows { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; margin: 0; align-items: center; }
+.buyer-card-rows dt { font-weight: 600; }
+.buyer-card-rows dd { margin: 0; display: flex; gap: 8px; align-items: center; min-width: 0; }
+.buyer-card-rows code { overflow-wrap: anywhere; background: #fff; border: 1px solid #dbe3ee; border-radius: 4px; padding: 1px 6px; }
+.buyer-copy { font: 600 12px system-ui, sans-serif; padding: 2px 8px; border-radius: 4px; border: 1px solid #9fb3cf; background: #fff; cursor: pointer; }
+.buyer-card-note { margin: 6px 0 0; color: #3d4f69; }
+.close-note { margin-top: 10px; }

@@ -21,7 +21,7 @@ from app.core.paypal_card import paypal_card
 from app.core.policy import Decision
 from app.core.services import Services
 from app.core.signup import AlreadySubscribed, OwnershipError, check_not_subscribed, register_active
-from app.hosts import is_local
+from app.hosts import can_auto_approve
 from app.integrations.paypal_gateway import Ctx, PayPalGateway
 from app.integrations.paypal_types import PayPalError, SubscriptionView
 from app.models import Merchant, Subscription
@@ -29,8 +29,8 @@ from app.routes.deps import get_store
 from app.store import JsonStore
 
 router = APIRouter(prefix="/api")
-HOSTED_NO_WINDOW = ("The logged-in PayPal window only runs on a local SubGuard (it opens a browser on the server). "
-                    "On the hosted demo, subscribe with the PayPal button on the shop page instead.")
+NO_SERVER_WINDOW = ("This server can't open a PayPal window for you. Click Subscribe with PayPal on the shop page "
+                    "and approve the subscription in PayPal.")
 POLL_INTERVAL = 3.0
 DEMO_CONFIRM_TIMEOUT_S = 300.0  # how long the PayPal window waits for the presenter's confirmation
 _demo_window = asyncio.Lock()  # one PayPal window at a time
@@ -129,8 +129,8 @@ async def demo_paypal_window(body: DemoWindowIn, request: Request, store: JsonSt
     s = svc.settings
     if not s.is_sandbox:
         raise HTTPException(400, "The PayPal window only exists in sandbox mode (mock mode approves in the page)")
-    if not is_local(request):  # D-183: the buyer window is a browser on the server, so local runs only
-        raise HTTPException(400, HOSTED_NO_WINDOW)
+    if not can_auto_approve(s, request):  # D-183/D-192: the buyer window is a browser on this machine
+        raise HTTPException(400, NO_SERVER_WINDOW)
     if not (s.paypal_sandbox_buyer_email and s.paypal_sandbox_buyer_password):
         raise HTTPException(400, "Set PAYPAL_SANDBOX_BUYER_EMAIL and PAYPAL_SANDBOX_BUYER_PASSWORD in .env "
                                  "(the sandbox Personal account) so the PayPal window can log in")
@@ -186,11 +186,24 @@ async def _wait_active(gw: PayPalGateway, paypal_id: str, ctx: Ctx, timeout: flo
 @router.post("/subscriptions/register", response_model=None)
 async def register(body: RegisterIn, request: Request, store: JsonStore = Depends(get_store),
                    gw: PayPalGateway = Depends(get_gateway)) -> Subscription | JSONResponse:
+    """onApprove / PayPal's return posts the id here. The browser isn't trusted (D-192): the subscription is read from
+    PayPal, must be on this merchant's plan, and is saved only once ACTIVE. Posting the same id again is harmless."""
     merchant = _merchant(store, body.merchant_id)
     _check_user(store, body.user_id)
+    if not any(p.key == body.plan_key for p in merchant.plans):
+        raise HTTPException(404, "Unknown plan for this merchant")
     ctx = Ctx(actor="user", user_id=body.user_id, merchant=merchant)
-    timeout = 60.0 if gw.mock is None else 0.0
-    view = await _wait_active(gw, body.paypal_id, ctx, timeout)
+    view = await gw.get_subscription(body.paypal_id, ctx)
+    expected = gw.plan_id(body.plan_key)
+    if view.plan_id != expected:
+        store.audit.append(actor="policy", event="subscription_register_rejected", user_id=body.user_id,
+                           decision="blocked", reason="The PayPal subscription is not on this merchant's plan",
+                           details={"paypal_id": body.paypal_id, "plan_key": body.plan_key,
+                                    "paypal_plan_id": view.plan_id, "expected_plan_id": expected})
+        return JSONResponse({"error": "That PayPal subscription isn't for this plan. Nothing was set up."},
+                            status_code=409)
+    if view.status in ("APPROVAL_PENDING", "APPROVED") and gw.mock is None:
+        view = await _wait_active(gw, body.paypal_id, ctx, 60.0)
     if view.status != "ACTIVE":
         store.audit.append(actor="system", event="subscription_register_pending", user_id=body.user_id,
                            reason=f"PayPal status is {view.status}; not registered (no timer, no snapshot)",
@@ -199,10 +212,14 @@ async def register(body: RegisterIn, request: Request, store: JsonStore = Depend
 
     svc: Services = request.app.state.services
     try:
-        sub, _ = await register_active(svc, view, merchant_id=merchant.id, plan_key=body.plan_key,
-                                       user_id=body.user_id, review_id=body.review_id)
+        sub, created = await register_active(svc, view, merchant_id=merchant.id, plan_key=body.plan_key,
+                                             user_id=body.user_id, review_id=body.review_id)
     except (OwnershipError, AlreadySubscribed) as exc:
         raise HTTPException(409, str(exc)) from None
+    if not created:
+        store.audit.append(actor="system", event="subscription_register_repeat", user_id=body.user_id,
+                           subscription_id=sub.id, reason="Already registered; nothing changed",
+                           details={"paypal_id": body.paypal_id})
     return sub
 
 

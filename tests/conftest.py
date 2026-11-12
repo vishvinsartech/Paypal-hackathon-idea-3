@@ -62,3 +62,13 @@ def demo_client(data_dir: Path) -> Iterator[TestClient]:
                         demo_password=TEST_PASSWORD)
     with TestClient(create_app(settings)) as c:
         yield sign_in(c)
+
+
+@pytest.fixture(autouse=True)
+def _local_machine(monkeypatch: pytest.MonkeyPatch) -> None:
+    """D-192: tests run as a local machine with a browser (no RENDER env), whatever the CI box has. Tests that
+    check hosted behaviour set RENDER or use a public base URL."""
+    import app.hosts
+
+    monkeypatch.delenv("RENDER", raising=False)
+    monkeypatch.setattr(app.hosts, "browser_available", lambda: True)

@@ -1088,6 +1088,27 @@ video decisions start at D-184.
   coloured left stripe on subscription cards and rows. The coin burst stays. The sidebar's active item is an ink
   marker; Reset on the Live demo is a secondary button. Selectors, copy, JS and routes are unchanged.
 
+## Hosted live demo approval (2026-11-13)
+
+- **D-192 Hosted: PayPal's own button and one manual approval (overrides D-170/D-183 for the hosted Live demo).**
+  PayPal needs the buyer to approve a subscription, and the server-side logged-in window (D-117) needs a screen
+  and a local return URL. `app/hosts.py` `can_auto_approve(settings, request)` is true only when
+  `AUTO_APPROVE_MODE=auto` (default), `RENDER` is unset, the request reached a local host and a browser can open
+  (Playwright installed; on Linux a display). `manual` forces the manual flow; `off` does too and never shows
+  the buyer's login. Locally nothing changes. Otherwise the Live demo's Penwright window
+  (`?autodemo=1`, `data-manual-approve`) shows the PayPal JS SDK button again (createSubscription still asks our
+  server, D-113), with a card above it: the sandbox buyer's email and password with Copy buttons when
+  `SHOW_SANDBOX_BUYER=true` and sandbox mode, else a one-line hint. The card is server-rendered into that page
+  only and marked `data-subguard-ignore` (never sent to the review). onApprove posts the id to the existing
+  `/api/subscriptions/register`, which now reads the subscription from PayPal first, rejects one not on the
+  merchant's plan (`subscription_register_rejected`, blocked), waits for ACTIVE, records it, and on a repeat id
+  changes nothing (`subscription_register_repeat`). The window then tells the Live demo (postMessage to its own
+  origin; the dashboard checks `event.origin`) and closes; if close is refused it says "Subscribed. You can close
+  this window." with a Close button. The dashboard also polls `/api/subscriptions` every 4 s and when the window
+  closes, so a lost message doesn't stall the story. onCancel/onError keep the window open with a retry line;
+  onError logs PayPal's debug_id to the console. A manual hosted shop visit (no `autodemo`) still uses PayPal's
+  approval page with return URLs (D-170).
+
 ## Not used in v1 (sponsor tools)
 
 - **Bryntum:** a CSS timeline is enough for a prototype.

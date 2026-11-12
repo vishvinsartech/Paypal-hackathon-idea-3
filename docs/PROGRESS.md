@@ -173,3 +173,10 @@ FIX_PLAN Coverage checklist): V video tooling v2, 1 auth core, 2 intro + login p
   lockup, plain top-bar Sign in, open how-it-works steps, borderless AI card, footer without middle dots. Shots:
   `docs/img/v5/3-intro/`. `test`: **418 passed**, 2 deselected. `lint`: clean. `ui-check`: passed.
   Stopped here for review (steps 4-6 not started).
+
+## Hosted live demo approval (DECISIONS D-192)
+
+- [x] **Hosted Penwright window** (2026-11-13). `can_auto_approve()` (`app/hosts.py`, `AUTO_APPROVE_MODE`); hosted
+  Live demo shows PayPal's JS SDK button with the sandbox buyer card (`SHOW_SANDBOX_BUYER`); `/register` checks the
+  plan with PayPal and is idempotent; the dashboard also polls for the new subscription. `test`: **438 passed**,
+  2 deselected. `lint`: clean. `demo-video-check`: passed. Not yet tried against the real hosted sandbox.

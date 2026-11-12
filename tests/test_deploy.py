@@ -17,18 +17,26 @@ def test_render_blueprint() -> None:
     (svc,) = bp["services"]
     assert svc["type"] == "web" and svc["runtime"] == "python" and svc["healthCheckPath"] == "/healthz"
     # Last command: one uvicorn worker. Before it, sandbox mode seeds the PayPal plans (D-158).
-    assert svc["startCommand"].endswith("; python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT")
-    assert 'if [ "$APP_MODE" = "sandbox" ]; then python scripts/seed_sandbox.py' in svc["startCommand"]
-    assert svc["branch"] == "prototype-v3"
-    assert "--reload" not in svc["startCommand"]
-    assert "requirements.txt" in svc["buildCommand"]
-    env = {e["key"]: e for e in svc["envVars"]}
-    assert env["APP_MODE"]["value"] == "mock"
-    assert env["WEB_CONCURRENCY"]["value"] == "1"  # one worker: uvicorn reads this as its default (D-020, D-100)
-    for secret in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "PAYPAL_CLIENT_ID", "PAYPAL_CLIENT_SECRET",
-                   "PAYPAL_SANDBOX_BUYER_EMAIL", "PAYPAL_SANDBOX_BUYER_PASSWORD", "PAYPAL_WEBHOOK_ID",
-                   "ZAPIER_CATCH_HOOK_URL"):
-        assert env[secret] == {"key": secret, "sync": False}  # never a value in git
+    assert svc["name"] == "subguard-demo" and svc["plan"] == "free" and svc["autoDeploy"] is True
+    assert svc["branch"] == "main"
+    assert svc["buildCommand"] == "pip install --upgrade pip && pip install -r requirements.txt"
+    # Sandbox mode seeds the PayPal plans first (D-158); then one uvicorn worker behind Render's proxy (D-183).
+    assert svc["startCommand"] == (
+        'if [ "$APP_MODE" = "sandbox" ]; then python scripts/seed_sandbox.py || echo "seed failed: see logs"; fi; '
+        "python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips='*'")
+    assert "--reload" not in svc["startCommand"] and "--workers" not in svc["startCommand"]
+    assert svc["envVars"] == [
+        {"key": "PYTHON_VERSION", "value": "3.12.10"},
+        {"key": "APP_MODE", "value": "mock"},
+        {"key": "WEB_CONCURRENCY", "value": "1"},  # one worker: uvicorn reads this as its default (D-020, D-100)
+        {"key": "DEMO_SEED", "value": "true"},
+        {"key": "LLM_PROVIDER", "value": "anthropic"},
+        {"key": "SESSION_SECRET", "generateValue": True},  # generated once by Render, kept across restarts
+        *({"key": k, "sync": False} for k in (  # secrets: never a value in git
+            "DEMO_PASSWORD", "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "PAYPAL_CLIENT_ID", "PAYPAL_CLIENT_SECRET",
+            "PAYPAL_SANDBOX_BUYER_EMAIL", "PAYPAL_SANDBOX_BUYER_PASSWORD", "PAYPAL_WEBHOOK_ID",
+            "ZAPIER_CATCH_HOOK_URL")),
+    ]
 
 
 def test_mock_mode_writes_the_outbox(demo_client: TestClient) -> None:

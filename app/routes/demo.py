@@ -17,11 +17,13 @@ from app.routes.actions import get_services
 router = APIRouter(prefix="/api/demo")
 
 
-def review_fn(app: FastAPI) -> ReviewFn:
-    """Runs the real review pipeline for seeded subscriptions (none in the current story; kept for reuse)."""
+def review_fn(app: FastAPI, base_url: str) -> ReviewFn:
+    """Runs the real review pipeline for seeded subscriptions (none in the current story; kept for reuse).
+
+    `base_url` is where the shop is served: the request's base on reset, the startup URL at startup."""
     async def run(merchant_id: str, plan_key: str, user_id: str, day: int) -> str | None:
         svc: Services = app.state.services
-        cap = await app.state.capture.capture(f"/shop/{merchant_id}", "http://127.0.0.1:8000/")
+        cap = await app.state.capture.capture(f"/shop/{merchant_id}", base_url)
         plan = await svc.gw.get_plan(svc.gw.plan_id(plan_key), Ctx(actor="system", user_id=user_id))
         data = await app.state.auditor.review(cap, plan, merchant=svc.merchant(merchant_id), plan_key=plan_key,
                                               signup_day=day, user_id=user_id)
@@ -43,7 +45,7 @@ async def reset(request: Request, svc: Services = Depends(get_services)) -> dict
         svc.store.reset()
         _control(svc, "reset")
     svc.policy = type(svc.policy)()  # fresh rate-limit window
-    await seed_demo(svc, review_fn(request.app))
+    await seed_demo(svc, review_fn(request.app, str(request.base_url)))
     return {"ok": True, "sim_day": svc.day}
 
 

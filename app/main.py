@@ -1,4 +1,4 @@
-"""FastAPI entry point: `python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload` (1 worker, D-020)."""
+"""FastAPI entry point: `make dev` locally; Render runs uvicorn on $PORT behind its proxy (1 worker, D-020, D-183)."""
 
 from __future__ import annotations
 
@@ -22,6 +22,7 @@ from app.core.audit_log import mask_secrets
 from app.core.auditor import Auditor
 from app.core.demo_seed import seed_demo
 from app.core.services import Services
+from app.hosts import server_url
 from app.integrations.capture import Capturer, StaticCapture
 from app.integrations.capture_live import PlaywrightCapture
 from app.integrations.notify import Notifier
@@ -108,8 +109,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         if settings.is_sandbox and not settings.zapier_catch_hook_url:
             log.warning("ZAPIER_CATCH_HOOK_URL is not set: email/SMS alerts go to data/runtime/outbox/ instead")
-        await seed_demo(app.state.services, demo.review_fn(app))
-        log.info(f"SubGuard running in {settings.app_mode} mode at http://{settings.app_host}:{settings.app_port}/")
+        await seed_demo(app.state.services, demo.review_fn(app, server_url(settings)))
+        log.info(f"SubGuard running in {settings.app_mode} mode at {server_url(settings)}")
         yield
         if mcp_task is not None:
             mcp_task.cancel()

@@ -9,6 +9,7 @@ from fastapi.templating import Jinja2Templates
 from app.auth import session_user
 from app.config import ROOT_DIR, Settings
 from app.core.durations import number_words
+from app.hosts import is_local
 from app.models import Merchant, UsageEvent
 from app.routes.deps import get_settings, get_store
 from app.store import JsonStore, utcnow
@@ -32,7 +33,7 @@ def _render(request: Request, name: str, settings: Settings, **ctx: object) -> H
     store: JsonStore = request.app.state.store
     me = next((u for u in store.load("users").items if u.id == user_id), None) if user_id else None
     return templates.TemplateResponse(request, name, {
-        "settings": settings, "p": settings.pricing, "number_words": number_words,
+        "settings": settings, "p": settings.pricing, "number_words": number_words, "local_host": is_local(request),
         "signed_in": user_id is not None, "user_id": user_id or "", "user_name": me.name if me else (user_id or ""),
         **ctx})
 

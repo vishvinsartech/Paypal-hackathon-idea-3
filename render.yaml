@@ -9,7 +9,7 @@ services:
     name: subguard-demo
     runtime: python
     plan: free
-    branch: prototype-v3   # switch to main once prototype-v3 is merged
+    branch: main
     autoDeploy: true
     # Mock mode reviews pages with the static HTML capture, so no Playwright browser download is needed.
     buildCommand: pip install --upgrade pip && pip install -r requirements.txt
@@ -17,9 +17,11 @@ services:
     # WEB_CONCURRENCY says otherwise, so it's pinned to 1 below (D-100).
     # In sandbox mode, seed the PayPal plans first (idempotent: matching plans are reused, D-158); the disk is
     # temporary, so sandbox_ids.json is rebuilt on every start.
+    # --proxy-headers: Render ends TLS at its proxy, so trust X-Forwarded-Proto/For; request.base_url is then https
+    # and the sign-in cookie gets Secure (D-183). Only Render's proxy can reach the port, hence '*'.
     startCommand: >-
       if [ "$APP_MODE" = "sandbox" ]; then python scripts/seed_sandbox.py || echo "seed failed: see logs"; fi;
-      python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+      python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips='*'
     healthCheckPath: /healthz
     envVars:
       - key: PYTHON_VERSION
@@ -32,6 +34,11 @@ services:
         value: "true"
       - key: LLM_PROVIDER
         value: anthropic
+      # Sign-in (D-178..D-180). Render generates the cookie key once and keeps it, so sessions survive restarts.
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: DEMO_PASSWORD              # set in the dashboard; the submission text has the sign-in details
+        sync: false
       # Secrets: never in git. Set them in the Render dashboard; only needed for APP_MODE=sandbox.
       - key: ANTHROPIC_API_KEY          # sandbox: the key for LLM_PROVIDER=anthropic
         sync: false

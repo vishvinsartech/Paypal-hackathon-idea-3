@@ -6,6 +6,9 @@ live demo (`open_for_confirmation`, D-117): a visible window logs in as the buye
 PayPal only lets the buyer approve a subscription, on PayPal's own page. This logs in with
 PAYPAL_SANDBOX_BUYER_EMAIL / _PASSWORD and clicks the consent button. Selectors are PayPal's sandbox
 checkout as of 2026-11; if they change, run with --headed and look. Sandbox only.
+
+Local only (D-183): the window is a browser on the server and the return URLs are 127.0.0.1:8000, so a hosted
+SubGuard refuses it (`app/hosts.py`) and its shop uses PayPal's own approval page instead.
 """
 
 from __future__ import annotations

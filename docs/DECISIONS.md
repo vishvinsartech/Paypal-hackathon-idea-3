@@ -991,6 +991,19 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   Connected or Mocked, both from `integration_states`, the source `/healthz` uses; no keys or URLs); Download my
   activity (`/api/audit-log.csv?user=`); "Last signed in <date>, <time> UTC" in the sidebar chip from the latest
   `signed_in` audit entry, hidden if there is none (`app/routes/account_view.py`).
+- **D-183 Render-ready; the sandbox buyer window is local-only.** `render.yaml` deploys `main` (free plan, mock
+  mode, one worker) with `SESSION_SECRET` `generateValue: true` (Render makes it once and keeps it, so sessions
+  survive restarts) and `DEMO_PASSWORD` `sync: false` (set in the dashboard). uvicorn runs with `--proxy-headers
+  --forwarded-allow-ips='*'`: Render ends TLS at its proxy and only the proxy reaches the port, so trusting its
+  `X-Forwarded-*` headers makes `request.base_url` https and the `sg_session` cookie `Secure`. No served code
+  assumes `127.0.0.1:8000`: the startup log prints `RENDER_EXTERNAL_URL`, else `APP_HOST` and `$PORT` (then
+  `APP_PORT`) via `app/hosts.py`; the demo seed's capture base is the request's base on reset and that startup URL
+  at startup. The logged-in PayPal window (`app/integrations/sandbox_buyer.py`, D-117, D-120) opens Playwright on
+  the server and returns to `127.0.0.1:8000`, which can't work on Render, so it stays local: on a non-localhost
+  host `/api/checkout/demo-paypal-window` returns 400 with a plain message, and the shop leaves out
+  `data-buyer-login`, so a hosted sandbox shop goes to PayPal's own approval page with return URLs from the request
+  base (D-113). `tests/test_hosting.py` fails if `127.0.0.1`, `localhost:` or `:8000` appears in served code outside
+  `config.py`, `hosts.py` and `sandbox_buyer.py`.
 - **D-188 The shop reads the session; signed out it has no checkout at all.** (D-183 stays reserved for the deploy
   step, so this takes the next free number after the video block.) The `/shop*` pages stay public (D-179).
   `shop/routes.py` reads `sg_session` with `verify_session` (via `session_user`) and passes `signed_in`, `user_id`

@@ -28,7 +28,7 @@ OpenAI, set in `.env`). AI proposes, code decides. Tagline: *AI reads the fine p
 
 | | |
 |---|---|
-| **Hosted demo** | _URL to be added after the Render deploy_ (`https://<service>.onrender.com/?demo=1`) |
+| **Hosted demo** | _URL to be added after the Render deploy_ (`https://<service>.onrender.com/`); sign-in details are in the submission text |
 | **Video** | _YouTube link to be added_ |
 | **Repo** | https://github.com/vishvinsartech/Paypal-hackathon-idea-3 |
 
@@ -228,10 +228,21 @@ No suspend/pause anywhere. The audit log (`data/runtime/audit_log.jsonl`) is app
 | **Zapier** | Catch Hook forwards check-ins and alerts as email/SMS ([`docs/ZAPIER_SETUP.md`](docs/ZAPIER_SETUP.md)) |
 | **Render** | Hosted demo from [`render.yaml`](render.yaml) |
 
-### Hosted demo (Render)
+### Hosted demo
 
-`render.yaml` deploys branch `prototype-v3` (switch to `main` after the merge) in **mock mode** by default: no keys,
-a fresh demo on every restart (temporary disk). For a **sandbox-mode** hosted demo, set in the Render dashboard:
+**URL:** _to be added after the Render deploy_ (`https://<service>.onrender.com/`). Sign-in details are in the
+submission text.
+
+[`render.yaml`](render.yaml) deploys branch `main` on Render's **free plan** in **mock mode** (no keys, one worker).
+Set `DEMO_PASSWORD` in the Render dashboard; Render generates `SESSION_SECRET` once. Free-plan limits:
+
+- **Wake-up:** after about 15 minutes idle the service sleeps, and the first request takes about 50 seconds.
+- **Data resets on restart:** the disk is temporary, so every restart or deploy starts a fresh demo.
+- **Sessions survive restarts:** `SESSION_SECRET` stays the same, so a signed-in browser stays signed in.
+- The logged-in PayPal sandbox window (Live demo in sandbox mode) runs only on a local SubGuard; a hosted
+  sandbox shop uses PayPal's own approval page (D-183).
+
+For a **sandbox-mode** hosted demo, set in the Render dashboard:
 `APP_MODE=sandbox`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `ANTHROPIC_API_KEY` (or `LLM_PROVIDER=openai` +
 `OPENAI_API_KEY`), `PAYPAL_SANDBOX_BUYER_EMAIL`, `PAYPAL_SANDBOX_BUYER_PASSWORD`; optional `ZAPIER_CATCH_HOOK_URL`
 and `PAYPAL_WEBHOOK_ID`. In sandbox mode the start command seeds the plans first (reusing matching ones). If a key is
@@ -240,7 +251,7 @@ missing the app won't start and names it; set `APP_MODE=mock` to fall back.
 ## Tests
 
 ```bash
-make test       # 317 passed (mock mode, no network or keys); sandbox tests are opt-in: pytest -m sandbox
+make test       # 418 passed (mock mode, no network or keys); sandbox tests are opt-in: pytest -m sandbox
 make lint       # ruff
 make ui-check   # the full story in headless Chromium at 1440×900 and 390×844, fails on any console error
 ```

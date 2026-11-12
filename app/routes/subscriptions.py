@@ -21,6 +21,7 @@ from app.core.paypal_card import paypal_card
 from app.core.policy import Decision
 from app.core.services import Services
 from app.core.signup import AlreadySubscribed, OwnershipError, check_not_subscribed, register_active
+from app.hosts import is_local
 from app.integrations.paypal_gateway import Ctx, PayPalGateway
 from app.integrations.paypal_types import PayPalError, SubscriptionView
 from app.models import Merchant, Subscription
@@ -28,6 +29,8 @@ from app.routes.deps import get_store
 from app.store import JsonStore
 
 router = APIRouter(prefix="/api")
+HOSTED_NO_WINDOW = ("The logged-in PayPal window only runs on a local SubGuard (it opens a browser on the server). "
+                    "On the hosted demo, subscribe with the PayPal button on the shop page instead.")
 POLL_INTERVAL = 3.0
 DEMO_CONFIRM_TIMEOUT_S = 300.0  # how long the PayPal window waits for the presenter's confirmation
 _demo_window = asyncio.Lock()  # one PayPal window at a time
@@ -126,6 +129,8 @@ async def demo_paypal_window(body: DemoWindowIn, request: Request, store: JsonSt
     s = svc.settings
     if not s.is_sandbox:
         raise HTTPException(400, "The PayPal window only exists in sandbox mode (mock mode approves in the page)")
+    if not is_local(request):  # D-183: the buyer window is a browser on the server, so local runs only
+        raise HTTPException(400, HOSTED_NO_WINDOW)
     if not (s.paypal_sandbox_buyer_email and s.paypal_sandbox_buyer_password):
         raise HTTPException(400, "Set PAYPAL_SANDBOX_BUYER_EMAIL and PAYPAL_SANDBOX_BUYER_PASSWORD in .env "
                                  "(the sandbox Personal account) so the PayPal window can log in")

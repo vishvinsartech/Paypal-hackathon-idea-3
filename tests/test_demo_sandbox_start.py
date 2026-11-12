@@ -24,7 +24,7 @@ BUYER = {"paypal_sandbox_buyer_email": "buyer@personal.example", "paypal_sandbox
 
 @pytest.fixture
 def sandbox_client(settings: Settings) -> Iterator[TestClient]:
-    with TestClient(create_app(settings)) as c:
+    with TestClient(create_app(settings), base_url="http://127.0.0.1:8000") as c:  # the window is local-only (D-183)
         sign_in(c)
         c.app.state.services.settings.app_mode = "sandbox"  # type: ignore[attr-defined]
         yield c

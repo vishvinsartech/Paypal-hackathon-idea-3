@@ -5,7 +5,7 @@
   const area = document.querySelector("[data-testid=shop-checkout]");
   const btn = area && area.querySelector("[data-mock-approve]");
   if (!btn) return;
-  const user = new URLSearchParams(location.search).get("user") || "priya";
+  const user = document.body.dataset.user || "";  // the session user, set by the server (Phase 7 Step 4)
   const status = document.createElement("p");
   status.className = "checkout-status";
   status.setAttribute("role", "status");
@@ -14,13 +14,13 @@
 
   // U22: after approval the merchant page shows only its welcome, plus "Open SubGuard" in the companion strip.
   // The PayPal proof (ids, debug ids) lives on SubGuard's evidence page, not on someone else's site.
-  function welcome(box, who) {
+  function welcome(box) {
     const product = box.closest(".product") || box;
     const name = box.dataset.welcome || "us";
     product.innerHTML = `<div class="welcome" data-testid="shop-welcome" role="status">
       <h1 class="welcome-title">You're subscribed. Welcome to ${name.replace(/[<>&"]/g, "")}.</h1>
       <p class="companion-note" data-subguard-ignore>&#128737; SubGuard is watching this trial for you.
-        <a href="/?user=${encodeURIComponent(who)}" target="_blank" rel="noopener" data-testid="shop-open-subguard">Open SubGuard ↗</a></p></div>`;
+        <a href="/" target="_blank" rel="noopener" data-testid="shop-open-subguard">Open SubGuard ↗</a></p></div>`;
   }
 
   async function post(url, body) {
@@ -45,7 +45,7 @@
     try {
       const merchantId = area.dataset.merchant;
       await subscribe(merchantId, area.dataset.planKey);
-      welcome(area, user);
+      welcome(area);
     } catch (err) {
       status.textContent = "Checkout failed: " + err.message;
       btn.disabled = false;

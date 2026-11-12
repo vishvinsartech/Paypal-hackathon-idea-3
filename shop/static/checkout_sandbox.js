@@ -9,18 +9,18 @@
   const area = document.querySelector("[data-testid=shop-checkout]");
   const slot = document.getElementById("paypal-area");
   if (!area || !slot) return;
-  const user = new URLSearchParams(location.search).get("user") || "priya";
+  const user = document.body.dataset.user || "";  // the session user, set by the server (Phase 7 Step 4)
   const status = document.createElement("p");
   status.className = "checkout-status";
   status.setAttribute("role", "status");
   status.setAttribute("aria-live", "polite");
   area.appendChild(status);
 
-  async function register(paypalId, planKey, who, reviewId) {
+  async function register(paypalId, planKey, reviewId) {
     const res = await fetch("/api/subscriptions/register", {
       method: "POST", headers: {"Content-Type": "application/json"},
       body: JSON.stringify({paypal_id: paypalId, merchant_id: area.dataset.merchant, plan_key: planKey,
-        user_id: who || user, review_id: reviewId || area.dataset.reviewId || null}),
+        user_id: user, review_id: reviewId || area.dataset.reviewId || null}),
     });
     const data = await res.json().catch(() => ({}));
     if (res.status === 202) throw new Error("PayPal hasn't activated it yet (status " + data.status + ")");
@@ -41,7 +41,7 @@
       if (!res.ok || !data.approve_url) throw new Error(data.error || "Couldn't start the PayPal subscription");
       try {
         sessionStorage.setItem(PENDING, JSON.stringify({paypal_id: data.paypal_id, plan_key: area.dataset.planKey,
-          user, review_id: area.dataset.reviewId || null}));
+          review_id: area.dataset.reviewId || null}));
       } catch (e) { /* storage off: PayPal's return still carries subscription_id */ }
       location.assign(data.approve_url);
     } catch (err) {
@@ -65,9 +65,9 @@
     status.textContent = "Approved. Confirming with PayPal…";
     for (let i = 0; i < 10; i++) {  // PayPal can take a moment to show ACTIVE
       try {
-        const sub = await register(paypalId, pending.plan_key || area.dataset.planKey, pending.user, pending.review_id);
+        const sub = await register(paypalId, pending.plan_key || area.dataset.planKey, pending.review_id);
         try { sessionStorage.removeItem(PENDING); } catch (e) { /* storage off */ }
-        return done(sub, pending.user);
+        return done(sub);
       } catch (err) {
         if (!/hasn't activated/.test(err.message) || i === 9) {
           status.textContent = "Couldn't confirm the subscription: " + err.message;
@@ -131,14 +131,13 @@
   backFromPayPal();
 
   // U22: only the merchant's welcome + "Open SubGuard" here; PayPal ids live on SubGuard's evidence page.
-  function done(sub, who) {
-    const u = who || user;
+  function done(sub) {
     slot.innerHTML = "";
     const product = area.closest(".product") || area;
     const name = (area.dataset.welcome || "us").replace(/[<>&"]/g, "");
     product.innerHTML = `<div class="welcome" data-testid="shop-welcome" role="status" data-paypal-status="${String(sub.status || "").replace(/[^A-Z_]/g, "")}">
       <h1 class="welcome-title">You're subscribed. Welcome to ${name}.</h1>
       <p class="companion-note" data-subguard-ignore>&#128737; SubGuard is watching this trial for you.
-        <a href="/?user=${encodeURIComponent(u)}" target="_blank" rel="noopener" data-testid="shop-open-subguard">Open SubGuard ↗</a></p></div>`;
+        <a href="/" target="_blank" rel="noopener" data-testid="shop-open-subguard">Open SubGuard ↗</a></p></div>`;
   }
 })();

@@ -1,6 +1,10 @@
-{# Checkout area shared by merchant pages. Expects `merchant`, `plan_key`, `settings`, `plan_ids`. #}
+{# Checkout area shared by merchant pages. Expects `merchant`, `plan_key`, `settings`, `plan_ids`, `signed_in`.
+   Signed out (Phase 7 Step 4): no PayPal button, companion or checkout script; a sign-in link that comes back here. #}
 <div class="checkout" data-testid="shop-checkout" data-merchant="{{ merchant.id }}" data-plan-key="{{ plan_key }}" data-welcome="{{ merchant.name.split()[0] }}"
      {% if settings.is_sandbox %}data-client-id="{{ settings.paypal_client_id }}" data-plan-id="{{ plan_ids.get(plan_key, '') }}"{% if settings.paypal_sandbox_buyer_email and settings.paypal_sandbox_buyer_password %} data-buyer-login="1"{% endif %}{% endif %}>
+  {% if not signed_in %}
+  <a class="paypal-btn signin-subscribe" href="/login?next={{ ('/shop/' ~ merchant.id) | urlencode }}" data-testid="shop-signin-subscribe" data-subguard-ignore>Sign in to subscribe with SubGuard</a>
+  {% else %}
   <div id="paypal-area" class="paypal-area" data-testid="shop-paypal-btn">
     {% if settings.is_sandbox %}
     <button type="button" class="paypal-btn" data-sandbox-start>Pay with PayPal (sandbox)</button>
@@ -14,6 +18,7 @@
   {% if settings.is_sandbox %}<script src="/shop/static/autodemo.js" defer></script>
   <script src="/shop/static/checkout_sandbox.js" defer></script>
   {% else %}<script src="/shop/static/checkout.js" defer></script>{% endif %}
+  {% endif %}
   {# No "Protected by SubGuard: cancel anytime" badge: Penwright is a trap merchant. Fair Trial membership only means
      SubGuard can cancel through PayPal partner permissions; it doesn't make the terms fair (FIX_PLAN). #}
 </div>

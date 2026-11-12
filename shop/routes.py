@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from app.auth import session_user
 from app.config import ROOT_DIR, Settings
 from app.core.durations import number_words
 from app.models import Merchant, UsageEvent
@@ -26,8 +27,14 @@ def _merchant(store: JsonStore, merchant_id: str) -> Merchant:
 
 
 def _render(request: Request, name: str, settings: Settings, **ctx: object) -> HTMLResponse:
-    return templates.TemplateResponse(request, name, {"settings": settings, "p": settings.pricing,
-                                                      "number_words": number_words, **ctx})
+    """Shop pages are public (D-179); the session only decides Subscribe vs "Sign in to subscribe" + the chip."""
+    user_id = session_user(request, settings)
+    store: JsonStore = request.app.state.store
+    me = next((u for u in store.load("users").items if u.id == user_id), None) if user_id else None
+    return templates.TemplateResponse(request, name, {
+        "settings": settings, "p": settings.pricing, "number_words": number_words,
+        "signed_in": user_id is not None, "user_id": user_id or "", "user_name": me.name if me else (user_id or ""),
+        **ctx})
 
 
 @router.get("", response_class=HTMLResponse)

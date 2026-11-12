@@ -167,6 +167,8 @@ All of these use one `data-soon` attribute. One handler in `user-nav.js` shows t
 
 ## Step 4: Shop and session
 
+**Done** (D-188).
+
 - The shop pages stay public.
 - **Signed out:** the merchant page's Subscribe button becomes "Sign in to subscribe with SubGuard", linking to `/login?next=/shop/penwright`.
 - **Signed in:** a small "Signed in as Priya" chip shows.

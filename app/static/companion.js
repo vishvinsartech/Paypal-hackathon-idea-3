@@ -10,7 +10,7 @@
   const area = document.querySelector("[data-testid=shop-paypal-btn]");
   const checkout = document.querySelector("[data-testid=shop-checkout]");
   if (!area || !checkout) return;
-  const user = new URLSearchParams(location.search).get("user") || "priya";
+  const user = document.body.dataset.user || "";  // the session user, set by the server (Phase 7 Step 4)
   // D-119: longer than the server's own worst case (page capture + LLM_TIMEOUT_SECONDS, 30 s by default, shared by
   // both LLM attempts). The server answers inside that budget, falling back to the basic check if the AI is slow.
   const TIMEOUT_MS = 50000;

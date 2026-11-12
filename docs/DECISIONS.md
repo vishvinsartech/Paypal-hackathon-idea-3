@@ -991,6 +991,19 @@ Ambiguities resolved with the simplest reasonable option. Newest at the bottom.
   Connected or Mocked, both from `integration_states`, the source `/healthz` uses; no keys or URLs); Download my
   activity (`/api/audit-log.csv?user=`); "Last signed in <date>, <time> UTC" in the sidebar chip from the latest
   `signed_in` audit entry, hidden if there is none (`app/routes/account_view.py`).
+- **D-188 The shop reads the session; signed out it has no checkout at all.** (D-183 stays reserved for the deploy
+  step, so this takes the next free number after the video block.) The `/shop*` pages stay public (D-179).
+  `shop/routes.py` reads `sg_session` with `verify_session` (via `session_user`) and passes `signed_in`, `user_id`
+  and the user's display name to every shop template; `<body data-user>` holds the session user, empty when signed
+  out. Signed out, `_checkout.html` renders only the link "Sign in to subscribe with SubGuard" to
+  `/login?next=/shop/<merchant>` (built from the current merchant; `safe_after_login` returns there) and leaves out the
+  PayPal button, the companion and the checkout scripts, so nothing can call an API that would 401. Signed in, a
+  "Signed in as Priya" chip sits in the shop header. `checkout.js`, `checkout_sandbox.js` and `companion.js` take
+  the user from `document.body.dataset.user`, never from `?user=`, and none of their calls carries a `user` query
+  param, so the ?user= 403 rule can't trip. The body `user_id` is still sent (the routes default it) and is the
+  session user. After checkout "Open SubGuard ↗" goes to `/`; the dashboard's 4-second refresh shows the new
+  subscription (same browser, same cookie). The Presenter's `/shop/...?user=priya` links still work: the shop ignores
+  the param and it matches the session user anyway.
 
 ## v3 Phase 7 Step V: video tooling v2 (2026-11-12, docs/PHASE7_PLAN.md)
 

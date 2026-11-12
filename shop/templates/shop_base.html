@@ -6,11 +6,12 @@
   <title>{% block title %}Demo shop{% endblock %}</title>
   <link rel="stylesheet" href="/shop/static/shop.css">
 </head>
-<body class="{% block body_class %}{% endblock %}">
+<body class="{% block body_class %}{% endblock %}" data-user="{{ user_id }}">
   <div class="banner" role="note" data-testid="shop-banner">Fictional merchant for the SubGuard demo.</div>
   <header class="shop-header">
     <a href="/shop" class="shop-home">{% block brand %}Demo shop{% endblock %}</a>
     {% block nav %}{% endblock %}
+    {% if signed_in %}<span class="shop-session" data-testid="shop-signed-in" data-subguard-ignore>Signed in as {{ user_name }}</span>{% endif %}
   </header>
   <main class="shop-main">
     {% block content %}{% endblock %}

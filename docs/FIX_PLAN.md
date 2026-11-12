@@ -324,7 +324,7 @@ merged into `main` and Render deploys `main`. Each step is detailed in `docs/PHA
 | P7-1 auth core | [x] | dc17e9f | DEMO_PASSWORD / SESSION_SECRET / SESSION_HOURS, HMAC sg_session cookie, /login + /logout, 5 fails/min/IP, access middleware (303 / 401 / ?user= 403), audited; fixtures sign in, anon_client, smoke tests; ui-check + video tools sign in (D-178..D-180) |
 | P7-2 intro + login pages | [x] | e9087ae | signed-out `/` = intro (numbers from landing_view), shared _hero/_steps macros (Live demo markup unchanged), styled login (auth.css: 16 px fields, 44 px button), signed-out top bar; `/?demo=1` still needs sign-in (D-181) |
 | P7-3 dashboard additions | [x] | 85c488c | avatar menu (Signed in as Priya · priya@…, Profile, Settings, Help, Sign out POST, 44 px, phones), Settings: Profile, Connected accounts (mode + Zapier from integration_states), Security, Download my activity (CSV), Delete account disabled; Last signed in; demo-only controls data-soon -> "Not part of this demo" (D-182) |
-| P7-4 shop + session | [ ] | | |
+| P7-4 shop + session | [x] | 48bb8cf | shop reads sg_session (verify_session): body data-user, signed out -> "Sign in to subscribe with SubGuard" to /login?next=/shop/<merchant> (no checkout scripts), signed in -> "Signed in as Priya" chip; checkout + companion JS use data-user, no ?user=; Open SubGuard -> /; signed-out checkout APIs 401 (D-188) |
 | P7-5 mobile pass | [ ] | | |
 | P7-6 auth tests + tooling | [ ] | | |
 | P7-7 Render deploy | [ ] | | |

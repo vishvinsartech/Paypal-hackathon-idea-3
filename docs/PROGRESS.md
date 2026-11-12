@@ -118,3 +118,14 @@ FIX_PLAN Coverage checklist): V video tooling v2, 1 auth core, 2 intro + login p
   is a button or link, no success wording, the handler makes no request); `ui_check.py` checks Sign out at 390 px and
   the toast. `scenes.json` uses none of the changed selectors. `test`: **397 passed** (was 391), 2 deselected.
   `lint`: clean. `ui-check`: passed.
+- [x] **Step 4. Shop and session** (2026-11-12, commit `48bb8cf`, DECISIONS D-188). The middleware already lets
+  `/shop` and `/shop/*` through (D-179). `shop/routes.py` reads the session with `verify_session` and passes
+  `signed_in`, `user_id` and the display name to every shop template; `<body data-user>` is the session user (empty
+  signed out). Signed out, the merchant page's checkout is just "Sign in to subscribe with SubGuard" to
+  `/login?next=/shop/<merchant>` (no PayPal button, companion or checkout script). Signed in, a "Signed in as Priya"
+  chip in the shop header. `checkout.js`, `checkout_sandbox.js` and `companion.js` use `document.body.dataset.user`;
+  no call carries a `?user=`; "Open SubGuard ↗" goes to `/` (the 4-second refresh does the rest). New
+  `tests/test_shop_session.py` (signed-out create / mock-approve / register / demo-window return 401; signed-out and
+  signed-in shop markup; JS never reads `?user=`). `demo-video-check` passes, also live with `--base-url` (06_shop and
+  07_approve selectors unchanged: the recorder is signed in). `test`: **406 passed** (was 397), 2 deselected.
+  `lint`: clean. `ui-check`: passed.
